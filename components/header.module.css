@@ -49,11 +49,39 @@
     color: #666;
     font-size: 1rem;
     font-weight: 400;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    padding-bottom: 4px;
 }
 
 .navLink:hover {
     color: #ff6b35;
+}
+
+.navLink.active {
+    color: #ff6b35;
+    font-weight: 500;
+}
+
+.navLink.active::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    border-radius: 2px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
 }
 
 .logoutButton {

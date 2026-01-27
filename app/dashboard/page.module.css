@@ -1,19 +1,166 @@
 .dashboard {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+    max-width: 1400px;
+    margin: calc(var(--headerHeight)) auto 2rem;
 }
 
-.dashboard h1 {
-    font-size: 2rem;
-    font-weight: 700;
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
     margin-bottom: 2rem;
 }
 
-.dashboard button {
-    font-size: 1rem;
+.statCard {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.2s;
+}
+
+.statCard:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.statIcon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 12px;
+}
+
+.statInfo {
+    flex: 1;
+}
+
+.statInfo h3 {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0 0 0.5rem 0;
+    font-weight: 500;
+}
+
+.statNumber {
+    font-size: 1.875rem;
     font-weight: 700;
-    padding: 1rem 2rem;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+}
+
+.statChange {
+    font-size: 0.8rem;
+    color: #10b981;
+    font-weight: 500;
+}
+
+.contentGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.cardTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 1.5rem 0;
+}
+
+.activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.activityItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.activityDot {
+    width: 10px;
+    height: 10px;
+    background: #3b82f6;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.activityText {
+    font-size: 0.95rem;
+    color: #374151;
+    margin: 0 0 0.25rem 0;
+    font-weight: 500;
+}
+
+.activityTime {
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+.quickLinks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.quickLink {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.quickLink:hover {
+    background: #f3f4f6;
+    border-color: #3b82f6;
+    transform: translateX(4px);
+}
+
+.quickLinkIcon {
+    font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .contentGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .statCard {
+        padding: 1.25rem;
+    }
+
+    .statIcon {
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+    }
 }

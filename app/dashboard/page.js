@@ -1,37 +1,92 @@
-"use client";
 import styles from "./page.module.css";
-import { signOutAction } from "@/actions/signout-action";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import Link from "next/link";
-export default function Dashboard() {
-    const router = useRouter();
-    const [isSigningOut, setIsSigningOut] = useState(false);
-    
-    const handleSignOut = async () => {
-        try {
-            setIsSigningOut(true);
-            await signOutAction();
-            // Redirigir después de cerrar sesión
-            router.push("/login");
-            router.refresh(); // Refrescar para limpiar el estado de la sesión
-        } catch (error) {
-            console.error("Error al cerrar sesión:", error);
-            setIsSigningOut(false);
-        }
-    };
 
+export default function Dashboard() {
     return (
         <div className={styles.dashboard}>
-            <h1>Dashboard</h1>
-            <Link href="/estudios">Estudios</Link>
-            <button 
-                onClick={handleSignOut} 
-                disabled={isSigningOut}
-            >
-                {isSigningOut ? "Cerrando sesión..." : "Sign Out"}
-            </button>
-                                
+            <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon}>👥</div>
+                    <div className={styles.statInfo}>
+                        <h3>Usuarios</h3>
+                        <p className={styles.statNumber}>1,234</p>
+                        <span className={styles.statChange}>+12% este mes</span>
+                    </div>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon}>📦</div>
+                    <div className={styles.statInfo}>
+                        <h3>Productos</h3>
+                        <p className={styles.statNumber}>567</p>
+                        <span className={styles.statChange}>+8% este mes</span>
+                    </div>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon}>💰</div>
+                    <div className={styles.statInfo}>
+                        <h3>Ventas</h3>
+                        <p className={styles.statNumber}>$45,678</p>
+                        <span className={styles.statChange}>+23% este mes</span>
+                    </div>
+                </div>
+
+                <div className={styles.statCard}>
+                    <div className={styles.statIcon}>📊</div>
+                    <div className={styles.statInfo}>
+                        <h3>Reportes</h3>
+                        <p className={styles.statNumber}>89</p>
+                        <span className={styles.statChange}>+5% este mes</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className={styles.contentGrid}>
+                <div className={styles.card}>
+                    <h2 className={styles.cardTitle}>Actividad Reciente</h2>
+                    <div className={styles.activityList}>
+                        <div className={styles.activityItem}>
+                            <div className={styles.activityDot}></div>
+                            <div>
+                                <p className={styles.activityText}>Nuevo usuario registrado</p>
+                                <span className={styles.activityTime}>Hace 5 minutos</span>
+                            </div>
+                        </div>
+                        <div className={styles.activityItem}>
+                            <div className={styles.activityDot}></div>
+                            <div>
+                                <p className={styles.activityText}>Producto actualizado</p>
+                                <span className={styles.activityTime}>Hace 15 minutos</span>
+                            </div>
+                        </div>
+                        <div className={styles.activityItem}>
+                            <div className={styles.activityDot}></div>
+                            <div>
+                                <p className={styles.activityText}>Nueva venta realizada</p>
+                                <span className={styles.activityTime}>Hace 1 hora</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className={styles.card}>
+                    <h2 className={styles.cardTitle}>Accesos Rápidos</h2>
+                    <div className={styles.quickLinks}>
+                        <button className={styles.quickLink}>
+                            <span className={styles.quickLinkIcon}>➕</span>
+                            <span>Nuevo Usuario</span>
+                        </button>
+                        <button className={styles.quickLink}>
+                            <span className={styles.quickLinkIcon}>📝</span>
+                            <span>Nuevo Reporte</span>
+                        </button>
+                        <button className={styles.quickLink}>
+                            <span className={styles.quickLinkIcon}>⚙️</span>
+                            <span>Configuración</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-    )
+    );
 }

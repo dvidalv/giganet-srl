@@ -56,6 +56,14 @@ const userSchema = new Schema(
             type: Date,
             select: false, // No mostrar en las consultas por defecto
         },
+        resetPasswordToken: {
+            type: String,
+            select: false, // No mostrar en las consultas por defecto
+        },
+        resetPasswordExpires: {
+            type: Date,
+            select: false, // No mostrar en las consultas por defecto
+        },
     },
     {
         timestamps: true,

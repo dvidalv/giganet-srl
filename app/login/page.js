@@ -92,6 +92,9 @@ export default function Login() {
             className={styles.input}
             required
           />
+          <div className={styles.forgotPasswordLink}>
+            <Link href="/forgot-password">¿Olvidaste tu contraseña?</Link>
+          </div>
           <button type="submit" className={styles.submitButton}>
             Iniciar Sesión
           </button>

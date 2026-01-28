@@ -52,7 +52,7 @@ export async function POST(request) {
       subject: "Verifica tu cuenta",
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">¡Hola ${user.fullName}!</h2>
+          <h2 style="color: #333;">¡Hola ${user.name}!</h2>
           <p>Has solicitado un nuevo enlace de verificación. Por favor, verifica tu correo electrónico haciendo clic en el siguiente enlace:</p>
           <a href="${verificationUrl}" 
              style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
@@ -66,7 +66,7 @@ export async function POST(request) {
           </p>
         </div>
       `,
-      textContent: `Hola ${user.fullName}! Por favor verifica tu email visitando: ${verificationUrl}`,
+      textContent: `Hola ${user.name}! Por favor verifica tu email visitando: ${verificationUrl}`,
     });
 
     return NextResponse.json(

@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
-import logo from "@/public/logo.png";
+
 
 export default function Sidebar({ user }) {
-    const pathname = usePathname();
 
+
+    const { name, email } = user;
+    console.log(name, email);
+    const pathname = usePathname();
     const navItems = [
         { label: "Dashboard", href: "/dashboard", icon: "🏠" },
         { label: "Usuarios", href: "/dashboard/usuarios", icon: "👥" },
@@ -55,11 +57,11 @@ export default function Sidebar({ user }) {
                 {/* User Info */}
                 <div className={styles.userInfo}>
                     <div className={styles.userAvatar}>
-                        {user?.name?.charAt(0).toUpperCase() || "U"}
+                        {name?.charAt(0).toUpperCase() || "U"}
                     </div>
                     <div className={styles.userDetails}>
-                        <div className={styles.userName}>{user?.name || "Usuario"}</div>
-                        <div className={styles.userRole}>Administrador</div>
+                        <div className={styles.userName}>{name || "Usuario"}</div>
+                        <div className={styles.userRole}>{email || "email@ejemplo.com"}</div>
                     </div>
                 </div>
             </div>

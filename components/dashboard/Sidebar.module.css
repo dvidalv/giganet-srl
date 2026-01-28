@@ -2,7 +2,7 @@
     position: fixed;
     left: 0;
     top: var(--headerHeight);
-    height: 100vh;
+    height: calc(100vh - var(--headerHeight));
     width: 260px;
     background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     color: white;

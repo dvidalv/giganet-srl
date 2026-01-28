@@ -7,10 +7,10 @@ import { headers } from "next/headers";
 
 export async function POST(request) {
   const body = await request.json();
-  let { email, password, fullName } = body;
+  let { email, password, name } = body;
 
   try {
-    if (!email || !password || !fullName) {
+    if (!email || !password || !name) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -54,7 +54,7 @@ export async function POST(request) {
     const user = await User.create({
       email,
       password: hashedPassword,
-      fullName: fullName.trim(),
+      name: name.trim(),
       verificationToken,
       verificationTokenExpires,
     });
@@ -73,7 +73,7 @@ export async function POST(request) {
         subject: "Verifica tu cuenta",
         htmlContent: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">¡Bienvenido ${fullName}!</h2>
+            <h2 style="color: #333;">¡Bienvenido ${name}!</h2>
             <p>Gracias por registrarte. Por favor, verifica tu correo electrónico haciendo clic en el siguiente enlace:</p>
             <a href="${verificationUrl}" 
                style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
@@ -87,7 +87,7 @@ export async function POST(request) {
             </p>
           </div>
         `,
-        textContent: `Bienvenido ${fullName}! Por favor verifica tu email visitando: ${verificationUrl}`,
+        textContent: `Bienvenido ${name}! Por favor verifica tu email visitando: ${verificationUrl}`,
       });
     } catch (emailError) {
       console.error("Error al enviar email de verificación:", emailError);

@@ -18,7 +18,7 @@ export async function checkAdminExists() {
         if (adminUser) {
             console.log("✅ Usuario admin encontrado:", {
                 email: adminUser.email,
-                fullName: adminUser.fullName,
+                name: adminUser.name,
                 createdAt: adminUser.createdAt
             });
             return true;

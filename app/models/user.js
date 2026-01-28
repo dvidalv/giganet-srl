@@ -33,11 +33,11 @@ const userSchema = new Schema(
             minlength: [8, 'Password must be at least 8 characters long'],
             select: false, // No mostrar la contraseña en las consultas
         },
-        fullName: {
+        name: {
             type: String,
-            required: [true, 'Full name is required'],
-            minlength: [3, 'Full name must be at least 3 characters long'],
-            maxlength: [50, 'Full name must be less than 50 characters long'],
+            required: [true, 'Name is required'],
+            minlength: [3, 'Name must be at least 3 characters long'],
+            maxlength: [50, 'Name must be less than 50 characters long'],
         },
         role: {
             type: String,

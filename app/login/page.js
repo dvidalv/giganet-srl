@@ -7,7 +7,7 @@ import { loginUsuario } from "@/actions/loginUsuario-action";
 
 export default function Login() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"; 
   const verified = searchParams.get("verified");
   const errorParam = searchParams.get("error");
   

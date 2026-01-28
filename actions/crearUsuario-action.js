@@ -1,30 +1,36 @@
 "use server";
-import axios from "axios";
+import { headers } from "next/headers";
 
 export async function crearUsuario(prevState, formData) {
-    const fullName = formData.get("fullName");
-    const email = formData.get("email");
-    const password = formData.get("password");
+  const fullName = formData.get("fullName");
+  const email = formData.get("email");
+  const password = formData.get("password");
 
-    try {
-        const response = await axios.post(
-            "http://localhost:3000/api/auth/signup",
-            { fullName, email, password },
-            { validateStatus: () => true }
-        );
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const baseUrl = `${proto}://${host}`;
 
-        // console.log("response:", response);
+  try {
+    const res = await fetch(`${baseUrl}/api/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fullName, email, password }),
+      cache: "no-store",
+    });
 
-        if (response.status !== 201) {
-            const msg = response.data?.error || response.data?.details?.join?.(", ") || "Error al crear el usuario";
-            return { error: msg, success: null };
-        }
-        return { 
-            success: "¡Cuenta creada! Por favor verifica tu email para activar tu cuenta.", 
-            error: null 
-        };
-    } catch (err) {
-        const msg = err.response?.data?.error || err.response?.data?.details?.join?.(", ") || err.message || "Error al crear el usuario";
-        return { error: msg, success: null };
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status !== 201) {
+      const msg = data?.error || data?.details?.join?.(", ") || "Error al crear el usuario";
+      return { error: msg, success: null };
     }
+
+    return {
+      success: "¡Cuenta creada! Por favor verifica tu email para activar tu cuenta.",
+      error: null,
+    };
+  } catch (err) {
+    return { error: err?.message || "Error al crear el usuario", success: null };
+  }
 }

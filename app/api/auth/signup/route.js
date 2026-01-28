@@ -3,6 +3,7 @@ import { passwordHash } from "@/utils/utils";
 import User from "@/app/models/user";
 import { sendEmail } from "@/api-mail_brevo";
 import crypto from "crypto";
+import { headers } from "next/headers";
 
 export async function POST(request) {
   const body = await request.json();
@@ -57,10 +58,15 @@ export async function POST(request) {
       verificationToken,
       verificationTokenExpires,
     });
+
+    const h = await headers();
+    const host = h.get("host");
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    const baseUrl = `${proto}://${host}`;
     
     // Enviar email de verificación
     try {
-      const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/verify-email?token=${verificationToken}`;
+      const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
       
       await sendEmail({
         to: email,

@@ -5,8 +5,10 @@ import { useActionState } from "react";
 import { crearUsuario } from "@/actions/crearUsuario-action";
 export default function Register() {
   const [state, action, isPending] = useActionState(crearUsuario, {
-    error: null,
+    values: { fullName: "", email: "", password: "" },
+    errors: { fullName: null, email: null, password: null },
     success: null,
+    error: null,
   });
   return (
     <div className={styles.register}>
@@ -20,6 +22,7 @@ export default function Register() {
             placeholder="Tu nombre completo"
             className={styles.input}
             required
+            defaultValue={state.values?.fullName || ""}
           />
           <input
             type="email"
@@ -27,6 +30,7 @@ export default function Register() {
             placeholder="Tu email"
             className={styles.input}
             required
+            defaultValue={state.values?.email || ""}
           />
           <input
             type="password"
@@ -34,13 +38,22 @@ export default function Register() {
             placeholder="Tu contraseña"
             className={styles.input}
             required
-            
+            defaultValue={state.values?.password || ""}
           />
           <button type="submit" className={styles.submitButton}>
             Registrarse
           </button>
         </form>
         <div className={styles.messages}>
+          {state.errors?.fullName && (
+            <p className={styles.error}>{state.errors.fullName}</p>
+          )}
+          {state.errors?.email && (
+            <p className={styles.error}>{state.errors.email}</p>
+          )}
+          {state.errors?.password && (
+            <p className={styles.error}>{state.errors.password}</p>
+          )}
           {state.error && <p className={styles.error}>{state.error}</p>}
           {state.success && <p className={styles.success}>{state.success}</p>}
           {isPending && <p className={styles.pending}>Creando usuario...</p>}

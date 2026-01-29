@@ -1,7 +1,7 @@
 "use client";
 import styles from "./page.module.css";
 import Link from "next/link";
-import { useActionState, useState, Suspense } from "react";
+import { useActionState, useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { loginUsuario } from "@/actions/loginUsuario-action";
 
@@ -20,6 +20,14 @@ function LoginForm() {
   const [resendEmail, setResendEmail] = useState("");
   const [resendMessage, setResendMessage] = useState(null);
   const [isResending, setIsResending] = useState(false);
+  const [hasAdmin, setHasAdmin] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/auth/has-admin")
+      .then((res) => res.json())
+      .then((data) => setHasAdmin(data.hasAdmin === true))
+      .catch(() => setHasAdmin(false));
+  }, []);
 
   // Mensajes de verificación
   let verificationMessage = null;
@@ -165,9 +173,11 @@ function LoginForm() {
           </div>
         )}
 
-        <div className={styles.registerLink}>
-          ¿No tienes una cuenta? <Link href="/register">Regístrate</Link>
-        </div>
+        {hasAdmin === false && (
+          <div className={styles.registerLink}>
+            ¿No tienes una cuenta? <Link href="/register">Regístrate</Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -66,7 +66,11 @@ export async function POST(request) {
     const h = await headers();
     const host = h.get("host");
     const proto = h.get("x-forwarded-proto") ?? "http";
-    const baseUrl = `${proto}://${host}`;
+    const baseUrl =
+      (process.env.APP_URL || process.env.NEXTAUTH_URL || "").replace(
+        /\/$/,
+        "",
+      ) || `${proto}://${host}`;
 
     // Enviar email de verificación
     try {

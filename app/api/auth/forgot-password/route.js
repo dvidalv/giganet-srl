@@ -11,49 +11,47 @@ export async function POST(request) {
     if (!email) {
       return NextResponse.json(
         { error: "Email es requerido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Buscar usuario por email
-    const user = await User.findOne({ 
-      email: email.toLowerCase().trim() 
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
     });
 
     // Por seguridad, siempre retornar el mismo mensaje
     // sin revelar si el usuario existe o no
     if (!user) {
       return NextResponse.json(
-        { message: "Si el email existe, recibirás instrucciones para resetear tu contraseña" },
-        { status: 200 }
+        {
+          message:
+            "Si el email existe, recibirás instrucciones para resetear tu contraseña",
+        },
+        { status: 200 },
       );
     }
 
-    // Generar token de reseteo de contraseña
-    const resetPasswordToken = crypto.randomBytes(32).toString('hex');
+    // Generar token en memoria (solo persistimos si el email se envía bien)
+    const resetPasswordToken = crypto.randomBytes(32).toString("hex");
     const resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
-
-    // Actualizar el usuario con el token de reseteo
-    user.resetPasswordToken = resetPasswordToken;
-    user.resetPasswordExpires = resetPasswordExpires;
-    await user.save();
 
     const h = await headers();
     const host = h.get("host");
     const proto = h.get("x-forwarded-proto") ?? "http";
     const baseUrl = `${proto}://${host}`;
-    // Enviar email con el enlace de reseteo
     const resetUrl = `${baseUrl}/reset-password?token=${resetPasswordToken}`;
-    
-    await sendEmail({
-      to: user.email,
-      subject: "Resetear tu contraseña",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">¡Hola ${user.name}!</h2>
-          <p>Has solicitado resetear tu contraseña. Haz clic en el siguiente enlace para crear una nueva contraseña:</p>
-          <a href="${resetUrl}" 
-             style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Resetear tu contraseña",
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">¡Hola ${user.name}!</h2>
+            <p>Has solicitado resetear tu contraseña. Haz clic en el siguiente enlace para crear una nueva contraseña:</p>
+            <a href="${resetUrl}" 
+              style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
             Resetear Contraseña
           </a>
           <p style="color: #666; font-size: 14px;">
@@ -62,20 +60,38 @@ export async function POST(request) {
           <p style="color: #666; font-size: 14px;">
             Si no solicitaste resetear tu contraseña, puedes ignorar este email y tu contraseña permanecerá sin cambios.
           </p>
-        </div>
-      `,
-      textContent: `Hola ${user.name}! Para resetear tu contraseña, visita: ${resetUrl}`,
-    });
+          </div>
+        `,
+        textContent: `Hola ${user.name}! Para resetear tu contraseña, visita: ${resetUrl}`,
+      });
+    } catch (error) {
+      console.error("Error al enviar email de reseteo:", error);
+      return NextResponse.json(
+        {
+          error:
+            "Error al enviar el email de reseteo. Por favor, inténtalo de nuevo.",
+        },
+        { status: 500 },
+      );
+    }
+
+    // Solo guardar token si el email se envió correctamente
+    user.resetPasswordToken = resetPasswordToken;
+    user.resetPasswordExpires = resetPasswordExpires;
+    await user.save();
 
     return NextResponse.json(
-      { message: "Si el email existe, recibirás instrucciones para resetear tu contraseña" },
-      { status: 200 }
+      {
+        message:
+          "Si el email existe, recibirás instrucciones para resetear tu contraseña",
+      },
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error al procesar solicitud de reseteo:", error);
     return NextResponse.json(
       { error: "Error al procesar la solicitud" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

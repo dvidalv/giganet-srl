@@ -30,13 +30,13 @@ Documentación del proceso de registro de nuevos usuarios:
 
 ### 3. [Forgot Password Process](./forgot-password-process.md)
 
-**Archivo:** `app/forgot-password/page.js`
+**Archivos:** `app/forgot-password/page.js`, `app/api/auth/forgot-password/route.js`
 
 Documentación del proceso de recuperación de contraseña:
 
-- Solicitud de restablecimiento
-- Generación de tokens de recuperación
-- Envío de emails con instrucciones
+- Solicitud de restablecimiento vía API
+- Generación de tokens; persistencia **solo tras envío exitoso** del email (Brevo)
+- Manejo de fallos de envío (try-catch, mensaje claro, sin tokens huérfanos)
 - Medidas de seguridad contra enumeración de usuarios
 
 ### 4. [Reset Password Process](./reset-password-process.md)
@@ -101,7 +101,8 @@ Documentación del proceso de restablecimiento de contraseña:
        ├─> Solicitar reset  │
        ├─> Generar token    │
        ├─> Enviar email     │
-       │                    │
+       ├─> Guardar token    │
+       │   (solo si OK)     │
        v                    │
 ┌──────────────┐            │
 │ Email Inbox  │            │

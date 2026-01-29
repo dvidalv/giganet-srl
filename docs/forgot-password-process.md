@@ -1,12 +1,13 @@
 # Documentación: Proceso de Recuperación de Contraseña
 
-## Archivo
+## Archivos
 
-`app/forgot-password/page.js`
+- **Frontend:** `app/forgot-password/page.js`
+- **API:** `app/api/auth/forgot-password/route.js`
 
 ## Descripción General
 
-Página que permite a los usuarios solicitar el restablecimiento de su contraseña mediante el envío de un email con instrucciones. Implementa un flujo simple y seguro para la recuperación de contraseñas olvidadas.
+Página que permite a los usuarios solicitar el restablecimiento de su contraseña mediante el envío de un email con instrucciones. Implementa un flujo simple y seguro para la recuperación de contraseñas olvidadas. Por seguridad, **nunca se revela si el email existe o no**; siempre se devuelve el mismo mensaje genérico en caso de éxito.
 
 ## Características Principales
 
@@ -76,9 +77,11 @@ setMessage(null); // Limpia mensajes previos
 
 ```javascript
 {
-  message: "Se ha enviado un email con instrucciones para resetear tu contraseña";
+  message: "Si el email existe, recibirás instrucciones para resetear tu contraseña";
 }
 ```
+
+(Se usa el mismo mensaje tanto si el usuario existe como si no, para evitar enumeración de usuarios.)
 
 **Acciones:**
 
@@ -90,8 +93,14 @@ setMessage(null); // Limpia mensajes previos
 
 ```javascript
 {
-  error: "Usuario no encontrado"; // u otro mensaje
-}
+  error: "Email es requerido";
+} // 400
+{
+  error: "Error al enviar el email de reseteo. Por favor, inténtalo de nuevo.";
+} // 500 (fallo envío email)
+{
+  error: "Error al procesar la solicitud";
+} // 500 (otro error)
 ```
 
 **Acciones:**
@@ -157,38 +166,57 @@ Content-Type: application/json
 
 #### Response - Éxito (200)
 
+Siempre el mismo mensaje, **sin revelar si el email existe o no**:
+
 ```json
 {
-  "message": "Se ha enviado un email con instrucciones"
+  "message": "Si el email existe, recibirás instrucciones para resetear tu contraseña"
 }
 ```
 
-#### Response - Error Usuario No Encontrado (404)
+Se devuelve 200 tanto cuando el usuario existe como cuando no (prevención de enumeración).
+
+#### Response - Error (400)
 
 ```json
 {
-  "error": "Usuario no encontrado"
+  "error": "Email es requerido"
 }
 ```
 
 #### Response - Error del Servidor (500)
 
+**Fallo al enviar el email (p. ej. Brevo caído):**
+
 ```json
 {
-  "error": "Error al enviar el email"
+  "error": "Error al enviar el email de reseteo. Por favor, inténtalo de nuevo."
 }
 ```
 
-### Proceso en el Backend (esperado)
+**Otros errores (BD, JSON inválido, etc.):**
 
-1. Recibe email del usuario
-2. Busca usuario en base de datos
-3. Si existe:
-   - Genera token único de restablecimiento
-   - Guarda token en BD con expiración (ej: 1 hora)
-   - Envía email con link: `/reset-password?token=XXXXX`
-4. Si no existe:
-   - Por seguridad, puede devolver éxito o error según política
+```json
+{
+  "error": "Error al procesar la solicitud"
+}
+```
+
+### Proceso en el Backend (implementado)
+
+1. Recibe y valida el email (400 si falta).
+2. Busca usuario en BD por `email` (normalizado a minúsculas y trim).
+3. **Si no existe:** responde 200 con el mensaje genérico (no se revela que no existe).
+4. **Si existe:**
+   - Genera token de 32 bytes (hex) y expiración 1 hora, **solo en memoria**.
+   - Construye `baseUrl` con `host` y `x-forwarded-proto` y el link `{baseUrl}/reset-password?token=...`.
+   - **Intenta enviar el email** con `sendEmail` (Brevo).
+   - **Si el envío falla:** se hace `return` 500 con mensaje de error. **No se guarda el token**; el usuario puede reintentar.
+   - **Si el envío tiene éxito:** se guardan `resetPasswordToken` y `resetPasswordExpires` en el usuario y se responde 200 con el mensaje genérico.
+
+**Importante:** El token solo se persiste **después** de que el email se envía correctamente. Así se evita guardar tokens huérfanos y no hace falta rollback si el envío falla.
+
+**Dependencias del API:** `User` (modelo MongoDB), `sendEmail` (`@/api-mail_brevo`), `crypto`, `headers` (Next.js).
 
 ## Estilos
 
@@ -213,23 +241,18 @@ Utiliza módulos CSS importados desde `./page.module.css`:
 1. Usuario ingresa su email registrado
 2. Hace clic en "Enviar instrucciones"
 3. Sistema valida que el email existe
-4. Genera token único de recuperación
-5. Envía email con link de restablecimiento
-6. Muestra mensaje de éxito
-7. Campo email se limpia
-8. Usuario revisa su correo
-9. Hace clic en el link del email
-10. Es redirigido a `/reset-password?token=XXXXX`
+4. Genera token en memoria y envía email con link de restablecimiento
+5. Si el envío tiene éxito, guarda token y expiración en BD
+6. Responde 200 con mensaje genérico; el frontend muestra éxito y limpia el email
+7. Usuario revisa su correo, hace clic en el link y es redirigido a `/reset-password?token=XXXXX`
 
 ### Caso 2: Email No Registrado
 
 1. Usuario ingresa email no existente
 2. Hace clic en "Enviar instrucciones"
 3. Sistema verifica que el email no existe
-4. **Opción A (Segura):** Muestra mensaje genérico de éxito
-   - Previene enumeración de usuarios
-5. **Opción B (Transparente):** Muestra "Usuario no encontrado"
-   - Permite al usuario saber que debe registrarse
+4. Responde 200 con el **mismo mensaje genérico** que cuando sí existe: "Si el email existe, recibirás instrucciones..."
+5. Previene enumeración de usuarios; el usuario no puede saber si debe registrarse o solo revisar su correo
 
 ### Caso 3: Error de Conexión
 
@@ -245,30 +268,30 @@ Utiliza módulos CSS importados desde `./page.module.css`:
 
 1. Usuario ingresa email válido
 2. Sistema encuentra el usuario
-3. Genera token correctamente
-4. Falla el envío del email (servicio SMTP caído)
-5. Backend devuelve error 500
-6. Muestra mensaje de error al usuario
-7. Usuario puede intentar más tarde
+3. Genera token en memoria y intenta enviar el email
+4. Falla el envío (p. ej. Brevo caído, límite excedido)
+5. **No se guarda el token** en BD
+6. Backend devuelve 500: "Error al enviar el email de reseteo. Por favor, inténtalo de nuevo."
+7. Frontend muestra ese mensaje de error
+8. Usuario puede reintentar; en el siguiente intento se generará un token nuevo y se intentará el envío de nuevo
 
 ### Caso 5: Múltiples Intentos
 
 1. Usuario solicita recuperación
-2. No recibe el email inmediatamente
+2. No recibe el email inmediatamente (o falló el envío)
 3. Intenta enviar nuevamente
-4. Sistema puede:
-   - Regenerar nuevo token
-   - Mantener token anterior si no ha expirado
-   - Implementar rate limiting para prevenir spam
+4. En cada intento exitoso se genera un **nuevo token** y se guarda (el anterior se sobrescribe si existía)
+5. Rate limiting no implementado; se recomienda añadirlo para prevenir spam
 
 ## Seguridad y Mejores Prácticas
 
 ### Implementadas
 
-- Validación de formato de email (HTML5)
-- Feedback visual durante el proceso
-- Manejo de errores robusto
-- Limpieza de estado entre intentos
+- Validación de formato de email (HTML5) y email requerido en API
+- Feedback visual durante el proceso (isLoading, mensajes éxito/error)
+- Manejo de errores robusto: try-catch en envío de email; nunca se indica éxito si el email falla
+- Token solo persistido tras envío exitoso; sin rollback ni tokens huérfanos
+- Limpieza de estado entre intentos (éxito) y mensaje genérico para evitar enumeración de usuarios
 
 ### Consideraciones de Seguridad
 
@@ -283,18 +306,19 @@ Utiliza módulos CSS importados desde `./page.module.css`:
 - Limitar intentos por IP
 - Limitar intentos por email
 - Prevenir spam de solicitudes
+- _(No implementado actualmente)_
 
 #### 3. **Tokens Seguros**
 
-- Usar tokens criptográficamente seguros
+- Tokens con `crypto.randomBytes(32).toString('hex')` (64 caracteres hex)
 - Tokens únicos y no predecibles
-- Longitud mínima de 32 caracteres
+- Solo se persisten **tras envío correcto del email**; si el envío falla, no se guardan
 
 #### 4. **Expiración de Tokens**
 
-- Tokens con tiempo de vida limitado (15-60 minutos)
-- Un solo uso (invalidar después de usar)
-- Invalidar tokens antiguos al generar nuevos
+- Expiración de 1 hora (`resetPasswordExpires`)
+- Un solo uso (invalidar después de usar en reset-password)
+- Al reintentar, se genera nuevo token y se sobrescribe el anterior
 
 #### 5. **Protección del Email**
 
@@ -308,30 +332,19 @@ Utiliza módulos CSS importados desde `./page.module.css`:
 
 ## Flujo de Email
 
-### Contenido del Email (ejemplo)
+El envío se realiza con **Brevo** (`sendEmail` en `api-mail_brevo.js`). Si falla, se loguea el error, se responde 500 y **no se guarda el token**.
 
-```
-Asunto: Recuperación de Contraseña - Giganet
+### Contenido del Email (implementado)
 
-Hola,
+- **Asunto:** "Resetear tu contraseña"
+- **HTML:** Saludo con `user.name`, párrafo explicativo, botón "Resetear Contraseña" con `resetUrl`, aviso de expiración 1 h y nota de ignorar si no lo solicitó.
+- **Texto plano:** "Hola {name}! Para resetear tu contraseña, visita: {resetUrl}"
 
-Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace para continuar:
+### Link generado
 
-[Restablecer Contraseña](https://tuapp.com/reset-password?token=XXXXXX)
+`{baseUrl}/reset-password?token={resetPasswordToken}`
 
-Este enlace expirará en 1 hora.
-
-Si no solicitaste este cambio, ignora este email.
-
-Saludos,
-El equipo de Giganet
-```
-
-### Link Generado
-
-```
-https://tuapp.com/reset-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+`baseUrl` se obtiene de `host` y `x-forwarded-proto` (o `http` por defecto). El token es un hex de 64 caracteres.
 
 ## Mejoras Sugeridas
 
@@ -365,3 +378,7 @@ https://tuapp.com/reset-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 8. **Estado Persistente**
    - Guardar en localStorage si se envió solicitud
    - Mostrar tiempo restante para reenvío
+
+---
+
+**Última actualización:** Enero 2026 — Flujo actualizado: token solo persistido tras envío exitoso del email; try-catch en envío; mensajes de API documentados.

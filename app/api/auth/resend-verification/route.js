@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import User from "@/app/models/user";
 import { sendEmail } from "@/api-mail_brevo";
 import crypto from "crypto";
@@ -10,20 +11,20 @@ export async function POST(request) {
     if (!email) {
       return NextResponse.json(
         { error: "Email es requerido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Buscar usuario por email
-    const user = await User.findOne({ 
-      email: email.toLowerCase().trim() 
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
     });
 
     if (!user) {
       // Por seguridad, no revelar si el usuario existe o no
       return NextResponse.json(
         { message: "Si el email existe, se enviará un correo de verificación" },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -31,26 +32,24 @@ export async function POST(request) {
     if (user.isVerified) {
       return NextResponse.json(
         { message: "Este email ya está verificado" },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
-    // Generar nuevo token de verificación
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    // Generar token solo para construir el enlace (no se persiste hasta que el email se envíe)
+    const verificationToken = crypto.randomBytes(32).toString("hex");
     const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    const h = await headers();
+    const host = h.get("host");
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    const baseUrl = `${proto}://${host}`;
+    const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
 
-    // Actualizar el usuario con el nuevo token
-    user.verificationToken = verificationToken;
-    user.verificationTokenExpires = verificationTokenExpires;
-    await user.save();
-
-    // Enviar email de verificación
-    const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/verify-email?token=${verificationToken}`;
-    
-    await sendEmail({
-      to: user.email,
-      subject: "Verifica tu cuenta",
-      htmlContent: `
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Verifica tu cuenta",
+        htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">¡Hola ${user.name}!</h2>
           <p>Has solicitado un nuevo enlace de verificación. Por favor, verifica tu correo electrónico haciendo clic en el siguiente enlace:</p>
@@ -66,18 +65,33 @@ export async function POST(request) {
           </p>
         </div>
       `,
-      textContent: `Hola ${user.name}! Por favor verifica tu email visitando: ${verificationUrl}`,
-    });
+        textContent: `Hola ${user.name}! Por favor verifica tu email visitando: ${verificationUrl}`,
+      });
+    } catch (error) {
+      console.error("Error al enviar email de verificación:", error);
+      return NextResponse.json(
+        {
+          error:
+            "Error al enviar el email de verificación. Por favor, inténtalo de nuevo.",
+        },
+        { status: 500 },
+      );
+    }
+
+    // Solo persistir el token si el email se envió correctamente
+    user.verificationToken = verificationToken;
+    user.verificationTokenExpires = verificationTokenExpires;
+    await user.save();
 
     return NextResponse.json(
       { message: "Email de verificación enviado correctamente" },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error al reenviar email de verificación:", error);
     return NextResponse.json(
       { error: "Error al enviar el email de verificación" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

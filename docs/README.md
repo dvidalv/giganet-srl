@@ -51,6 +51,18 @@ Documentación del proceso de restablecimiento de contraseña:
 - Redirección automática post-éxito
 - Manejo de tokens expirados o inválidos
 
+### 5. [Resend Verification Process](./resend-verification-process.md)
+
+**Archivos:** `app/api/auth/resend-verification/route.js`, uso desde `app/login/page.js`
+
+Documentación del proceso de reenvío de verificación de email:
+
+- Reenvío de correo de verificación vía API
+- Generación de token; persistencia **solo tras envío exitoso** del email (Brevo)
+- Construcción de URL base con `headers()` (host, x-forwarded-proto)
+- Manejo de fallos de envío (try-catch, sin tokens huérfanos)
+- Medidas de seguridad (no revelar si el email existe cuando no existe)
+
 ## Flujo Completo del Sistema
 
 ```
@@ -218,7 +230,8 @@ giganet-web-page/
     ├── login-process.md
     ├── register-process.md
     ├── forgot-password-process.md
-    └── reset-password-process.md
+    ├── reset-password-process.md
+    └── resend-verification-process.md
 ```
 
 ## Contribuir

@@ -112,8 +112,10 @@ Se activa cuando el error de login indica que el email no está verificado (dete
 - **Método:** POST
 - **Body:** `{ email: string }`
 - **Respuestas:**
-  - `200 OK`: `{ message: string }`
-  - `4xx/5xx`: `{ error: string }`
+  - `200 OK`: `{ message: string }` (éxito, ya verificado, o mensaje genérico si el email no existe)
+  - `400`: `{ error: "Email es requerido" }`
+  - `500`: `{ error: string }` (fallo al enviar email u otro error)
+- **Comportamiento del API:** El token de verificación se genera en memoria y solo se guarda en el usuario **después** de que el email se envía correctamente (Brevo). La URL del enlace se construye con `headers()` (host, x-forwarded-proto). Ver [Resend Verification Process](./resend-verification-process.md) para detalle completo.
 
 ## Estilos
 

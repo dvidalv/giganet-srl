@@ -52,6 +52,44 @@ const userSchema = new Schema(
       type: Boolean,
       default: true, // Por defecto el usuario está activo
     },
+    empresa: {
+      nombre: {
+        type: String,
+        default: "",
+        maxlength: [
+          100,
+          "El nombre de la empresa no puede exceder 100 caracteres",
+        ],
+      },
+      rnc: {
+        type: String,
+        default: "",
+        maxlength: [10, "El RNC no puede exceder 10 caracteres"],
+      },
+      razonSocial: {
+        type: String,
+        default: "",
+        maxlength: [100, "La razón social no puede exceder 100 caracteres"],
+      },
+      direccion: {
+        type: String,
+        default: "",
+      },
+      ciudad: {
+        type: String,
+        default: "",
+      },
+      telefono: {
+        type: String,
+        default: "",
+        maxlength: [20, "El teléfono no puede exceder 20 caracteres"],
+      },
+      email: {
+        type: String,
+        default: "",
+        match: [/^$|^\S+@\S+\.\S+$/, "Por favor ingrese un email válido"],
+      },
+    },
     verificationToken: {
       type: String,
       select: false, // No mostrar en las consultas por defecto

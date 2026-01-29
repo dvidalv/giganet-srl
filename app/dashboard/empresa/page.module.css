@@ -1,0 +1,7 @@
+.miEmpresa {
+    height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: var(--headerHeight);
+}   

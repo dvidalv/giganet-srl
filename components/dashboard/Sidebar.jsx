@@ -12,6 +12,7 @@ export default function Sidebar({ user }) {
       ? [{ label: "Usuarios", href: "/dashboard/usuarios", icon: "👥" }]
       : []),
       { label: "Comprobantes", href: "/dashboard/comprobantes", icon: "🔳" },
+      { label: "Mi Empresa", href: "/dashboard/empresa", icon: "🏢" },
     { label: "Reportes", href: "/dashboard/reportes", icon: "📊" },
     { label: "Configuración", href: "/dashboard/configuracion", icon: "⚙️" },
   ];

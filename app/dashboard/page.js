@@ -1,8 +1,11 @@
 import styles from "./page.module.css";
 import { getAllUsers } from "@/app/models/user";
+import { auth } from "@/auth";
 export default async function Dashboard() {
     const users = await getAllUsers();
     const usersCount = users.length;
+    const session = await auth();
+    const user = session?.user;
     return (
         <div className={styles.dashboard}>
             <div className={styles.statsGrid}>
@@ -71,7 +74,7 @@ export default async function Dashboard() {
                     </div>
                 </div>
 
-                <div className={styles.card}>
+                {user.role === "admin" && <div className={styles.card}>
                     <h2 className={styles.cardTitle}>Accesos Rápidos</h2>
                     <div className={styles.quickLinks}>
                         <button className={styles.quickLink}>
@@ -87,7 +90,7 @@ export default async function Dashboard() {
                             <span>Configuración</span>
                         </button>
                     </div>
-                </div>
+                </div>}
             </div>
         </div>
     );

@@ -1,0 +1,111 @@
+.wrapper {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.loading,
+.error,
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--textSecondary, #666);
+}
+
+.error {
+  color: var(--error, #c00);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--cardBg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.logoWrap {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bgMuted, #f3f4f6);
+}
+
+.logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.logoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bgMuted, #e5e7eb);
+}
+
+.logoPlaceholderText {
+  font-size: 0.7rem;
+  color: var(--textMuted, #9ca3af);
+  text-align: center;
+  padding: 0 4px;
+}
+
+.data {
+  flex: 1;
+  min-width: 0;
+}
+
+.razonSocial {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text, #111);
+  margin-bottom: 0.35rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row {
+  font-size: 0.875rem;
+  color: var(--textSecondary, #4b5563);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.label {
+  flex-shrink: 0;
+  color: var(--textMuted, #6b7280);
+}
+
+.value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -44,6 +44,7 @@ export async function uploadLogoEmpresa(dataUri, publicId) {
     resource_type: "image",
     eager: [LOGO_EAGER],
     public_id: publicId,
+    overwrite: true,
   });
   const url = result.eager?.[0]?.secure_url || result.secure_url;
   return { url };

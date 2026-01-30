@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import EmpresasList from "@/components/dashboard/EmpresasList";
 import styles from "./page.module.css";
 
 export default async function Empresas() {
@@ -12,7 +13,13 @@ export default async function Empresas() {
 
   return (
     <div className={styles.empresas}>
-      <h1>Empresas</h1>
+      <header className={styles.header}>
+        <h1 className={styles.title}>Empresas</h1>
+        <p className={styles.subtitle}>
+          Listado de todas las empresas registradas en la plataforma.
+        </p>
+      </header>
+      <EmpresasList />
     </div>
   );
 }

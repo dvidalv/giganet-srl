@@ -15,7 +15,12 @@ export default function Sidebar({ user }) {
           { label: "Empresas", href: "/dashboard/empresas", icon: "🏢" },
         ]
       : []),
-    { label: "Comprobantes", href: "/dashboard/comprobantes", icon: "🔳" },
+    ...(role === "admin"
+      ? [{ label: "Comprobantes", href: "/dashboard/comprobantes", icon: "🔳" }]
+      : []),
+    ...(role !== "admin"
+      ? [{ label: "Mis comprobantes", href: "/dashboard/mis-comprobantes", icon: "🔳" }]
+      : []),
     ...(role !== "admin"
       ? [{ label: "Mi Empresa", href: "/dashboard/empresa", icon: "🏢" }]
       : []),

@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import styles from "./page.module.css";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";

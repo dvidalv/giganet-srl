@@ -11,9 +11,10 @@
   "dependencies": {
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.9.0",
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",
-    "next": "16.1.4",
+    "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",
     "react-dom": "19.2.3",

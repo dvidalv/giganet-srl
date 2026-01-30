@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import styles from "./page.module.css";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";
 
@@ -67,6 +67,9 @@ const IconBuildingHeader = () => (
   </svg>
 );
 
+const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const MAX_LOGO_SIZE = 5 * 1024 * 1024; // 5 MB
+
 export default function MiEmpresa() {
   const [empresa, setEmpresa] = useState(EMPRESA_DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -74,6 +77,9 @@ export default function MiEmpresa() {
   const [message, setMessage] = useState(null);
   const [errors, setErrors] = useState({});
   const [telefonoDisplay, setTelefonoDisplay] = useState("");
+  const [logoPreview, setLogoPreview] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchEmpresa();
@@ -83,6 +89,10 @@ export default function MiEmpresa() {
     const raw = empresa.telefono || "";
     setTelefonoDisplay(raw ? formatPhoneNumber(raw) : "");
   }, [empresa.telefono]);
+
+  useEffect(() => {
+    setLogoPreview(empresa.logo || "");
+  }, [empresa.logo]);
 
   const fetchEmpresa = async () => {
     setLoading(true);
@@ -113,6 +123,49 @@ export default function MiEmpresa() {
     setTelefonoDisplay(formatted);
     const digits = formatted.replace(/\D/g, "");
     handleChange("telefono", digits.length <= 10 ? formatted : empresa.telefono);
+  };
+
+  const handleLogoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setMessage({ type: "error", text: "Formato no permitido. Use JPEG, PNG, GIF o WebP." });
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      setMessage({ type: "error", text: "La imagen no puede superar 5 MB." });
+      return;
+    }
+    setMessage(null);
+    const objectUrl = URL.createObjectURL(file);
+    setLogoPreview(objectUrl);
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/logo", { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      URL.revokeObjectURL(objectUrl);
+      if (!res.ok) {
+        setLogoPreview(empresa.logo || "");
+        setMessage({ type: "error", text: data.error || "Error al subir la imagen" });
+        return;
+      }
+      handleChange("logo", data.url);
+      setLogoPreview(data.url);
+    } catch (err) {
+      URL.revokeObjectURL(objectUrl);
+      setLogoPreview(empresa.logo || "");
+      setMessage({ type: "error", text: "Error de conexión al subir" });
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    handleChange("logo", "");
+    setLogoPreview("");
   };
 
   const handleSubmit = async (e) => {
@@ -301,16 +354,64 @@ export default function MiEmpresa() {
             </div>
 
             <div className={styles.fieldWrapper}>
-              <label className={styles.label}>Logo (URL)</label>
-              <div className={styles.inputWrap}>
-                <span className={styles.inputIcon}><IconLink /></span>
-                <input
-                  type="url"
-                  value={empresa.logo}
-                  onChange={(e) => handleChange("logo", e.target.value)}
-                  placeholder="https://..."
-                  className={styles.input}
-                />
+              <label className={styles.label}>Logo de la empresa</label>
+              <div className={styles.logoSection}>
+                <div className={styles.logoPreviewWrap}>
+                  {logoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- preview con URL dinámica (blob o Cloudinary)
+                    <img
+                      src={logoPreview}
+                      alt="Vista previa del logo"
+                      className={styles.logoPreview}
+                    />
+                  ) : (
+                    <div className={styles.logoPlaceholder}>
+                      <IconLink />
+                      <span>Sin logo</span>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.logoActions}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ALLOWED_LOGO_TYPES.join(",")}
+                    onChange={handleLogoFileChange}
+                    className={styles.logoFileInput}
+                    disabled={uploadingLogo}
+                  />
+                  <button
+                    type="button"
+                    className={styles.logoButton}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                  >
+                    {uploadingLogo ? "Subiendo..." : "Cargar imagen"}
+                  </button>
+                  {logoPreview && (
+                    <button
+                      type="button"
+                      className={styles.logoButtonRemove}
+                      onClick={handleRemoveLogo}
+                      disabled={uploadingLogo}
+                    >
+                      Quitar logo
+                    </button>
+                  )}
+                </div>
+                <p className={styles.logoHint}>
+                  JPEG, PNG, GIF o WebP. Máx. 5 MB. Se recortará y optimizará para logo.
+                </p>
+                <div className={styles.inputWrap}>
+                  <span className={styles.inputIcon}><IconLink /></span>
+                  <input
+                    type="url"
+                    value={empresa.logo}
+                    onChange={(e) => handleChange("logo", e.target.value)}
+                    placeholder="O pega aquí la URL del logo"
+                    className={styles.input}
+                  />
+                </div>
               </div>
             </div>
           </div>

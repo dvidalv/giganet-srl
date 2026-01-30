@@ -58,6 +58,10 @@ const userSchema = new Schema(
           "El nombre de la empresa no puede exceder 100 caracteres",
         ],
       },
+      logo: {
+        type: String,
+        default: "",
+      },
       rnc: {
         type: String,
         default: "",

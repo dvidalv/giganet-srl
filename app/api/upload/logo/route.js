@@ -53,6 +53,9 @@ export async function POST(request) {
     return NextResponse.json({ url });
   } catch (err) {
     if (err.message === "Configuración de Cloudinary incompleta") {
+      console.error(
+        "[upload/logo] Configuración de Cloudinary incompleta. Definir CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en las variables de entorno.",
+      );
       return NextResponse.json(
         { error: "Configuración de Cloudinary incompleta" },
         { status: 500 },

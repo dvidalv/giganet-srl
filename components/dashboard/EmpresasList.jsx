@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { formatPhoneNumber } from "@/utils/phoneUtils";
 import styles from "./EmpresasList.module.css";
 
@@ -69,10 +70,13 @@ function EmpresasList() {
               <Link href={`/dashboard/empresas/${item.id}`} className={styles.card}>
                 <div className={styles.logoWrap}>
                   {e.logo ? (
-                    <img
+                    <Image
                       src={e.logo}
                       alt=""
+                      width={56}
+                      height={56}
                       className={styles.logo}
+                      sizes="56px"
                     />
                   ) : (
                     <div className={styles.logoPlaceholder}>

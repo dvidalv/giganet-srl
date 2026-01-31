@@ -26,3 +26,7 @@
 .back:hover {
   text-decoration: underline;
 }
+
+.formSection {
+  margin-top: 1.5rem;
+}

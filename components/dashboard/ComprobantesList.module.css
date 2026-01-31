@@ -97,6 +97,52 @@
   border-color: #cbd5e1;
 }
 
+/* Fondos por estado */
+.card_activo {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.card_activo:hover {
+  border-color: #86efac;
+}
+
+.card_inactivo {
+  background: #fefce8;
+  border-color: #fef08a;
+}
+
+.card_inactivo:hover {
+  border-color: #fde047;
+}
+
+.card_vencido {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.card_vencido:hover {
+  border-color: #f87171;
+}
+
+.card_agotado {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.card_agotado:hover {
+  border-color: #94a3b8;
+}
+
+.card_alerta {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.card_alerta:hover {
+  border-color: #fdba74;
+}
+
 .cardHeader {
   display: flex;
   align-items: flex-start;
@@ -146,6 +192,25 @@
 .actionBtn:focus-visible {
   outline: 2px solid #1e3a5f;
   outline-offset: 2px;
+}
+
+.actionBtnDanger {
+  color: #b91c1c;
+}
+
+.actionBtnDanger:hover {
+  color: #fff;
+  background: #b91c1c;
+}
+
+.actionBtnDanger:focus-visible {
+  outline: 2px solid #b91c1c;
+  outline-offset: 2px;
+}
+
+.actionBtnDanger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .cardDivider {
@@ -241,6 +306,139 @@
 .badge_vencido {
   background: #fee2e2;
   color: #991b1b;
+}
+
+/* ----- Modal de confirmación eliminar ----- */
+@keyframes modalOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: modalOverlayIn 0.2s ease-out;
+}
+
+.modalContent {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 400px;
+  width: 100%;
+  padding: 1.5rem 1.5rem 1.75rem;
+  animation: modalContentIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modalIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 50%;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+  text-align: center;
+}
+
+.modalMessage {
+  font-size: 0.9375rem;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0 0 0.75rem;
+  text-align: center;
+}
+
+.modalDetail {
+  font-size: 0.875rem;
+  color: #64748b;
+  text-align: center;
+  margin: 0 0 1.25rem;
+}
+
+.modalDetail strong {
+  color: #0f172a;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.modalCancel {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.modalCancel:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.modalCancel:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.modalConfirm {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: #b91c1c;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modalConfirm:hover:not(:disabled) {
+  background: #991b1b;
+}
+
+.modalConfirm:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
 }
 
 @media (max-width: 640px) {

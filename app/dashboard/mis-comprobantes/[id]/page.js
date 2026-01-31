@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import styles from "./page.module.css";
+import SecuenciaEditForm from "@/components/dashboard/SecuenciaEditForm";
 
 export default async function MisComprobantesId({ params }) {
   const session = await auth();
@@ -16,13 +17,9 @@ export default async function MisComprobantesId({ params }) {
     redirect("/dashboard/mis-comprobantes");
   }
 
-  return <div className={styles.misComprobantesId}>
-    <header className={styles.header}>
-      <h1 className={styles.title}>Mis Comprobantes</h1>
-      <p className={styles.subtitle}>
-        Listado de todos los comprobantes emitidos por la empresa.
-      </p>
-    </header>
-    <p>ID: {id}</p>
-  </div>;
+  return (
+    <div className={styles.misComprobantesId}>
+      <SecuenciaEditForm id={id} />
+    </div>
+  );
 }

@@ -185,7 +185,7 @@ const comprobanteSchema = new mongoose.Schema({
     maxlength: [500, 'El comentario no puede exceder 500 caracteres'],
   },
   usuario: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'user',
     required: [true, 'El usuario es requerido'],
   },
@@ -215,73 +215,68 @@ comprobanteSchema.index(
 );
 
 // Middleware pre-save para validaciones y cálculos
-comprobanteSchema.pre('save', async function (next) {
-  try {
-    // Actualizar fecha de modificación
-    this.fechaActualizacion = Date.now();
+// En middlewares async Mongoose no pasa next: se usa return o throw
+comprobanteSchema.pre('save', async function () {
+  // Actualizar fecha de modificación
+  this.fechaActualizacion = Date.now();
 
-    // Calcular cantidad de números
-    this.cantidad_numeros = this.numero_final - this.numero_inicial + 1;
+  // Calcular cantidad de números
+  this.cantidad_numeros = this.numero_final - this.numero_inicial + 1;
 
-    // Calcular números disponibles
-    this.numeros_disponibles = this.cantidad_numeros - this.numeros_utilizados;
+  // Calcular números disponibles
+  this.numeros_disponibles = this.cantidad_numeros - this.numeros_utilizados;
 
-    // Auto-actualizar estado basado en fechas y números disponibles
-    // SOLO si el estado no es 'inactivo' (estado manual que debe respetarse)
-    if (this.estado !== 'inactivo') {
-      const hoy = new Date();
+  // Auto-actualizar estado basado en fechas y números disponibles
+  // SOLO si el estado no es 'inactivo' (estado manual que debe respetarse)
+  if (this.estado !== 'inactivo') {
+    const hoy = new Date();
 
-      // Verificar vencimiento solo si hay fecha de vencimiento (tipos 32 y 34 pueden no tenerla)
-      if (this.fecha_vencimiento && this.fecha_vencimiento < hoy) {
-        this.estado = 'vencido';
-      } else if (this.numeros_disponibles === 0) {
-        this.estado = 'agotado'; // Completamente agotado
-      } else if (this.numeros_disponibles <= this.alerta_minima_restante) {
-        this.estado = 'alerta'; // Quedan pocos números
-      } else if (
-        this.estado !== 'activo' &&
-        this.numeros_disponibles > this.alerta_minima_restante &&
-        (!this.fecha_vencimiento || this.fecha_vencimiento >= hoy)
-      ) {
-        // Si no hay fecha de vencimiento O si la fecha no ha pasado, puede ser activo
-        this.estado = 'activo';
-      }
+    // Verificar vencimiento solo si hay fecha de vencimiento (tipos 32 y 34 pueden no tenerla)
+    if (this.fecha_vencimiento && this.fecha_vencimiento < hoy) {
+      this.estado = 'vencido';
+    } else if (this.numeros_disponibles === 0) {
+      this.estado = 'agotado'; // Completamente agotado
+    } else if (this.numeros_disponibles <= this.alerta_minima_restante) {
+      this.estado = 'alerta'; // Quedan pocos números
+    } else if (
+      this.estado !== 'activo' &&
+      this.numeros_disponibles > this.alerta_minima_restante &&
+      (!this.fecha_vencimiento || this.fecha_vencimiento >= hoy)
+    ) {
+      // Si no hay fecha de vencimiento O si la fecha no ha pasado, puede ser activo
+      this.estado = 'activo';
     }
+  }
 
-    // Validar que no haya rangos superpuestos para el mismo RNC y tipo_comprobante
-    const query = {
-      rnc: this.rnc,
-      tipo_comprobante: this.tipo_comprobante,
-      usuario: this.usuario,
-    };
+  // Validar que no haya rangos superpuestos solo para el mismo RNC y mismo tipo_comprobante (distintos tipos pueden compartir rango)
+  const query = {
+    rnc: String(this.rnc),
+    tipo_comprobante: String(this.tipo_comprobante),
+    usuario: this.usuario,
+  };
 
-    // Si estamos actualizando (no creando), excluir el documento actual
-    if (!this.isNew) {
-      query._id = { $ne: this._id };
-    }
+  // Si estamos actualizando (no creando), excluir el documento actual
+  if (!this.isNew) {
+    query._id = { $ne: this._id };
+  }
 
-    const rangosExistentes = await this.constructor.find(query);
+  const rangosExistentes = await this.constructor.find(query);
 
-    // Verificar superposición de rangos
-    for (const rango of rangosExistentes) {
-      // Verificar si los rangos se superponen
-      const superposicion = !(
-        this.numero_final < rango.numero_inicial ||
-        this.numero_inicial > rango.numero_final
+  // Verificar superposición de rangos
+  for (const rango of rangosExistentes) {
+    // Verificar si los rangos se superponen
+    const superposicion = !(
+      this.numero_final < rango.numero_inicial ||
+      this.numero_inicial > rango.numero_final
+    );
+
+    if (superposicion) {
+      throw new Error(
+        `Ya existe un rango con números superpuestos para este RNC y tipo de comprobante. ` +
+          `Rango existente: ${rango.numero_inicial}-${rango.numero_final}, ` +
+          `Rango nuevo: ${this.numero_inicial}-${this.numero_final}`,
       );
-
-      if (superposicion) {
-        throw new Error(
-          `Ya existe un rango con números superpuestos para este RNC y tipo de comprobante. ` +
-            `Rango existente: ${rango.numero_inicial}-${rango.numero_final}, ` +
-            `Rango nuevo: ${this.numero_inicial}-${this.numero_final}`,
-        );
-      }
     }
-
-    next();
-  } catch (error) {
-    next(error);
   }
 });
 
@@ -469,3 +464,4 @@ if (!Comprobante._connectionWrapped) {
 module.exports = {
   Comprobante,
 };
+export { Comprobante };

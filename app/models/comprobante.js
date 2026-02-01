@@ -343,7 +343,7 @@ comprobanteSchema.statics.obtenerRangosPorRnc = function (
     ];
   }
 
-  return this.find(query).sort({ fecha_creacion: 1 }); // Usar rangos más antiguos primero
+  return this.find(query).sort({ fechaCreacion: 1 }); // Usar rangos más antiguos primero
 };
 
 // Virtual para obtener el próximo número disponible

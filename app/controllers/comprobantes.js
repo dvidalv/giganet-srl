@@ -1,9 +1,9 @@
-const httpStatus = require('http-status');
-const { Comprobante } = require('../models/comprobante');
-const axios = require('axios');
-const QRCode = require('qrcode');
-const { sendEmail } = require('../api/api-mail_brevo');
-const {
+import httpStatus from 'http-status';
+import { Comprobante } from '@/app/models/comprobante';
+import axios from 'axios';
+import QRCode from 'qrcode';
+import { sendEmail } from '@/api-mail_brevo';
+import {
   THEFACTORY_AUTH_URL,
   THEFACTORY_ENVIAR_URL,
   THEFACTORY_ESTATUS_URL,
@@ -12,7 +12,7 @@ const {
   THEFACTORY_USUARIO,
   THEFACTORY_CLAVE,
   THEFACTORY_RNC,
-} = require('../utils/constants');
+} from '@/utils/constants';
 
 // Cache del token de TheFactoryHKA
 let tokenCache = {
@@ -1195,7 +1195,7 @@ const consumirNumeroPorRnc = async (req, res) => {
     }
 
     // Buscar un rango activo y válido para este RNC y tipo de comprobante (SIN filtrar por usuario)
-    const rango = await Comprobante.findOne(query).sort({ fecha_creacion: 1 }); // Usar el rango más antiguo primero
+    const rango = await Comprobante.findOne(query).sort({ fechaCreacion: 1 }); // Usar el rango más antiguo primero (schema: fechaCreacion)
 
     // console.log('🔍 Query ejecutada:', JSON.stringify(query, null, 2));
     // console.log('📊 Rango encontrado:', rango ? 'SÍ' : 'NO');
@@ -3265,7 +3265,7 @@ const verificarServidorTheFactory = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   createComprobante,
   getAllComprobantes,
   getComprobanteById,
@@ -3279,10 +3279,10 @@ module.exports = {
   consultarEstatusDocumento,
   generarUrlQR,
   generarCodigoQR,
-  limpiarTokenCache, // NUEVO: Endpoint para limpiar cache
-  obtenerTokenTheFactory, // Exportar también la función de autenticación para posibles usos externos
-  enviarEmailFactura, // NUEVO: Endpoint para enviar emails vía The Factory HKA
-  anularComprobantes, // NUEVO: Endpoint para anular comprobantes fiscales
-  descargarArchivo, // NUEVO: Endpoint para descargar archivos XML/PDF
-  verificarServidorTheFactory, // NUEVO: Endpoint para verificar estado del servidor
+  limpiarTokenCache,
+  obtenerTokenTheFactory,
+  enviarEmailFactura,
+  anularComprobantes,
+  descargarArchivo,
+  verificarServidorTheFactory,
 };

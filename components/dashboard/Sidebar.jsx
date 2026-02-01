@@ -24,6 +24,9 @@ export default function Sidebar({ user }) {
     ...(role !== "admin"
       ? [{ label: "Mi Empresa", href: "/dashboard/empresa", icon: "🏢" }]
       : []),
+    ...(role !== "admin"
+      ? [{ label: "API Key", href: "/dashboard/api-key", icon: "🔑" }]
+      : []),
     { label: "Reportes", href: "/dashboard/reportes", icon: "📊" },
     { label: "Configuración", href: "/dashboard/configuracion", icon: "⚙️" },
   ];

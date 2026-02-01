@@ -107,6 +107,11 @@ const userSchema = new Schema(
       type: Date,
       select: false, // No mostrar en las consultas por defecto
     },
+    apiKeyHash: {
+      type: String,
+      default: null,
+      select: false, // No incluir en find() por defecto; usar .select('+apiKeyHash') para validar
+    },
   },
   {
     timestamps: true,

@@ -25,6 +25,8 @@ function formatVencimiento(fecha) {
       });
 }
 
+const ESTADOS_ACTIVOS = ["activo", "alerta", "pocos"];
+
 function normalizarComprobante(r) {
   return {
     id: r._id ?? r.id,
@@ -60,6 +62,7 @@ export default function ComprobantesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState("");
+  const [filterEstado, setFilterEstado] = useState("activos");
   const [deletingId, setDeletingId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
 
@@ -129,9 +132,18 @@ export default function ComprobantesList() {
   }, [pendingDelete, deletingId]);
 
   const filtered = useMemo(() => {
+    let list = comprobantes;
+    if (filterEstado === "activos") {
+      list = list.filter((c) => {
+        const estado = (c.estado_tipo ?? c.estadoTipo ?? "activo")
+          .toString()
+          .toLowerCase();
+        return ESTADOS_ACTIVOS.includes(estado);
+      });
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return comprobantes;
-    return comprobantes.filter((c) => {
+    if (!q) return list;
+    return list.filter((c) => {
       const tipo = (c.tipo ?? c.tipo_comprobante ?? "")
         .toString()
         .toLowerCase();
@@ -141,7 +153,7 @@ export default function ComprobantesList() {
       ).toLowerCase();
       return tipo.includes(q) || descripcion.includes(q);
     });
-  }, [comprobantes, query]);
+  }, [comprobantes, query, filterEstado]);
 
   if (loading) {
     return <p className={styles.empty}>Cargando comprobantes...</p>;
@@ -217,54 +229,72 @@ export default function ComprobantesList() {
         </div>
       )}
 
-      <div className={styles.searchWrap}>
-        <span className={styles.searchIcon} aria-hidden>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-        </span>
-        <input
-          type="search"
-          className={styles.searchInput}
-          placeholder="Buscar por tipo (ej. 31, 34) o por descripción (ej. Factura, Crédito)..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Buscar comprobantes por tipo o descripción"
-        />
-        {query && (
-          <button
-            type="button"
-            className={styles.searchClear}
-            onClick={() => setQuery("")}
-            aria-label="Limpiar búsqueda">
+      <div className={styles.filtersRow}>
+        <div className={styles.filterEstadoWrap}>
+          <label htmlFor="filter-estado" className={styles.filterLabel}>
+            Mostrar
+          </label>
+          <select
+            id="filter-estado"
+            className={styles.filterSelect}
+            value={filterEstado}
+            onChange={(e) => setFilterEstado(e.target.value)}
+            aria-label="Filtrar por estado: activos o todos">
+            <option value="activos">Solo activos</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+        <div className={styles.searchWrap}>
+          <span className={styles.searchIcon} aria-hidden>
             <svg
-              width="18"
-              height="18"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round">
-              <path d="M18 6 6 18M6 6l12 12" />
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
-          </button>
-        )}
+          </span>
+          <input
+            type="search"
+            className={styles.searchInput}
+            placeholder="Buscar por tipo (ej. 31, 34) o por descripción (ej. Factura, Crédito)..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Buscar comprobantes por tipo o descripción"
+          />
+          {query && (
+            <button
+              type="button"
+              className={styles.searchClear}
+              onClick={() => setQuery("")}
+              aria-label="Limpiar búsqueda">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
         <p className={styles.empty}>
           {query
             ? "Ningún comprobante coincide con la búsqueda."
+            : filterEstado === "activos"
+            ? "No hay comprobantes activos para mostrar."
             : "No hay comprobantes para mostrar."}
         </p>
       ) : (

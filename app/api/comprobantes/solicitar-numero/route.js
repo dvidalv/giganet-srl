@@ -42,42 +42,75 @@ async function getComprobante() {
  * El sistema del cliente envía RNC y tipo; solo se consumen secuencias del usuario dueño de la API Key.
  */
 export async function POST(request) {
+  console.log("=== INICIO solicitar-numero ===");
+
   const apiKey = getApiKeyFromRequest(request);
+  console.log(
+    "API Key recibida:",
+    apiKey ? `${apiKey.substring(0, 10)}...` : "null"
+  );
+
   if (!apiKey) {
+    console.log("ERROR: No se proporcionó API Key");
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   const userId = await getUserIdByApiKey(apiKey);
+  console.log("Usuario ID encontrado:", userId);
+
   if (!userId) {
+    console.log("ERROR: API Key no válida o usuario no encontrado");
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   let body;
   try {
     body = await request.json();
-  } catch {
+    console.log("Body recibido:", JSON.stringify(body, null, 2));
+  } catch (error) {
+    console.log("ERROR: Cuerpo JSON inválido", error);
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const rncRaw = body.rnc != null ? String(body.rnc).replace(/\D/g, "").trim() : "";
-  const tipo_comprobante = body.tipo_comprobante != null ? String(body.tipo_comprobante).trim() : "";
+  const rncRaw =
+    body.rnc != null ? String(body.rnc).replace(/\D/g, "").trim() : "";
+  const tipo_comprobante =
+    body.tipo_comprobante != null ? String(body.tipo_comprobante).trim() : "";
   const solo_preview = Boolean(body.solo_preview);
 
+  console.log("Parámetros procesados:", {
+    rncRaw,
+    tipo_comprobante,
+    solo_preview,
+  });
+
   if (!rncRaw || rncRaw.length < RNC_MIN || rncRaw.length > RNC_MAX) {
+    console.log(
+      `ERROR: RNC inválido - longitud: ${rncRaw.length}, valor: ${rncRaw}`
+    );
     return NextResponse.json(
       { error: "RNC inválido (debe tener entre 9 y 11 dígitos)" },
       { status: 400 }
     );
   }
   if (!TIPOS_COMPROBANTE.includes(tipo_comprobante)) {
+    console.log(`ERROR: Tipo de comprobante inválido: ${tipo_comprobante}`);
     return NextResponse.json(
-      { error: "Tipo de comprobante inválido. Debe ser: 31, 32, 33, 34, 41, 43, 44, 45" },
+      {
+        error:
+          "Tipo de comprobante inválido. Debe ser: 31, 32, 33, 34, 41, 43, 44, 45",
+      },
       { status: 400 }
     );
   }
 
+  console.log("✓ Validaciones básicas pasadas");
+
   try {
+    console.log("Obteniendo modelo Comprobante...");
     const Comprobante = await getComprobante();
+    console.log("✓ Modelo Comprobante obtenido");
+
     const mongoose = await import("mongoose");
     const query = {
       usuario: new mongoose.default.Types.ObjectId(userId),
@@ -94,23 +127,44 @@ export async function POST(request) {
       ];
     }
 
+    console.log("Query para buscar rango:", JSON.stringify(query, null, 2));
+
     const rango = await Comprobante.findOne(query)
       .sort({ fechaCreacion: 1 })
       .exec();
 
+    console.log("Rango encontrado:", rango ? `ID: ${rango._id}` : "null");
+
     if (!rango) {
+      console.log("ERROR: No se encontró ningún rango válido");
       return NextResponse.json(
         { error: "Secuencia no encontrada o no autorizada" },
         { status: 404 }
       );
     }
 
+    console.log("Datos del rango encontrado:", {
+      id: rango._id,
+      rnc: rango.rnc,
+      tipo: rango.tipo_comprobante,
+      estado: rango.estado,
+      disponibles: rango.numeros_disponibles,
+      utilizados: rango.numeros_utilizados,
+      inicial: rango.numero_inicial,
+      final: rango.numero_final,
+    });
+
     if (!rango.esValido()) {
+      console.log(
+        "ERROR: El rango no es válido (método esValido() retornó false)"
+      );
       return NextResponse.json(
         { error: "El rango no está disponible (vencido, agotado o inactivo)" },
         { status: 400 }
       );
     }
+
+    console.log("✓ Rango es válido");
 
     const formatFechaVencimiento = (fecha) => {
       if (!fecha) return null;
@@ -124,8 +178,37 @@ export async function POST(request) {
     const fechaVencimiento = formatFechaVencimiento(rango.fecha_vencimiento);
 
     if (solo_preview) {
+      console.log("Modo PREVIEW activado - no se consumirá número");
       const proximoNumero = rango.numero_inicial + rango.numeros_utilizados;
       const numeroFormateado = rango.formatearNumeroECF(proximoNumero);
+
+      // Total disponible en todos los rangos del mismo RNC+tipo
+      const queryTotalPreview = {
+        usuario: new mongoose.default.Types.ObjectId(userId),
+        rnc: rncRaw,
+        tipo_comprobante,
+        estado: { $in: ["activo", "alerta"] },
+        numeros_disponibles: { $gt: 0 },
+      };
+      if (!["32", "34"].includes(tipo_comprobante)) {
+        queryTotalPreview.$or = [
+          { fecha_vencimiento: { $gte: new Date() } },
+          { fecha_vencimiento: null },
+        ];
+      }
+      const totalPreview = await Comprobante.aggregate([
+        { $match: queryTotalPreview },
+        { $group: { _id: null, total: { $sum: "$numeros_disponibles" } } },
+      ]);
+      const totalDisponiblesGrupoPreview = totalPreview[0]?.total ?? 0;
+      const umbralPreview = rango.alerta_minima_restante ?? 5;
+      const alertaPreview = totalDisponiblesGrupoPreview <= umbralPreview;
+
+      console.log("Próximo número (preview):", {
+        proximoNumero,
+        numeroFormateado,
+        totalGrupo: totalDisponiblesGrupoPreview,
+      });
       return NextResponse.json({
         status: "success",
         message: "Próximo número (sin consumir)",
@@ -133,23 +216,73 @@ export async function POST(request) {
           proximoNumero,
           numeroFormateado,
           numerosDisponibles: rango.numeros_disponibles,
+          numerosDisponiblesGrupo: totalDisponiblesGrupoPreview,
           estadoRango: rango.estado,
           fechaVencimiento,
+          alertaAgotamiento: alertaPreview,
         },
       });
     }
 
+    console.log("Consumiendo número del rango...");
     await rango.consumirNumero();
+    console.log("✓ Número consumido exitosamente");
+
     const numeroConsumido = rango.numero_inicial + rango.numeros_utilizados - 1;
     const numeroFormateado = rango.formatearNumeroECF(numeroConsumido);
 
+    console.log("Número consumido:", { numeroConsumido, numeroFormateado });
+    console.log("Estado después de consumir:", {
+      estado: rango.estado,
+      disponibles: rango.numeros_disponibles,
+      utilizados: rango.numeros_utilizados,
+    });
+
+    // Calcular total de disponibles en TODOS los rangos activos del mismo RNC+tipo.
+    // La alerta solo debe dispararse si el TOTAL del grupo está bajo, no por un rango individual.
+    const queryTotal = {
+      usuario: new mongoose.default.Types.ObjectId(userId),
+      rnc: rncRaw,
+      tipo_comprobante,
+      estado: { $in: ["activo", "alerta"] },
+      numeros_disponibles: { $gt: 0 },
+    };
+    if (!["32", "34"].includes(tipo_comprobante)) {
+      queryTotal.$or = [
+        { fecha_vencimiento: { $gte: new Date() } },
+        { fecha_vencimiento: null },
+      ];
+    }
+    const totalResult = await Comprobante.aggregate([
+      { $match: queryTotal },
+      { $group: { _id: null, total: { $sum: "$numeros_disponibles" } } },
+    ]);
+    const totalDisponiblesGrupo = totalResult[0]?.total ?? 0;
+    const umbralAlerta = rango.alerta_minima_restante ?? 5;
+
     let mensajeAlerta = null;
-    if (rango.estado === "agotado") {
-      mensajeAlerta = "ÚLTIMO COMPROBANTE USADO - Solicitar nuevo rango urgente";
-    } else if (rango.estado === "alerta") {
-      mensajeAlerta = `Quedan ${rango.numeros_disponibles} comprobantes - Solicitar nuevo rango pronto`;
+    let alertaAgotamiento = false;
+
+    // Solo mostrar alerta si el TOTAL del grupo está por debajo del umbral
+    if (totalDisponiblesGrupo <= umbralAlerta) {
+      alertaAgotamiento = true;
+      if (rango.estado === "agotado") {
+        mensajeAlerta =
+          "ÚLTIMO COMPROBANTE USADO - Solicitar nuevo rango urgente";
+        console.log("⚠️ ALERTA: Rango agotado, total grupo bajo");
+      } else {
+        mensajeAlerta = `Quedan ${totalDisponiblesGrupo} comprobantes en total - Solicitar nuevo rango pronto`;
+        console.log(
+          `⚠️ ALERTA: Total del grupo bajo (${totalDisponiblesGrupo} disponibles)`
+        );
+      }
+    } else {
+      console.log(
+        `✓ Total del grupo suficiente (${totalDisponiblesGrupo} disponibles), no se muestra alerta`
+      );
     }
 
+    console.log("=== FIN solicitar-numero (éxito) ===");
     return NextResponse.json({
       status: "success",
       message: "Número consumido exitosamente",
@@ -157,9 +290,10 @@ export async function POST(request) {
         numeroConsumido,
         numeroFormateado,
         numerosDisponibles: rango.numeros_disponibles,
+        numerosDisponiblesGrupo: totalDisponiblesGrupo,
         estadoRango: rango.estado,
         fechaVencimiento,
-        alertaAgotamiento: rango.estado === "alerta" || rango.estado === "agotado",
+        alertaAgotamiento,
         mensajeAlerta,
         rnc: rango.rnc,
         tipoComprobante: rango.tipo_comprobante,
@@ -167,7 +301,12 @@ export async function POST(request) {
       },
     });
   } catch (err) {
+    console.log("=== ERROR en solicitar-numero ===");
+    console.error("Error completo:", err);
+    console.error("Stack trace:", err.stack);
+
     if (err.message && err.message.includes("No hay números disponibles")) {
+      console.log("ERROR: No hay números disponibles en el rango");
       return NextResponse.json(
         { error: "No hay números disponibles en el rango" },
         { status: 400 }

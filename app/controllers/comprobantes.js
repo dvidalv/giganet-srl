@@ -17,29 +17,29 @@
  * consumirNumero, enviarFacturaElectronica, enviarEmailFactura, anularComprobantes, descargarArchivo.
  * consumirNumeroPorRnc usa API Key (no sesión); limpiarTokenCache y verificarServidorTheFactory no requieren auth.
  */
-import httpStatus from 'http-status';
-import mongoose from 'mongoose';
-import { Comprobante } from '@/app/models/comprobante';
-import User from '@/app/models/user';
-import { hashApiKey } from '@/utils/apiKey';
-import axios from 'axios';
+import httpStatus from "http-status";
+import mongoose from "mongoose";
+import { Comprobante } from "@/app/models/comprobante";
+import User from "@/app/models/user";
+import { hashApiKey } from "@/utils/apiKey";
+import axios from "axios";
 
-const TIPOS_COMPROBANTE = ['31', '32', '33', '34', '41', '43', '44', '45'];
+const TIPOS_COMPROBANTE = ["31", "32", "33", "34", "41", "43", "44", "45"];
 const RNC_MIN = 9;
 const RNC_MAX = 11;
 
 function getApiKeyFromRequest(req) {
   const authHeader = req.headers?.authorization;
-  const bearer = authHeader?.replace(/^Bearer\s+/i, '').trim();
+  const bearer = authHeader?.replace(/^Bearer\s+/i, "").trim();
   if (bearer) return bearer;
-  return req.headers?.['x-api-key']?.trim() ?? null;
+  return req.headers?.["x-api-key"]?.trim() ?? null;
 }
 
 async function getUserIdByApiKey(apiKey) {
   if (!apiKey) return null;
   const keyHash = hashApiKey(apiKey);
   if (!keyHash) return null;
-  const user = await User.findOne({ apiKeyHash: keyHash }).select('_id').lean();
+  const user = await User.findOne({ apiKeyHash: keyHash }).select("_id").lean();
   return user?._id?.toString() ?? null;
 }
 
@@ -47,13 +47,13 @@ function formatFechaVencimiento(fecha) {
   if (!fecha) return null;
   const d = new Date(fecha);
   if (isNaN(d.getTime())) return null;
-  const dia = d.getDate().toString().padStart(2, '0');
-  const mes = (d.getMonth() + 1).toString().padStart(2, '0');
+  const dia = d.getDate().toString().padStart(2, "0");
+  const mes = (d.getMonth() + 1).toString().padStart(2, "0");
   const año = d.getFullYear();
   return `${dia}-${mes}-${año}`;
 }
-import QRCode from 'qrcode';
-import { sendEmail } from '@/api-mail_brevo';
+import QRCode from "qrcode";
+import { sendEmail } from "@/api-mail_brevo";
 import {
   THEFACTORY_AUTH_URL,
   THEFACTORY_ENVIAR_URL,
@@ -62,26 +62,31 @@ import {
   THEFACTORY_DESCARGA_URL,
   THEFACTORY_USUARIO,
   THEFACTORY_CLAVE,
-  THEFACTORY_RNC,
-} from '@/utils/constants';
+} from "@/utils/constants";
 
-// Cache del token de TheFactoryHKA
-let tokenCache = {
-  token: null,
-  fechaExpiracion: null,
-};
+// Cache del token de TheFactoryHKA por RNC (cada emisor tiene su propio token)
+const tokenCacheByRnc = {};
 
 // Función para limpiar cache del token (útil para debugging)
 const limpiarCacheToken = () => {
-  console.log('🧹 Limpiando cache del token TheFactoryHKA...');
-  tokenCache.token = null;
-  tokenCache.fechaExpiracion = null;
+  console.log("🧹 Limpiando cache del token TheFactoryHKA...");
+  Object.keys(tokenCacheByRnc).forEach((key) => delete tokenCacheByRnc[key]);
 };
 
 // Función para obtener token de autenticación de TheFactoryHKA
-const obtenerTokenTheFactory = async () => {
+// @param {string} rnc - RNC del emisor (viene en la data de cada petición)
+const obtenerTokenTheFactory = async (rnc) => {
+  if (!rnc) {
+    throw new Error("RNC es requerido para obtener el token de TheFactoryHKA");
+  }
   try {
-    // Verificar si tenemos un token válido en cache
+    let tokenCache = tokenCacheByRnc[rnc];
+    if (!tokenCache) {
+      tokenCache = { token: null, fechaExpiracion: null };
+      tokenCacheByRnc[rnc] = tokenCache;
+    }
+
+    // Verificar si tenemos un token válido en cache para este RNC
     if (tokenCache.token && tokenCache.fechaExpiracion) {
       const ahora = new Date();
       const expiracion = new Date(tokenCache.fechaExpiracion);
@@ -90,8 +95,8 @@ const obtenerTokenTheFactory = async () => {
       const cincoMinutos = 5 * 60 * 1000; // 5 minutos en ms
       if (expiracion.getTime() - ahora.getTime() > cincoMinutos) {
         console.log(
-          'Usando token desde cache:',
-          tokenCache.token.substring(0, 20) + '...',
+          "Usando token desde cache:",
+          tokenCache.token.substring(0, 20) + "..."
         );
         return tokenCache.token;
       }
@@ -104,12 +109,12 @@ const obtenerTokenTheFactory = async () => {
     const authRequest = {
       Usuario: THEFACTORY_USUARIO,
       Clave: THEFACTORY_CLAVE,
-      RNC: THEFACTORY_RNC,
+      RNC: rnc,
     };
 
     const response = await axios.post(THEFACTORY_AUTH_URL, authRequest, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       timeout: 15000, // 15 segundos para auth
     });
@@ -121,7 +126,7 @@ const obtenerTokenTheFactory = async () => {
       throw new Error(`Error de autenticación: ${response.data.mensaje}`);
     }
 
-    // Actualizar cache
+    // Actualizar cache para este RNC
     tokenCache.token = response.data.token;
     tokenCache.fechaExpiracion = response.data.fechaExpiracion;
 
@@ -132,31 +137,37 @@ const obtenerTokenTheFactory = async () => {
 
     return tokenCache.token;
   } catch (error) {
-    console.error('Error al obtener token de TheFactoryHKA:', error);
-    console.error('Código de error:', error.code);
-    console.error('Mensaje:', error.message);
+    console.error("Error al obtener token de TheFactoryHKA:", error);
+    console.error("Código de error:", error.code);
+    console.error("Mensaje:", error.message);
 
     if (error.response) {
       throw new Error(
-        `Error ${error.response.status}: ${JSON.stringify(error.response.data)}`,
+        `Error ${error.response.status}: ${JSON.stringify(error.response.data)}`
       );
     }
 
     // Detectar si el servidor está caído
-    if (error.code === 'ECONNREFUSED') {
-      throw new Error('SERVIDOR_CAIDO: El servidor de TheFactoryHKA rechazó la conexión. El servidor puede estar caído o inaccesible.');
+    if (error.code === "ECONNREFUSED") {
+      throw new Error(
+        "SERVIDOR_CAIDO: El servidor de TheFactoryHKA rechazó la conexión. El servidor puede estar caído o inaccesible."
+      );
     }
 
-    if (error.code === 'ENOTFOUND') {
-      throw new Error('SERVIDOR_NO_ENCONTRADO: No se puede resolver el dominio de TheFactoryHKA. Verifica la configuración de DNS.');
+    if (error.code === "ENOTFOUND") {
+      throw new Error(
+        "SERVIDOR_NO_ENCONTRADO: No se puede resolver el dominio de TheFactoryHKA. Verifica la configuración de DNS."
+      );
     }
 
-    if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-      throw new Error('Timeout al conectar con el servicio de autenticación');
+    if (error.code === "ETIMEDOUT" || error.code === "ECONNABORTED") {
+      throw new Error("Timeout al conectar con el servicio de autenticación");
     }
 
-    if (error.code === 'ECONNRESET') {
-      throw new Error('SERVIDOR_RESETEO: El servidor de TheFactoryHKA cerró la conexión abruptamente. Puede estar sobrecargado o caído.');
+    if (error.code === "ECONNRESET") {
+      throw new Error(
+        "SERVIDOR_RESETEO: El servidor de TheFactoryHKA cerró la conexión abruptamente. Puede estar sobrecargado o caído."
+      );
     }
 
     throw new Error(`Error de autenticación: ${error.message}`);
@@ -168,14 +179,14 @@ const esFechaVencimientoObligatoria = (tipoDocumento) => {
   // Según la documentación de la DGII y TheFactoryHKA:
   // Tipos que requieren fecha de vencimiento:
   const tiposObligatorios = [
-    '31', // Factura de Crédito Fiscal Electrónica
-    '33', // Nota de Débito Electrónica
-    '41', // Compras Electrónicas
-    '43', // Gastos Menores Electrónico
-    '44', // Régimenes Especiales Electrónico
-    '45', // Gubernamental Electrónico
-    '46', // Exportaciones Electrónico
-    '47', // Pagos al Exterior Electrónico
+    "31", // Factura de Crédito Fiscal Electrónica
+    "33", // Nota de Débito Electrónica
+    "41", // Compras Electrónicas
+    "43", // Gastos Menores Electrónico
+    "44", // Régimenes Especiales Electrónico
+    "45", // Gubernamental Electrónico
+    "46", // Exportaciones Electrónico
+    "47", // Pagos al Exterior Electrónico
   ];
 
   // Tipos opcionales (NO requieren fecha de vencimiento):
@@ -197,30 +208,34 @@ const generarUrlQR = (responseData, facturaOriginal) => {
     const tipoComprobante = facturaOriginal.factura.tipo;
 
     // 🔍 DEBUG: Verificar datos recibidos
-    console.log('🔍 DEBUG generarUrlQR - Datos recibidos:');
-    console.log('responseData:', JSON.stringify(responseData, null, 2));
-    console.log('facturaOriginal:', JSON.stringify(facturaOriginal, null, 2));
-    console.log('montoTotal calculado:', montoTotal);
-    console.log('tipoComprobante:', tipoComprobante);
+    console.log("🔍 DEBUG generarUrlQR - Datos recibidos:");
+    console.log("responseData:", JSON.stringify(responseData, null, 2));
+    console.log("facturaOriginal:", JSON.stringify(facturaOriginal, null, 2));
+    console.log("montoTotal calculado:", montoTotal);
+    console.log("tipoComprobante:", tipoComprobante);
 
     // Formatear fechas al formato DD-MM-YYYY
     const formatearFechaUrl = (fecha) => {
-      if (!fecha) return '';
+      if (!fecha) return "";
       // Si viene en formato DD-MM-YYYY, mantenerlo
       if (fecha.match(/^\d{2}-\d{2}-\d{4}$/)) {
         return fecha;
       }
       // Si viene en otro formato, convertirlo
       const date = new Date(fecha);
-      return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+      return `${date.getDate().toString().padStart(2, "0")}-${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}-${date.getFullYear()}`;
     };
 
     // Determinar endpoint y parámetros según el tipo de comprobante
     let baseUrl, params;
 
     // TIPO 32 (Consumo Final): usar endpoint ConsultaTimbreFC (parámetros básicos)
-    if (tipoComprobante === '32') {
-      baseUrl = 'https://fc.dgii.gov.do/ecf/ConsultaTimbreFC';
+    if (tipoComprobante === "32") {
+      baseUrl = "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC";
       params = new URLSearchParams({
         RncEmisor: facturaOriginal.emisor.rnc,
         ENCF: facturaOriginal.factura.ncf,
@@ -229,27 +244,27 @@ const generarUrlQR = (responseData, facturaOriginal) => {
       });
 
       console.log(
-        '📋 Usando endpoint ConsultaTimbreFC (consumo final tipo 32)',
+        "📋 Usando endpoint ConsultaTimbreFC (consumo final tipo 32)"
       );
     } else {
       // TIPOS 31, 33, 34, etc.: usar endpoint ConsultaTimbre (parámetros completos)
       // Estos tipos SIEMPRE requieren RncComprador, FechaEmision y FechaFirma
-      baseUrl = 'https://ecf.dgii.gov.do/ecf/ConsultaTimbre';
+      baseUrl = "https://ecf.dgii.gov.do/ecf/ConsultaTimbre";
 
       params = new URLSearchParams({
         RncEmisor: facturaOriginal.emisor.rnc,
-        RncComprador: facturaOriginal.comprador?.rnc || '',
+        RncComprador: facturaOriginal.comprador?.rnc || "",
         ENCF: facturaOriginal.factura.ncf,
         FechaEmision: responseData.fechaEmision
           ? formatearFechaUrl(responseData.fechaEmision)
           : formatearFechaUrl(facturaOriginal.factura.fecha),
         MontoTotal: montoTotal.toFixed(2),
-        FechaFirma: responseData.fechaFirma || responseData.fechaEmision || '',
+        FechaFirma: responseData.fechaFirma || responseData.fechaEmision || "",
         CodigoSeguridad: responseData.codigoSeguridad,
       });
 
       console.log(
-        `📋 Usando endpoint ConsultaTimbre (tipo ${tipoComprobante} con parámetros completos)`,
+        `📋 Usando endpoint ConsultaTimbre (tipo ${tipoComprobante} con parámetros completos)`
       );
     }
 
@@ -261,7 +276,7 @@ const generarUrlQR = (responseData, facturaOriginal) => {
 
     return urlCompleta;
   } catch (error) {
-    console.error('❌ Error al generar datos del QR:', error);
+    console.error("❌ Error al generar datos del QR:", error);
     return null;
   }
 };
@@ -270,9 +285,9 @@ const generarUrlQR = (responseData, facturaOriginal) => {
 const generarCodigoQR = async (req, res) => {
   try {
     // 🔍 DEBUG: Log completo de datos recibidos desde FileMaker
-    console.log('🔍 === DEBUG generarCodigoQR ===');
-    console.log('req.body completo:', JSON.stringify(req.body, null, 2));
-    console.log('req.headers:', JSON.stringify(req.headers, null, 2));
+    console.log("🔍 === DEBUG generarCodigoQR ===");
+    console.log("req.body completo:", JSON.stringify(req.body, null, 2));
+    console.log("req.headers:", JSON.stringify(req.headers, null, 2));
 
     const {
       url,
@@ -284,19 +299,19 @@ const generarCodigoQR = async (req, res) => {
       fechaFirma, // ✅ Agregar fechaFirma a la desestructuración
       monto,
       tipo, // ✅ Agregar tipo de comprobante
-      formato = 'png',
+      formato = "png",
       tamaño = 300,
     } = req.body;
 
-    console.log('🔍 Parámetros extraídos:');
-    console.log('rnc:', rnc);
-    console.log('rncComprador:', rncComprador);
-    console.log('ncf:', ncf);
-    console.log('codigo:', codigo);
-    console.log('fecha:', fecha);
-    console.log('fechaFirma:', fechaFirma);
-    console.log('monto:', monto);
-    console.log('tipo:', tipo);
+    console.log("🔍 Parámetros extraídos:");
+    console.log("rnc:", rnc);
+    console.log("rncComprador:", rncComprador);
+    console.log("ncf:", ncf);
+    console.log("codigo:", codigo);
+    console.log("fecha:", fecha);
+    console.log("fechaFirma:", fechaFirma);
+    console.log("monto:", monto);
+    console.log("tipo:", tipo);
 
     let urlParaQR;
 
@@ -312,29 +327,33 @@ const generarCodigoQR = async (req, res) => {
 
       // Formatear fechas al formato DD-MM-YYYY
       const formatearFechaUrl = (fechaInput) => {
-        if (!fechaInput) return '';
+        if (!fechaInput) return "";
         // Si viene en formato DD-MM-YYYY, mantenerlo
         if (fechaInput.match(/^\d{2}-\d{2}-\d{4}$/)) {
           return fechaInput;
         }
         // Si viene en otro formato, convertirlo
         const date = new Date(fechaInput);
-        return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+        return `${date.getDate().toString().padStart(2, "0")}-${(
+          date.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")}-${date.getFullYear()}`;
       };
 
       // TIPO 32 (Consumo Final): usar endpoint ConsultaTimbreFC (parámetros básicos)
-      if (tipo === '32') {
+      if (tipo === "32") {
         if (!codigo) {
           return res.status(httpStatus.BAD_REQUEST).json({
-            status: 'error',
+            status: "error",
             message:
-              'Parámetros insuficientes para generar el código QR tipo 32',
+              "Parámetros insuficientes para generar el código QR tipo 32",
             details:
-              'Para facturas tipo 32 se requiere: rnc, ncf, monto y codigo (código de seguridad)',
+              "Para facturas tipo 32 se requiere: rnc, ncf, monto y codigo (código de seguridad)",
           });
         }
 
-        baseUrl = 'https://fc.dgii.gov.do/ecf/ConsultaTimbreFC';
+        baseUrl = "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC";
         params = new URLSearchParams({
           RncEmisor: rnc,
           ENCF: ncf,
@@ -343,25 +362,27 @@ const generarCodigoQR = async (req, res) => {
         });
 
         console.log(
-          '📋 Usando endpoint ConsultaTimbreFC (consumo final tipo 32)',
+          "📋 Usando endpoint ConsultaTimbreFC (consumo final tipo 32)"
         );
       } else {
         // TIPOS 31, 33, 34, etc.: usar endpoint ConsultaTimbre (parámetros completos)
         // Estos tipos SIEMPRE requieren RncComprador, FechaEmision y FechaFirma
         if (!codigo || !fecha) {
           return res.status(httpStatus.BAD_REQUEST).json({
-            status: 'error',
-            message: `Parámetros insuficientes para generar el código QR tipo ${tipo || 'desconocido'}`,
+            status: "error",
+            message: `Parámetros insuficientes para generar el código QR tipo ${
+              tipo || "desconocido"
+            }`,
             details:
-              'Para facturas tipo 31, 33, 34, etc. se requiere: rnc, ncf, codigo, fecha, rncComprador, monto, fechaFirma',
+              "Para facturas tipo 31, 33, 34, etc. se requiere: rnc, ncf, codigo, fecha, rncComprador, monto, fechaFirma",
           });
         }
 
-        baseUrl = 'https://ecf.dgii.gov.do/ecf/ConsultaTimbre';
+        baseUrl = "https://ecf.dgii.gov.do/ecf/ConsultaTimbre";
 
         params = new URLSearchParams({
           RncEmisor: rnc,
-          RncComprador: rncComprador || '',
+          RncComprador: rncComprador || "",
           ENCF: ncf,
           FechaEmision: formatearFechaUrl(fecha),
           MontoTotal: montoTotal.toFixed(2),
@@ -370,16 +391,16 @@ const generarCodigoQR = async (req, res) => {
         });
 
         console.log(
-          `📋 Usando endpoint ConsultaTimbre (tipo ${tipo} con parámetros completos)`,
+          `📋 Usando endpoint ConsultaTimbre (tipo ${tipo} con parámetros completos)`
         );
       }
 
       urlParaQR = `${baseUrl}?${params.toString()}`;
 
-      console.log('🎯 URL QR generada según tipo:', urlParaQR);
-      console.log('📊 Endpoint usado:', baseUrl);
-      console.log('📊 Parámetros incluidos:', params.toString());
-      console.log('📋 Tipo comprobante:', tipo || 'NO ESPECIFICADO');
+      console.log("🎯 URL QR generada según tipo:", urlParaQR);
+      console.log("📊 Endpoint usado:", baseUrl);
+      console.log("📊 Parámetros incluidos:", params.toString());
+      console.log("📋 Tipo comprobante:", tipo || "NO ESPECIFICADO");
 
       // console.log(
       //   `📱 URL QR oficial DGII para monto RD$${montoTotal.toLocaleString()}: ${urlParaQR}`,
@@ -389,23 +410,23 @@ const generarCodigoQR = async (req, res) => {
       // );
     } else {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'Parámetros insuficientes para generar el código QR',
+        status: "error",
+        message: "Parámetros insuficientes para generar el código QR",
         details:
-          'Debe proporcionar: url completa O al menos (rnc + ncf) para generar el QR',
+          "Debe proporcionar: url completa O al menos (rnc + ncf) para generar el QR",
       });
     }
 
     // Configuración según recomendaciones de la DGII (ajustada para URLs largas)
     const opcionesQR = {
       // No especificar version para que se calcule automáticamente según el contenido
-      errorCorrectionLevel: 'M', // Nivel medio de corrección de errores
-      type: formato === 'svg' ? 'svg' : 'image/png',
+      errorCorrectionLevel: "M", // Nivel medio de corrección de errores
+      type: formato === "svg" ? "svg" : "image/png",
       quality: 0.92,
       margin: 1, // Margen recomendado (4 módulos para mejor lectura)
       color: {
-        dark: '#000000', // Color negro para el QR
-        light: '#FFFFFF', // Fondo blanco
+        dark: "#000000", // Color negro para el QR
+        light: "#FFFFFF", // Fondo blanco
       },
       width: Math.max(parseInt(tamaño) || 300, 150), // Mínimo 150px (~2.5cm a 150 DPI)
     };
@@ -415,25 +436,25 @@ const generarCodigoQR = async (req, res) => {
 
     // Generar el código QR
     let qrData;
-    if (formato === 'svg') {
-      qrData = await QRCode.toString(urlParaQR, { ...opcionesQR, type: 'svg' });
+    if (formato === "svg") {
+      qrData = await QRCode.toString(urlParaQR, { ...opcionesQR, type: "svg" });
     } else {
       qrData = await QRCode.toDataURL(urlParaQR, opcionesQR);
     }
 
     // Respuesta exitosa
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Código QR generado exitosamente',
+      status: "success",
+      message: "Código QR generado exitosamente",
       data: {
         url: urlParaQR,
         qrCode: qrData,
         formato: formato,
         tamaño: tamaño,
-        versionCalculada: 'auto', // Se calcula automáticamente según el contenido
-        parametrosUsados: url ? 'URL completa' : 'Parámetros individuales',
+        versionCalculada: "auto", // Se calcula automáticamente según el contenido
+        parametrosUsados: url ? "URL completa" : "Parámetros individuales",
         especificaciones: {
-          errorCorrection: 'M',
+          errorCorrection: "M",
           cumpleNormativaDGII: true,
           versionOptimizada: true,
         },
@@ -441,10 +462,10 @@ const generarCodigoQR = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('❌ Error al generar código QR:', error);
+    console.error("❌ Error al generar código QR:", error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno al generar el código QR',
+      status: "error",
+      message: "Error interno al generar el código QR",
       details: error.message,
       timestamp: new Date().toISOString(),
     });
@@ -454,14 +475,14 @@ const generarCodigoQR = async (req, res) => {
 // Función para normalizar el estado de la factura devuelto por TheFactoryHKA
 const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
   console.log(
-    `\n🔄 ==================== INICIO NORMALIZACIÓN ESTADO ====================`,
+    `\n🔄 ==================== INICIO NORMALIZACIÓN ESTADO ====================`
   );
   console.log(`📝 Estado original recibido: "${estadoOriginal}"`);
-  console.log('📊 Datos completos recibidos:');
+  console.log("📊 Datos completos recibidos:");
   console.log(JSON.stringify(datosCompletos, null, 2));
 
   // Convertir a mayúsculas para comparación
-  const estado = (estadoOriginal || '').toString().toUpperCase();
+  const estado = (estadoOriginal || "").toString().toUpperCase();
   console.log(`🔤 Estado en mayúsculas: "${estado}"`);
 
   // PRIORIDAD 1: Verificar campo 'procesado' y código numérico primero
@@ -469,15 +490,15 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
   console.log(`🔍 Verificando campo 'codigo': ${datosCompletos.codigo}`);
 
   if (datosCompletos.procesado === true) {
-    console.log('✅ Campo procesado === true');
+    console.log("✅ Campo procesado === true");
 
     // Si está procesado y tiene código exitoso
     if (datosCompletos.codigo === 0 || datosCompletos.codigo === 1) {
       console.log(`✅ Código exitoso detectado: ${datosCompletos.codigo}`);
       console.log(
-        `🔄 ==================== FIN NORMALIZACIÓN: APROBADA ====================\n`,
+        `🔄 ==================== FIN NORMALIZACIÓN: APROBADA ====================\n`
       );
-      return 'APROBADA';
+      return "APROBADA";
     }
 
     // Si está procesado pero tiene código de error o estado especial
@@ -493,113 +514,113 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
         case 95: // Documento pendiente por ser enviado a DGII
         case 99: // Sin respuesta DGII - documento enviado pero pendiente de respuesta
           console.log(
-            `⏳ Estado en proceso identificado (código ${datosCompletos.codigo})`,
+            `⏳ Estado en proceso identificado (código ${datosCompletos.codigo})`
           );
           console.log(
-            `🔄 ==================== FIN NORMALIZACIÓN: EN_PROCESO ====================\n`,
+            `🔄 ==================== FIN NORMALIZACIÓN: EN_PROCESO ====================\n`
           );
-          return 'EN_PROCESO';
+          return "EN_PROCESO";
 
         // ❌ Errores de NCF
         case 108: // NCF ya presentado anteriormente
-          return 'NCF_INVALIDO'; // NCF ya presentado
+          return "NCF_INVALIDO"; // NCF ya presentado
         case 109: // NCF vencido o fuera de rango
-          return 'NCF_VENCIDO'; // NCF vencido o fuera de rango
+          return "NCF_VENCIDO"; // NCF vencido o fuera de rango
 
         // ❌ Errores de autorización
         case 110:
-          return 'RNC_NO_AUTORIZADO'; // RNC no autorizado
+          return "RNC_NO_AUTORIZADO"; // RNC no autorizado
 
         // ❌ Errores de validación de datos
         case 111: // Datos de la factura inválidos
         case 112: // Estructura del documento incorrecta
         case 113: // Totales inconsistentes
         case 114: // Fecha de emisión inválida
-          return 'DATOS_INVALIDOS'; // Datos/estructura/totales inválidos
+          return "DATOS_INVALIDOS"; // Datos/estructura/totales inválidos
 
         // ❌ Errores de búsqueda/no encontrado
         case 120:
-          return 'NO_ENCONTRADO'; // Documento no existe en BD de TheFactoryHKA
+          return "NO_ENCONTRADO"; // Documento no existe en BD de TheFactoryHKA
 
         // ❌ Estados de rechazo DGII
         case 200: // Rechazado por DGII - Datos inconsistentes
         case 201: // Rechazado - RNC inválido
         case 202: // Rechazado - Estructura incorrecta
         case 203: // Rechazado - Firma digital inválida
-          return 'RECHAZADA'; // Rechazado por DGII
+          return "RECHAZADA"; // Rechazado por DGII
 
         // ❌ Errores de reglas de negocio DGII (600-699)
         case 613:
-          return 'RECHAZADA'; // Error específico: comprobantes no pueden reemplazarse entre ellos mismos
+          return "RECHAZADA"; // Error específico: comprobantes no pueden reemplazarse entre ellos mismos
         case 634: // Fecha de NCF modificado no coincide
-          return 'RECHAZADA'; // Error específico: fecha de NCF modificado no coincide
+          return "RECHAZADA"; // Error específico: fecha de NCF modificado no coincide
 
         // 🚫 Estados de cancelación
         case 300: // Documento anulado/cancelado
         case 301: // Documento anulado/cancelado
-          return 'ANULADA'; // Documento anulado/cancelado
+          return "ANULADA"; // Documento anulado/cancelado
 
         default:
           console.warn(
-            `⚠️ Código de TheFactoryHKA no mapeado: ${datosCompletos.codigo}`,
+            `⚠️ Código de TheFactoryHKA no mapeado: ${datosCompletos.codigo}`
           );
-          return 'ERROR';
+          return "ERROR";
       }
     }
   }
 
   // PRIORIDAD 2: Estados exitosos por mensaje/texto
   if (
-    estado.includes('APROBADA') ||
-    estado.includes('ACEPTADA') ||
-    estado.includes('ACEPTADO') ||
-    estado.includes('PROCESADA') ||
-    estado.includes('EXITOSA') ||
-    estado.includes('SUCCESS') ||
-    estado === 'OK'
+    estado.includes("APROBADA") ||
+    estado.includes("ACEPTADA") ||
+    estado.includes("ACEPTADO") ||
+    estado.includes("PROCESADA") ||
+    estado.includes("EXITOSA") ||
+    estado.includes("SUCCESS") ||
+    estado === "OK"
   ) {
-    return 'APROBADA';
+    return "APROBADA";
   }
 
   // Estados de procesamiento
   if (
-    estado.includes('PROCESO') ||
-    estado.includes('PROCESANDO') ||
-    estado.includes('VALIDANDO') ||
-    estado.includes('PENDING')
+    estado.includes("PROCESO") ||
+    estado.includes("PROCESANDO") ||
+    estado.includes("VALIDANDO") ||
+    estado.includes("PENDING")
   ) {
-    return 'EN_PROCESO';
+    return "EN_PROCESO";
   }
 
   // Estados de error específicos
   if (
-    estado.includes('NCF') &&
-    (estado.includes('INVALIDO') || estado.includes('USADO'))
+    estado.includes("NCF") &&
+    (estado.includes("INVALIDO") || estado.includes("USADO"))
   ) {
-    return 'NCF_INVALIDO';
+    return "NCF_INVALIDO";
   }
 
-  if (estado.includes('RNC') && estado.includes('NO_AUTORIZADO')) {
-    return 'RNC_NO_AUTORIZADO';
+  if (estado.includes("RNC") && estado.includes("NO_AUTORIZADO")) {
+    return "RNC_NO_AUTORIZADO";
   }
 
   // Estados de error generales
   if (
-    estado.includes('RECHAZADA') ||
-    estado.includes('ERROR') ||
-    estado.includes('FAILED') ||
-    estado.includes('INVALID')
+    estado.includes("RECHAZADA") ||
+    estado.includes("ERROR") ||
+    estado.includes("FAILED") ||
+    estado.includes("INVALID")
   ) {
-    return 'RECHAZADA';
+    return "RECHAZADA";
   }
 
   // Estados de cancelación
   if (
-    estado.includes('ANULADA') ||
-    estado.includes('CANCELADA') ||
-    estado.includes('CANCELLED')
+    estado.includes("ANULADA") ||
+    estado.includes("CANCELADA") ||
+    estado.includes("CANCELLED")
   ) {
-    return 'ANULADA';
+    return "ANULADA";
   }
 
   // PRIORIDAD 3: Verificar código numérico independiente (si no se verificó arriba)
@@ -608,7 +629,7 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
       // ✅ Estados exitosos
       case 0:
       case 1:
-        return 'APROBADA';
+        return "APROBADA";
 
       // ⏳ Estados en proceso
       case 2:
@@ -617,97 +638,111 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
       case 15:
       case 95:
       case 99: // Sin respuesta DGII - documento enviado pero pendiente de respuesta
-        return 'EN_PROCESO';
+        return "EN_PROCESO";
 
       // ❌ Errores de NCF
       case 108:
-        return 'NCF_INVALIDO';
+        return "NCF_INVALIDO";
       case 109:
-        return 'NCF_VENCIDO';
+        return "NCF_VENCIDO";
 
       // ❌ Errores de autorización
       case 110:
-        return 'RNC_NO_AUTORIZADO';
+        return "RNC_NO_AUTORIZADO";
 
       // ❌ Errores de validación de datos
       case 111:
       case 112:
       case 113:
       case 114:
-        return 'DATOS_INVALIDOS';
+        return "DATOS_INVALIDOS";
 
       // ❌ Errores de búsqueda/no encontrado
       case 120:
-        return 'NO_ENCONTRADO'; // Documento no existe en BD de TheFactoryHKA
+        return "NO_ENCONTRADO"; // Documento no existe en BD de TheFactoryHKA
 
       // ❌ Estados de rechazo DGII
       case 200:
       case 201:
       case 202:
       case 203:
-        return 'RECHAZADA';
+        return "RECHAZADA";
 
       // ❌ Errores de reglas de negocio DGII (600-699)
       case 613:
-        return 'RECHAZADA'; // Error específico: comprobantes no pueden reemplazarse entre ellos mismos
+        return "RECHAZADA"; // Error específico: comprobantes no pueden reemplazarse entre ellos mismos
       case 634:
-        return 'RECHAZADA'; // Error específico: fecha de NCF modificado no coincide
+        return "RECHAZADA"; // Error específico: fecha de NCF modificado no coincide
 
       // 🚫 Estados de cancelación
       case 300:
       case 301:
-        return 'ANULADA';
+        return "ANULADA";
 
       default:
         console.warn(
-          `⚠️ Código de TheFactoryHKA no mapeado: ${datosCompletos.codigo}`,
+          `⚠️ Código de TheFactoryHKA no mapeado: ${datosCompletos.codigo}`
         );
-        return 'ERROR';
+        return "ERROR";
     }
   }
 
   // Si no coincide con ningún patrón conocido
-  console.log('❓ No se encontró coincidencia con ningún patrón conocido');
+  console.log("❓ No se encontró coincidencia con ningún patrón conocido");
   console.log(
-    `🔄 ==================== FIN NORMALIZACIÓN: ${estado || 'DESCONOCIDO'} ====================\n`,
+    `🔄 ==================== FIN NORMALIZACIÓN: ${
+      estado || "DESCONOCIDO"
+    } ====================\n`
   );
-  return estado || 'DESCONOCIDO';
+  return estado || "DESCONOCIDO";
 };
 
 // Función para consultar el estatus de un documento en TheFactoryHKA
-const consultarEstatusInmediato = async (ncf) => {
+// @param {string} ncf - Número de comprobante fiscal
+// @param {string} rnc - RNC del emisor (de la data de la petición)
+const consultarEstatusInmediato = async (ncf, rnc) => {
+  if (!rnc) {
+    console.warn(
+      "⚠️ consultarEstatusInmediato: RNC no proporcionado, no se puede consultar estatus"
+    );
+    return {
+      consultaExitosa: false,
+      datosEstatus: null,
+      timestamp: new Date().toISOString(),
+    };
+  }
   try {
     console.log(
-      `\n🔍 ==================== INICIO CONSULTA ESTATUS ====================`,
+      `\n🔍 ==================== INICIO CONSULTA ESTATUS ====================`
     );
     console.log(`📄 NCF a consultar: ${ncf}`);
 
-    const token = await obtenerTokenTheFactory();
+    const token = await obtenerTokenTheFactory(rnc);
     console.log(`🔐 Token obtenido: ${token.substring(0, 30)}...`);
 
     const payload = {
       token: token,
-      rnc: THEFACTORY_RNC,
+      rnc: rnc,
       documento: ncf,
     };
 
-    console.log('📤 Payload enviado a TheFactoryHKA:');
+    console.log("📤 Payload enviado a TheFactoryHKA:");
     console.log(JSON.stringify(payload, null, 2));
     console.log(`🌐 URL de consulta: ${THEFACTORY_ESTATUS_URL}`);
-    console.log(`🏢 RNC usado para consulta: ${THEFACTORY_RNC}`);
+    console.log(`🏢 RNC usado para consulta: ${rnc}`);
 
     const response = await axios.post(THEFACTORY_ESTATUS_URL, payload, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       timeout: 10000, // 10 segundos
     });
 
-    console.log('📥 Respuesta RAW de TheFactoryHKA (response.data):');
+    console.log("📥 Respuesta RAW de TheFactoryHKA (response.data):");
     console.log(JSON.stringify(response.data, null, 2));
     console.log(`📊 Status HTTP: ${response.status}`);
     console.log(
-      `🔍 ==================== FIN CONSULTA ESTATUS ====================\n`,
+      `🔍 ==================== FIN CONSULTA ESTATUS ====================\n`
     );
 
     return {
@@ -716,14 +751,14 @@ const consultarEstatusInmediato = async (ncf) => {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('❌ Error al consultar estatus (no crítico):', error.message);
+    console.error("❌ Error al consultar estatus (no crítico):", error.message);
     if (error.response) {
-      console.error('📥 Respuesta de error de TheFactoryHKA:');
+      console.error("📥 Respuesta de error de TheFactoryHKA:");
       console.error(JSON.stringify(error.response.data, null, 2));
       console.error(`📊 Status HTTP de error: ${error.response.status}`);
     }
     console.log(
-      `🔍 ==================== FIN CONSULTA ESTATUS (ERROR) ====================\n`,
+      `🔍 ==================== FIN CONSULTA ESTATUS (ERROR) ====================\n`
     );
 
     // No lanzamos error, solo devolvemos información de que falló
@@ -746,8 +781,8 @@ const createComprobante = async (req, res) => {
 
     // Si fecha_vencimiento es string vacío, null o undefined, y es tipo 32 o 34, eliminarla
     if (
-      ['32', '34'].includes(rangoData.tipo_comprobante) &&
-      (!rangoData.fecha_vencimiento || rangoData.fecha_vencimiento === '')
+      ["32", "34"].includes(rangoData.tipo_comprobante) &&
+      (!rangoData.fecha_vencimiento || rangoData.fecha_vencimiento === "")
     ) {
       delete rangoData.fecha_vencimiento;
       // console.log(
@@ -758,54 +793,54 @@ const createComprobante = async (req, res) => {
     const rango = await Comprobante.create(rangoData);
 
     return res.status(httpStatus.CREATED).json({
-      status: 'success',
-      message: 'Rango de numeración creado exitosamente',
+      status: "success",
+      message: "Rango de numeración creado exitosamente",
       data: rango,
     });
   } catch (err) {
-    console.error('Error al crear rango de numeración:', err);
+    console.error("Error al crear rango de numeración:", err);
 
-    if (err.name === 'ValidationError') {
+    if (err.name === "ValidationError") {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'Datos del rango inválidos',
+        status: "error",
+        message: "Datos del rango inválidos",
         details: err.message,
       });
     }
 
-    if (err.name === 'MongoServerError' && err.code === 11000) {
+    if (err.name === "MongoServerError" && err.code === 11000) {
       return res.status(httpStatus.CONFLICT).json({
-        status: 'error',
+        status: "error",
         message:
-          'Ya existe un rango con esos números para este RNC y tipo de comprobante',
+          "Ya existe un rango con esos números para este RNC y tipo de comprobante",
       });
     }
 
     // Manejar error de superposición de rangos
-    if (err.message.includes('Ya existe un rango con números superpuestos')) {
+    if (err.message.includes("Ya existe un rango con números superpuestos")) {
       return res.status(httpStatus.CONFLICT).json({
-        status: 'error',
+        status: "error",
         message: err.message,
       });
     }
 
-    if (err.message.includes('El número final debe ser mayor')) {
+    if (err.message.includes("El número final debe ser mayor")) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: err.message,
       });
     }
 
-    if (err.message.includes('La fecha de vencimiento debe ser posterior')) {
+    if (err.message.includes("La fecha de vencimiento debe ser posterior")) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: err.message,
       });
     }
 
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al crear el rango de numeración',
+      status: "error",
+      message: "Error interno del servidor al crear el rango de numeración",
     });
   }
 };
@@ -833,10 +868,10 @@ const getAllComprobantes = async (req, res) => {
     const filters = {};
     if (estado) filters.estado = estado;
     if (tipo_comprobante) filters.tipo_comprobante = tipo_comprobante;
-    if (rnc) filters.rnc = new RegExp(rnc, 'i');
+    if (rnc) filters.rnc = new RegExp(rnc, "i");
 
     // Filtro para rangos que vencen pronto (próximos 30 días)
-    if (vencimiento_proximo === 'true') {
+    if (vencimiento_proximo === "true") {
       const treintaDias = new Date();
       treintaDias.setDate(treintaDias.getDate() + 30);
       filters.fecha_vencimiento = { $lte: treintaDias };
@@ -846,13 +881,13 @@ const getAllComprobantes = async (req, res) => {
       .sort({ fechaCreacion: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('usuario', 'name email');
+      .populate("usuario", "name email");
 
     const total = await Comprobante.countDocuments(filters);
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Rangos de numeración encontrados',
+      status: "success",
+      message: "Rangos de numeración encontrados",
       data: rangos,
       pagination: {
         page: parseInt(page),
@@ -862,10 +897,10 @@ const getAllComprobantes = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Error al obtener rangos:', err);
+    console.error("Error al obtener rangos:", err);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al obtener rangos de numeración',
+      status: "error",
+      message: "Error interno del servidor al obtener rangos de numeración",
     });
   }
 };
@@ -878,25 +913,25 @@ const getComprobanteById = async (req, res) => {
     const rango = await Comprobante.findOne({
       _id: id,
       usuario: req.user._id,
-    }).populate('usuario', 'name email');
+    }).populate("usuario", "name email");
 
     if (!rango) {
       return res.status(httpStatus.NOT_FOUND).json({
-        status: 'error',
-        message: 'Rango de numeración no encontrado',
+        status: "error",
+        message: "Rango de numeración no encontrado",
       });
     }
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Rango de numeración encontrado',
+      status: "success",
+      message: "Rango de numeración encontrado",
       data: rango,
     });
   } catch (err) {
-    console.error('Error al obtener rango:', err);
+    console.error("Error al obtener rango:", err);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al obtener el rango',
+      status: "error",
+      message: "Error interno del servidor al obtener el rango",
     });
   }
 };
@@ -906,7 +941,7 @@ const updateComprobante = async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log('📝 Intentando actualizar comprobante:', {
+    console.log("📝 Intentando actualizar comprobante:", {
       id,
       usuario: req.user._id,
       datos: req.body,
@@ -916,10 +951,10 @@ const updateComprobante = async (req, res) => {
     const existingRango = await Comprobante.findById(id);
 
     if (!existingRango) {
-      console.log('❌ Comprobante no encontrado:', id);
+      console.log("❌ Comprobante no encontrado:", id);
       return res.status(httpStatus.NOT_FOUND).json({
-        status: 'error',
-        message: 'Comprobante no encontrado',
+        status: "error",
+        message: "Comprobante no encontrado",
       });
     }
 
@@ -929,10 +964,10 @@ const updateComprobante = async (req, res) => {
     // Limpiar fecha_vencimiento si viene vacía y el tipo no la requiere (tipos 32 y 34)
     const updateData = { ...req.body };
     if (
-      ['32', '34'].includes(
-        updateData.tipo_comprobante || existingRango.tipo_comprobante,
+      ["32", "34"].includes(
+        updateData.tipo_comprobante || existingRango.tipo_comprobante
       ) &&
-      (updateData.fecha_vencimiento === '' ||
+      (updateData.fecha_vencimiento === "" ||
         updateData.fecha_vencimiento === null)
     ) {
       updateData.fecha_vencimiento = undefined;
@@ -952,7 +987,7 @@ const updateComprobante = async (req, res) => {
     // console.log('📊 Estado después de save:', rango.estado);
 
     // Populate el usuario para mantener la consistencia con otras respuestas
-    await rango.populate('usuario', 'name email');
+    await rango.populate("usuario", "name email");
 
     // console.log('✅ Comprobante actualizado exitosamente:', {
     //   id: rango._id,
@@ -962,24 +997,24 @@ const updateComprobante = async (req, res) => {
     // });
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Comprobante actualizado exitosamente',
+      status: "success",
+      message: "Comprobante actualizado exitosamente",
       data: rango,
     });
   } catch (err) {
-    console.error('❌ Error al actualizar comprobante:', err);
+    console.error("❌ Error al actualizar comprobante:", err);
 
-    if (err.name === 'ValidationError') {
+    if (err.name === "ValidationError") {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'Datos del comprobante inválidos',
+        status: "error",
+        message: "Datos del comprobante inválidos",
         details: err.message,
       });
     }
 
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al actualizar el comprobante',
+      status: "error",
+      message: "Error interno del servidor al actualizar el comprobante",
     });
   }
 };
@@ -996,12 +1031,12 @@ const updateComprobanteEstado = async (req, res) => {
     //   usuario: req.user._id,
     // });
 
-    const validEstados = ['activo', 'inactivo', 'vencido', 'agotado'];
+    const validEstados = ["activo", "inactivo", "vencido", "agotado"];
     if (!validEstados.includes(estado)) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message:
-          'Estado inválido. Debe ser: activo, inactivo, vencido o agotado',
+          "Estado inválido. Debe ser: activo, inactivo, vencido o agotado",
       });
     }
 
@@ -1009,14 +1044,14 @@ const updateComprobanteEstado = async (req, res) => {
     const rango = await Comprobante.findByIdAndUpdate(
       id,
       { estado, fechaActualizacion: Date.now() },
-      { new: true },
-    ).populate('usuario', 'name email');
+      { new: true }
+    ).populate("usuario", "name email");
 
     if (!rango) {
       // console.log('❌ Comprobante no encontrado:', id);
       return res.status(httpStatus.NOT_FOUND).json({
-        status: 'error',
-        message: 'Comprobante no encontrado',
+        status: "error",
+        message: "Comprobante no encontrado",
       });
     }
 
@@ -1026,15 +1061,15 @@ const updateComprobanteEstado = async (req, res) => {
     // });
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Estado del comprobante actualizado exitosamente',
+      status: "success",
+      message: "Estado del comprobante actualizado exitosamente",
       data: rango,
     });
   } catch (err) {
-    console.error('❌ Error al actualizar estado:', err);
+    console.error("❌ Error al actualizar estado:", err);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al actualizar el estado',
+      status: "error",
+      message: "Error interno del servidor al actualizar el estado",
     });
   }
 };
@@ -1054,8 +1089,8 @@ const deleteComprobante = async (req, res) => {
     if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
       // console.log('❌ ID inválido:', id);
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'ID de comprobante inválido',
+        status: "error",
+        message: "ID de comprobante inválido",
       });
     }
 
@@ -1065,8 +1100,8 @@ const deleteComprobante = async (req, res) => {
     if (!rango) {
       // console.log('❌ Comprobante no encontrado:', id);
       return res.status(httpStatus.NOT_FOUND).json({
-        status: 'error',
-        message: 'Comprobante no encontrado',
+        status: "error",
+        message: "Comprobante no encontrado",
       });
     }
 
@@ -1079,8 +1114,8 @@ const deleteComprobante = async (req, res) => {
     // });
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Comprobante eliminado exitosamente',
+      status: "success",
+      message: "Comprobante eliminado exitosamente",
       data: {
         id: rango._id,
         rnc: rango.rnc,
@@ -1089,10 +1124,10 @@ const deleteComprobante = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('❌ Error al eliminar comprobante:', err);
+    console.error("❌ Error al eliminar comprobante:", err);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al eliminar el comprobante',
+      status: "error",
+      message: "Error interno del servidor al eliminar el comprobante",
       error: err.message,
     });
   }
@@ -1105,11 +1140,11 @@ const getComprobantesStats = async (req, res) => {
       { $match: { usuario: req.user._id } },
       {
         $group: {
-          _id: '$estado',
+          _id: "$estado",
           count: { $sum: 1 },
-          totalNumeros: { $sum: '$cantidad_numeros' },
-          numerosUtilizados: { $sum: '$numeros_utilizados' },
-          numerosDisponibles: { $sum: '$numeros_disponibles' },
+          totalNumeros: { $sum: "$cantidad_numeros" },
+          numerosUtilizados: { $sum: "$numeros_utilizados" },
+          numerosDisponibles: { $sum: "$numeros_disponibles" },
         },
       },
     ]);
@@ -1125,18 +1160,18 @@ const getComprobantesStats = async (req, res) => {
     const vencenProximamente = await Comprobante.countDocuments({
       usuario: req.user._id,
       fecha_vencimiento: { $lte: treintaDias },
-      estado: { $in: ['activo', 'alerta'] }, // Incluir rangos activos y en alerta
+      estado: { $in: ["activo", "alerta"] }, // Incluir rangos activos y en alerta
     });
 
     // Rangos con alertas (estado 'alerta' o números bajos)
     const conAlertas = await Comprobante.countDocuments({
       usuario: req.user._id,
-      estado: 'alerta', // Ahora usamos el estado específico de alerta
+      estado: "alerta", // Ahora usamos el estado específico de alerta
     });
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Estadísticas obtenidas exitosamente',
+      status: "success",
+      message: "Estadísticas obtenidas exitosamente",
       data: {
         totalRangos,
         vencenProximamente,
@@ -1145,10 +1180,10 @@ const getComprobantesStats = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Error al obtener estadísticas:', err);
+    console.error("Error al obtener estadísticas:", err);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al obtener estadísticas',
+      status: "error",
+      message: "Error interno del servidor al obtener estadísticas",
     });
   }
 };
@@ -1165,15 +1200,15 @@ const consumirNumero = async (req, res) => {
 
     if (!rango) {
       return res.status(httpStatus.NOT_FOUND).json({
-        status: 'error',
-        message: 'Rango de numeración no encontrado',
+        status: "error",
+        message: "Rango de numeración no encontrado",
       });
     }
 
     if (!rango.esValido()) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'El rango no está disponible (vencido, agotado o inactivo)',
+        status: "error",
+        message: "El rango no está disponible (vencido, agotado o inactivo)",
       });
     }
 
@@ -1186,8 +1221,8 @@ const consumirNumero = async (req, res) => {
     const numeroFormateado = rango.formatearNumeroECF(numeroConsumido);
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Número consumido exitosamente',
+      status: "success",
+      message: "Número consumido exitosamente",
       data: {
         numeroConsumido: numeroConsumido,
         numeroFormateado: numeroFormateado,
@@ -1196,18 +1231,18 @@ const consumirNumero = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Error al consumir número:', err);
+    console.error("Error al consumir número:", err);
 
-    if (err.message.includes('No hay números disponibles')) {
+    if (err.message.includes("No hay números disponibles")) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: err.message,
       });
     }
 
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al consumir número',
+      status: "error",
+      message: "Error interno del servidor al consumir número",
     });
   }
 };
@@ -1218,30 +1253,34 @@ const consumirNumeroPorRnc = async (req, res) => {
   try {
     const apiKey = getApiKeyFromRequest(req);
     if (!apiKey) {
-      return res.status(httpStatus.UNAUTHORIZED).json({ error: 'No autorizado' });
+      return res
+        .status(httpStatus.UNAUTHORIZED)
+        .json({ error: "No autorizado" });
     }
 
     const userId = await getUserIdByApiKey(apiKey);
     if (!userId) {
-      return res.status(httpStatus.UNAUTHORIZED).json({ error: 'No autorizado' });
+      return res
+        .status(httpStatus.UNAUTHORIZED)
+        .json({ error: "No autorizado" });
     }
 
     const body = req.body || {};
     const rncRaw =
-      body.rnc != null ? String(body.rnc).replace(/\D/g, '').trim() : '';
+      body.rnc != null ? String(body.rnc).replace(/\D/g, "").trim() : "";
     const tipo_comprobante =
-      body.tipo_comprobante != null ? String(body.tipo_comprobante).trim() : '';
+      body.tipo_comprobante != null ? String(body.tipo_comprobante).trim() : "";
     const solo_preview = Boolean(body.solo_preview);
 
     if (!rncRaw || rncRaw.length < RNC_MIN || rncRaw.length > RNC_MAX) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        error: 'RNC inválido (debe tener entre 9 y 11 dígitos)',
+        error: "RNC inválido (debe tener entre 9 y 11 dígitos)",
       });
     }
     if (!TIPOS_COMPROBANTE.includes(tipo_comprobante)) {
       return res.status(httpStatus.BAD_REQUEST).json({
         error:
-          'Tipo de comprobante inválido. Debe ser: 31, 32, 33, 34, 41, 43, 44, 45',
+          "Tipo de comprobante inválido. Debe ser: 31, 32, 33, 34, 41, 43, 44, 45",
       });
     }
 
@@ -1249,11 +1288,11 @@ const consumirNumeroPorRnc = async (req, res) => {
       usuario: new mongoose.Types.ObjectId(userId),
       rnc: rncRaw,
       tipo_comprobante,
-      estado: { $in: ['activo', 'alerta'] },
+      estado: { $in: ["activo", "alerta"] },
       numeros_disponibles: { $gt: 0 },
     };
 
-    if (!['32', '34'].includes(tipo_comprobante)) {
+    if (!["32", "34"].includes(tipo_comprobante)) {
       query.$or = [
         { fecha_vencimiento: { $gte: new Date() } },
         { fecha_vencimiento: null },
@@ -1266,14 +1305,13 @@ const consumirNumeroPorRnc = async (req, res) => {
 
     if (!rango) {
       return res.status(httpStatus.NOT_FOUND).json({
-        error: 'Secuencia no encontrada o no autorizada',
+        error: "Secuencia no encontrada o no autorizada",
       });
     }
 
     if (!rango.esValido()) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        error:
-          'El rango no está disponible (vencido, agotado o inactivo)',
+        error: "El rango no está disponible (vencido, agotado o inactivo)",
       });
     }
 
@@ -1283,8 +1321,8 @@ const consumirNumeroPorRnc = async (req, res) => {
       const proximoNumero = rango.numero_inicial + rango.numeros_utilizados;
       const numeroFormateado = rango.formatearNumeroECF(proximoNumero);
       return res.status(httpStatus.OK).json({
-        status: 'success',
-        message: 'Próximo número (sin consumir)',
+        status: "success",
+        message: "Próximo número (sin consumir)",
         data: {
           proximoNumero,
           numeroFormateado,
@@ -1300,16 +1338,16 @@ const consumirNumeroPorRnc = async (req, res) => {
     const numeroFormateado = rango.formatearNumeroECF(numeroConsumido);
 
     let mensajeAlerta = null;
-    if (rango.estado === 'agotado') {
+    if (rango.estado === "agotado") {
       mensajeAlerta =
-        'ÚLTIMO COMPROBANTE USADO - Solicitar nuevo rango urgente';
-    } else if (rango.estado === 'alerta') {
+        "ÚLTIMO COMPROBANTE USADO - Solicitar nuevo rango urgente";
+    } else if (rango.estado === "alerta") {
       mensajeAlerta = `Quedan ${rango.numeros_disponibles} comprobantes - Solicitar nuevo rango pronto`;
     }
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Número consumido exitosamente',
+      status: "success",
+      message: "Número consumido exitosamente",
       data: {
         numeroConsumido,
         numeroFormateado,
@@ -1317,32 +1355,32 @@ const consumirNumeroPorRnc = async (req, res) => {
         estadoRango: rango.estado,
         fechaVencimiento,
         alertaAgotamiento:
-          rango.estado === 'alerta' || rango.estado === 'agotado',
+          rango.estado === "alerta" || rango.estado === "agotado",
         mensajeAlerta,
         rnc: rango.rnc,
         tipoComprobante: rango.tipo_comprobante,
-        prefijo: rango.prefijo ?? 'E',
+        prefijo: rango.prefijo ?? "E",
       },
     });
   } catch (err) {
-    if (err.message?.includes('No hay números disponibles')) {
+    if (err.message?.includes("No hay números disponibles")) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        error: 'No hay números disponibles en el rango',
+        error: "No hay números disponibles en el rango",
       });
     }
-    console.error('Error al consumir número por RNC:', err);
+    console.error("Error al consumir número por RNC:", err);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      error: 'Error al solicitar número',
+      error: "Error al solicitar número",
     });
   }
 };
 
 // Función para convertir strings vacíos a null (requerido por TheFactoryHKA)
 const stringVacioANull = (valor) => {
-  if (valor === '' || valor === undefined || valor === null) {
+  if (valor === "" || valor === undefined || valor === null) {
     return null;
   }
-  return typeof valor === 'string' ? valor.trim() || null : valor;
+  return typeof valor === "string" ? valor.trim() || null : valor;
 };
 
 // Función para transformar JSON simplificado al formato de TheFactoryHKA
@@ -1358,14 +1396,18 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     DescuentosORecargos,
   } = facturaSimple;
 
-  // 🔧 ADAPTACIÓN PARA TIPO 34: Mapear estructura específica de FileMaker
-  let facturaAdaptada = { ...factura };
+  // RNC del emisor: siempre se toma de emisor.rnc
+  const rncEmisor =
+    emisor?.rnc != null && String(emisor.rnc).trim() !== ""
+      ? String(emisor.rnc).trim()
+      : null;
+  let facturaAdaptada = { ...factura, rnc: rncEmisor };
   let itemsAdaptados = items;
 
   // 🔧 ADAPTACIÓN PARA TIPOS 33 Y 34: Mapear estructura específica de FileMaker
-  if ((factura?.tipo === '33' || factura?.tipo === '34') && modificacion) {
+  if ((factura?.tipo === "33" || factura?.tipo === "34") && modificacion) {
     console.log(
-      `🔧 Adaptando estructura de tipo ${factura.tipo} desde FileMaker...`,
+      `🔧 Adaptando estructura de tipo ${factura.tipo} desde FileMaker...`
     );
 
     // Mapear campos de modificacion a factura (PascalCase → camelCase)
@@ -1376,9 +1418,9 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       // ✅ TheFactoryHKA espera STRING SIN ceros iniciales según ejemplos reales
       // Remover ceros iniciales: "06" → "6", "05" → "5", "6" → "6"
       codigoModificacion:
-        String(modificacion.CodigoModificacion || '')
+        String(modificacion.CodigoModificacion || "")
           .trim()
-          .replace(/^0+/, '') || '0',
+          .replace(/^0+/, "") || "0",
       razonModificacion:
         modificacion.RazonModificacion?.trim() ||
         modificacion.RazonModificacion,
@@ -1391,54 +1433,54 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         fechaNCFModificado: facturaAdaptada.fechaNCFModificado,
         codigoModificacion: facturaAdaptada.codigoModificacion,
         razonModificacion: facturaAdaptada.razonModificacion,
-      },
+      }
     );
   }
 
   // Si vienen ItemsDevueltos en lugar de items Y es tipo 34, usarlos
-  if (ItemsDevueltos && ItemsDevueltos.length > 0 && factura?.tipo === '34') {
-    console.log('🔧 Usando ItemsDevueltos como items para tipo 34...');
+  if (ItemsDevueltos && ItemsDevueltos.length > 0 && factura?.tipo === "34") {
+    console.log("🔧 Usando ItemsDevueltos como items para tipo 34...");
     itemsAdaptados = ItemsDevueltos.map((item) => ({
       nombre: item.nombre,
       precio: item.montoAcreditar || item.precio, // Usar montoAcreditar si existe, sino precio
     }));
-    console.log('📋 Items adaptados:', itemsAdaptados);
+    console.log("📋 Items adaptados:", itemsAdaptados);
   }
 
   // Validar que tenemos los datos básicos necesarios (usando datos adaptados)
   const camposFaltantes = [];
 
   // 🔍 Validación específica por tipo de comprobante para RNC del comprador
-  if (facturaAdaptada?.tipo === '32') {
+  if (facturaAdaptada?.tipo === "32") {
     // Tipo 32 (Consumo): RNC del comprador debe ser null (consumidor final)
     // No validamos comprador.rnc para tipo 32
     console.log(
-      '📋 Tipo 32 detectado - RNC comprador será null (consumidor final)',
+      "📋 Tipo 32 detectado - RNC comprador será null (consumidor final)"
     );
   } else {
     // Otros tipos (31, 33, 34, 41, 43, 44, 45): RNC del comprador es obligatorio
-    if (!comprador?.rnc) camposFaltantes.push('comprador.rnc');
+    if (!comprador?.rnc) camposFaltantes.push("comprador.rnc");
   }
 
   // Validaciones obligatorias para TODOS los tipos
-  if (!emisor?.rnc) camposFaltantes.push('emisor.rnc');
-  if (!facturaAdaptada?.ncf) camposFaltantes.push('factura.ncf');
-  if (!facturaAdaptada?.tipo) camposFaltantes.push('factura.tipo');
+  if (!rncEmisor) camposFaltantes.push("emisor.rnc");
+  if (!facturaAdaptada?.ncf) camposFaltantes.push("factura.ncf");
+  if (!facturaAdaptada?.tipo) camposFaltantes.push("factura.tipo");
   if (!itemsAdaptados?.length)
-    camposFaltantes.push('items (debe tener al menos 1 elemento)');
+    camposFaltantes.push("items (debe tener al menos 1 elemento)");
 
   if (camposFaltantes.length > 0) {
-    console.error('❌ Validación fallida - Campos faltantes:', camposFaltantes);
-    console.error('📋 Datos recibidos:', {
-      'comprador.rnc': comprador?.rnc || 'FALTANTE (null para tipo 32)',
-      'emisor.rnc': emisor?.rnc || 'FALTANTE',
-      'factura.ncf': facturaAdaptada?.ncf || 'FALTANTE',
-      'factura.tipo': facturaAdaptada?.tipo || 'FALTANTE',
-      'items.length': itemsAdaptados?.length || 0,
+    console.error("❌ Validación fallida - Campos faltantes:", camposFaltantes);
+    console.error("📋 Datos recibidos:", {
+      "comprador.rnc": comprador?.rnc || "FALTANTE (null para tipo 32)",
+      "emisor.rnc": emisor?.rnc || "FALTANTE",
+      "factura.ncf": facturaAdaptada?.ncf || "FALTANTE",
+      "factura.tipo": facturaAdaptada?.tipo || "FALTANTE",
+      "items.length": itemsAdaptados?.length || 0,
       tipoComprobante: facturaAdaptada?.tipo,
     });
     throw new Error(
-      `Faltan datos obligatorios en la factura: ${camposFaltantes.join(', ')}`,
+      `Faltan datos obligatorios en la factura: ${camposFaltantes.join(", ")}`
     );
   }
 
@@ -1447,7 +1489,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   let fechaVencimientoFormateada = null;
 
   // Solo procesar fecha de vencimiento si NO es tipo 32 o 34
-  if (!['32', '34'].includes(facturaAdaptada.tipo)) {
+  if (!["32", "34"].includes(facturaAdaptada.tipo)) {
     // Calcular dinámicamente una fecha de vencimiento segura como fallback
     const fechaActual = new Date();
     const añoActual = fechaActual.getFullYear();
@@ -1466,16 +1508,16 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           fechaVencimientoFormateada = fecha;
         } else if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
           // Convertir de YYYY-MM-DD a DD-MM-YYYY
-          const [year, month, day] = fecha.split('-');
+          const [year, month, day] = fecha.split("-");
           fechaVencimientoFormateada = `${day}-${month}-${year}`;
         } else {
           console.warn(
-            `⚠️ Formato de fecha NCF no reconocido: ${fecha}, usando fecha calculada: ${fechaVencimientoFormateada}`,
+            `⚠️ Formato de fecha NCF no reconocido: ${fecha}, usando fecha calculada: ${fechaVencimientoFormateada}`
           );
         }
       } catch (error) {
         console.warn(
-          `⚠️ Error al procesar fecha de vencimiento NCF: ${error.message}, usando fecha calculada: ${fechaVencimientoFormateada}`,
+          `⚠️ Error al procesar fecha de vencimiento NCF: ${error.message}, usando fecha calculada: ${fechaVencimientoFormateada}`
         );
       }
     } else {
@@ -1499,7 +1541,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   const parsearMonto = (monto) => {
     if (!monto) return 0;
     // Remover comas y parsear como número
-    const montoLimpio = monto.toString().replace(/,/g, '');
+    const montoLimpio = monto.toString().replace(/,/g, "");
     return parseFloat(montoLimpio) || 0;
   };
 
@@ -1507,7 +1549,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   // Lógica de cálculo de montos según el tipo de comprobante
   let montoExentoCalculado, montoGravadoCalculado;
 
-  if (facturaAdaptada.tipo === '45') {
+  if (facturaAdaptada.tipo === "45") {
     // Tipo 45 (Gubernamental): Por defecto todos los items son GRAVADOS
     // Solo si se marca explícitamente como exento, se considera exento
     montoExentoCalculado = itemsAdaptados
@@ -1580,14 +1622,16 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   let montoTotalCorregido = montoTotal;
   if (
     Math.abs(
-      parseFloat(montoTotalCalculado) - parseFloat(montoTotalDeclarado),
+      parseFloat(montoTotalCalculado) - parseFloat(montoTotalDeclarado)
     ) > 0.01
   ) {
     console.log(`⚠️ INCONSISTENCIA EN MONTO TOTAL:`);
     console.log(`   - Total declarado por FileMaker: ${montoTotalDeclarado}`);
     console.log(`   - Total calculado de items: ${montoTotalCalculado}`);
     console.log(
-      `   - Diferencia: ${(parseFloat(montoTotalDeclarado) - parseFloat(montoTotalCalculado)).toFixed(2)}`,
+      `   - Diferencia: ${(
+        parseFloat(montoTotalDeclarado) - parseFloat(montoTotalCalculado)
+      ).toFixed(2)}`
     );
     console.log(`   - Usando total calculado de items para DGII`);
 
@@ -1606,19 +1650,19 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   if (DescuentosORecargos?.Descuentos) {
     descuentosParaProcesar = DescuentosORecargos.Descuentos;
     console.log(
-      '💸 Procesando descuentos desde DescuentosORecargos.Descuentos:',
-      descuentosParaProcesar,
+      "💸 Procesando descuentos desde DescuentosORecargos.Descuentos:",
+      descuentosParaProcesar
     );
   }
   // Prioridad 2: Estructura anterior (campo descuentos directo)
   else if (
     descuentos &&
-    (Array.isArray(descuentos) || typeof descuentos === 'object')
+    (Array.isArray(descuentos) || typeof descuentos === "object")
   ) {
     descuentosParaProcesar = descuentos;
     console.log(
-      '💸 Procesando descuentos desde campo descuentos:',
-      descuentosParaProcesar,
+      "💸 Procesando descuentos desde campo descuentos:",
+      descuentosParaProcesar
     );
   }
 
@@ -1629,33 +1673,33 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       // Filtrar descuentos con monto mayor a cero
       const descuentosValidos = descuentosParaProcesar.filter((descuento) => {
         const montoDescuento = parsearMonto(
-          descuento.Monto || descuento.monto || descuento.valor || 0,
+          descuento.Monto || descuento.monto || descuento.valor || 0
         );
         return montoDescuento > 0;
       });
 
       console.log(
-        `💸 Descuentos totales: ${descuentosParaProcesar.length}, válidos (>0): ${descuentosValidos.length}`,
+        `💸 Descuentos totales: ${descuentosParaProcesar.length}, válidos (>0): ${descuentosValidos.length}`
       );
 
       if (descuentosValidos.length > 0) {
         descuentosArray = descuentosValidos.map((descuento, index) => {
           // Manejo flexible de diferentes campos para el monto
           const montoDescuento = parsearMonto(
-            descuento.Monto || descuento.monto || descuento.valor || 0,
+            descuento.Monto || descuento.monto || descuento.valor || 0
           );
           totalDescuentos += montoDescuento;
 
           return {
             NumeroLinea: (index + 1).toString(),
-            TipoAjuste: 'D', // D = Descuento (formato TheFactoryHKA)
-            IndicadorFacturacion: descuento.indicadorFacturacion || '4', // 4 = Exento por defecto para descuentos
+            TipoAjuste: "D", // D = Descuento (formato TheFactoryHKA)
+            IndicadorFacturacion: descuento.indicadorFacturacion || "4", // 4 = Exento por defecto para descuentos
             Descripcion:
               descuento.Descripcion ||
               descuento.descripcion ||
               descuento.concepto ||
-              'Descuento aplicado',
-            TipoValor: '$', // $ = Monto en pesos (requerido por DGII)
+              "Descuento aplicado",
+            TipoValor: "$", // $ = Monto en pesos (requerido por DGII)
             Valor: montoDescuento.toFixed(2),
             Monto: montoDescuento.toFixed(2),
           };
@@ -1676,17 +1720,19 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         const porcentaje = parseFloat(descuentosParaProcesar.porcentaje);
         montoDescuento = (parseFloat(montoTotalCorregido) * porcentaje) / 100;
         console.log(
-          `💸 Descuento por porcentaje: ${porcentaje}% de ${montoTotalCorregido} = ${montoDescuento.toFixed(2)}`,
+          `💸 Descuento por porcentaje: ${porcentaje}% de ${montoTotalCorregido} = ${montoDescuento.toFixed(
+            2
+          )}`
         );
       } else {
         // Descuento por monto fijo
         montoDescuento = parsearMonto(
           descuentosParaProcesar.Monto ||
             descuentosParaProcesar.monto ||
-            descuentosParaProcesar.valor,
+            descuentosParaProcesar.valor
         );
         console.log(
-          `💸 Descuento por monto fijo: ${montoDescuento.toFixed(2)}`,
+          `💸 Descuento por monto fijo: ${montoDescuento.toFixed(2)}`
         );
       }
 
@@ -1696,16 +1742,16 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
         descuentosArray = [
           {
-            NumeroLinea: '1',
-            TipoAjuste: 'D', // D = Descuento (formato TheFactoryHKA)
+            NumeroLinea: "1",
+            TipoAjuste: "D", // D = Descuento (formato TheFactoryHKA)
             IndicadorFacturacion:
-              descuentosParaProcesar.indicadorFacturacion || '4', // 4 = Exento por defecto para descuentos
+              descuentosParaProcesar.indicadorFacturacion || "4", // 4 = Exento por defecto para descuentos
             Descripcion:
               descuentosParaProcesar.Descripcion ||
               descuentosParaProcesar.descripcion ||
               descuentosParaProcesar.concepto ||
-              'Descuento global',
-            TipoValor: descuentosParaProcesar.porcentaje ? '%' : '$', // % = Porcentaje, $ = Monto en pesos
+              "Descuento global",
+            TipoValor: descuentosParaProcesar.porcentaje ? "%" : "$", // % = Porcentaje, $ = Monto en pesos
             Valor: descuentosParaProcesar.porcentaje
               ? parseFloat(descuentosParaProcesar.porcentaje).toFixed(2)
               : montoDescuento.toFixed(2),
@@ -1714,11 +1760,13 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         ];
 
         console.log(
-          `💸 Descuento global válido agregado: ${montoDescuento.toFixed(2)}`,
+          `💸 Descuento global válido agregado: ${montoDescuento.toFixed(2)}`
         );
       } else {
         console.log(
-          `💸 Descuento global ignorado (monto cero): ${montoDescuento.toFixed(2)}`,
+          `💸 Descuento global ignorado (monto cero): ${montoDescuento.toFixed(
+            2
+          )}`
         );
       }
     }
@@ -1729,7 +1777,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     console.log(`💸 Total descuentos aplicados: ${totalDescuentos.toFixed(2)}`);
     console.log(`💰 Monto total original: ${montoTotalCorregido}`);
     console.log(
-      `💰 Monto total con descuentos: ${montoTotalConDescuentos.toFixed(2)}`,
+      `💰 Monto total con descuentos: ${montoTotalConDescuentos.toFixed(2)}`
     );
   }
 
@@ -1751,10 +1799,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
       console.log(`💰 Ajuste simple para servicios exentos:`);
       console.log(
-        `   - Todo es exento, monto exento = monto total con descuentos`,
+        `   - Todo es exento, monto exento = monto total con descuentos`
       );
       console.log(
-        `   - Monto exento final: ${montoExentoConDescuentos.toFixed(2)}`,
+        `   - Monto exento final: ${montoExentoConDescuentos.toFixed(2)}`
       );
     } else {
       // Hay montos gravados y exentos: aplicar proporción
@@ -1767,13 +1815,17 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
       console.log(`💰 Ajuste proporcional para montos mixtos:`);
       console.log(
-        `   - Monto exento con descuento: ${montoExentoConDescuentos.toFixed(2)}`,
+        `   - Monto exento con descuento: ${montoExentoConDescuentos.toFixed(
+          2
+        )}`
       );
       console.log(
-        `   - Monto gravado con descuento: ${montoGravadoConDescuentos.toFixed(2)}`,
+        `   - Monto gravado con descuento: ${montoGravadoConDescuentos.toFixed(
+          2
+        )}`
       );
       console.log(
-        `   - Proporción descuento: ${(proporcionDescuento * 100).toFixed(2)}%`,
+        `   - Proporción descuento: ${(proporcionDescuento * 100).toFixed(2)}%`
       );
     }
   }
@@ -1800,7 +1852,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     // Determinar si este item específico es gravado o exento
     let itemEsGravado = false;
 
-    if (facturaAdaptada.tipo === '45') {
+    if (facturaAdaptada.tipo === "45") {
       // Tipo 45 (Gubernamental): Servicios médicos son EXENTOS por defecto
       // Solo gravado si se marca explícitamente con itbis=true o gravado=true
       itemEsGravado = item.itbis === true || item.gravado === true;
@@ -1811,22 +1863,22 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
     const itemCompleto = {
       NumeroLinea: (index + 1).toString(),
-      IndicadorFacturacion: itemEsGravado ? '1' : '4', // 1=gravado, 4=exento
+      IndicadorFacturacion: itemEsGravado ? "1" : "4", // 1=gravado, 4=exento
     };
 
     // Para tipos 41, 46, 47: incluir sección retencion OBLIGATORIA
     // NOTA: Tipos 43, 44 y 45 NO incluyen retención según validación de TheFactoryHKA
     if (
-      facturaAdaptada.tipo === '41' ||
-      facturaAdaptada.tipo === '46' ||
-      facturaAdaptada.tipo === '47'
+      facturaAdaptada.tipo === "41" ||
+      facturaAdaptada.tipo === "46" ||
+      facturaAdaptada.tipo === "47"
     ) {
       itemCompleto.retencion = {
-        indicadorAgente: '1',
+        indicadorAgente: "1",
         montoITBIS: itemEsGravado
           ? (parsearMonto(item.precio) * 0.18).toFixed(2)
-          : '0.00',
-        montoISR: '0.00',
+          : "0.00",
+        montoISR: "0.00",
       };
     }
 
@@ -1834,10 +1886,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     return {
       ...itemCompleto,
       Nombre: stringVacioANull(item.nombre),
-      IndicadorBienoServicio: item.indicadorBienoServicio || '1', // 1=Bien, 2=Servicio
+      IndicadorBienoServicio: item.indicadorBienoServicio || "1", // 1=Bien, 2=Servicio
       Descripcion: item.descripcion || null,
-      Cantidad: item.cantidad || '1.00',
-      UnidadMedida: item.unidadMedida || '43', // 43 = Unidad
+      Cantidad: item.cantidad || "1.00",
+      UnidadMedida: item.unidadMedida || "43", // 43 = Unidad
       PrecioUnitario: parsearMonto(item.precio).toFixed(2),
       Monto: parsearMonto(item.precio).toFixed(2),
     };
@@ -1845,17 +1897,17 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   // 🔍 Debug: Verificar suma individual de items vs totales calculados
   let sumaItemsGravados = detallesItems
-    .filter((item) => item.IndicadorFacturacion === '1')
+    .filter((item) => item.IndicadorFacturacion === "1")
     .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
     .toFixed(2);
 
   let sumaItemsExentos = detallesItems
-    .filter((item) => item.IndicadorFacturacion === '4')
+    .filter((item) => item.IndicadorFacturacion === "4")
     .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
     .toFixed(2);
 
   // 🔧 Para tipo 45: Ajustar montos de items si hay diferencia con total declarado
-  if (facturaAdaptada.tipo === '45') {
+  if (facturaAdaptada.tipo === "45") {
     const totalDeclarado = parseFloat(montoTotal);
     const detalleCalculado = parseFloat(sumaItemsGravados);
     const diferencia = Math.abs(totalDeclarado - detalleCalculado);
@@ -1873,7 +1925,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
       // Ajustar cada item gravado proporcionalmente
       detallesItems.forEach((item) => {
-        if (item.IndicadorFacturacion === '1') {
+        if (item.IndicadorFacturacion === "1") {
           const montoOriginal = parseFloat(item.Monto);
           const montoAjustado = (montoOriginal * factorAjuste).toFixed(2);
           item.Monto = montoAjustado;
@@ -1885,7 +1937,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
       // Recalcular sumas después del ajuste
       sumaItemsGravados = detallesItems
-        .filter((item) => item.IndicadorFacturacion === '1')
+        .filter((item) => item.IndicadorFacturacion === "1")
         .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
         .toFixed(2);
     }
@@ -1893,43 +1945,45 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   // 💸 AJUSTAR ITEMS PROPORCIONALMENTE POR DESCUENTOS
   if (totalDescuentos > 0) {
-    console.log('💸 Ajustando items por descuentos aplicados...');
+    console.log("💸 Ajustando items por descuentos aplicados...");
 
     // Calcular la suma total de los items antes del ajuste
     const sumaItemsAntes = detallesItems.reduce(
       (suma, item) => suma + parseFloat(item.Monto),
-      0,
+      0
     );
 
     // Calcular factor de ajuste por descuento
     const factorAjustePorDescuento = montoTotalConDescuentos / sumaItemsAntes;
 
     console.log(
-      `💸 Factor de ajuste por descuento: ${factorAjustePorDescuento.toFixed(4)}`,
+      `💸 Factor de ajuste por descuento: ${factorAjustePorDescuento.toFixed(
+        4
+      )}`
     );
     console.log(`💸 Suma items antes: ${sumaItemsAntes.toFixed(2)}`);
     console.log(
-      `💸 Total con descuentos: ${montoTotalConDescuentos.toFixed(2)}`,
+      `💸 Total con descuentos: ${montoTotalConDescuentos.toFixed(2)}`
     );
 
     // Ajustar cada item proporcionalmente
     detallesItems.forEach((item, index) => {
       const montoOriginal = parseFloat(item.Monto);
       const montoAjustado = (montoOriginal * factorAjustePorDescuento).toFixed(
-        2,
+        2
       );
       item.Monto = montoAjustado;
       item.PrecioUnitario = montoAjustado; // También ajustar precio unitario
 
       console.log(
-        `   Item ${index + 1}: ${montoOriginal.toFixed(2)} → ${montoAjustado}`,
+        `   Item ${index + 1}: ${montoOriginal.toFixed(2)} → ${montoAjustado}`
       );
     });
 
     // 🔧 AJUSTE FINAL: Corregir diferencias de redondeo
     const sumaItemsAjustados = detallesItems.reduce(
       (suma, item) => suma + parseFloat(item.Monto),
-      0,
+      0
     );
     const diferenciaPorRedondeo = montoTotalConDescuentos - sumaItemsAjustados;
 
@@ -1943,30 +1997,34 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       ultimoItem.PrecioUnitario = montoCorregido;
 
       console.log(
-        `🔧 Ajuste de redondeo en último item: ${diferenciaPorRedondeo.toFixed(4)}`,
+        `🔧 Ajuste de redondeo en último item: ${diferenciaPorRedondeo.toFixed(
+          4
+        )}`
       );
       console.log(`   Último item ajustado: ${montoCorregido}`);
     }
 
     // Recalcular sumas después del ajuste por descuentos
     sumaItemsGravados = detallesItems
-      .filter((item) => item.IndicadorFacturacion === '1')
+      .filter((item) => item.IndicadorFacturacion === "1")
       .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
       .toFixed(2);
 
     sumaItemsExentos = detallesItems
-      .filter((item) => item.IndicadorFacturacion === '4')
+      .filter((item) => item.IndicadorFacturacion === "4")
       .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
       .toFixed(2);
 
     const sumaItemsDespues = detallesItems.reduce(
       (suma, item) => suma + parseFloat(item.Monto),
-      0,
+      0
     );
 
     console.log(`💸 Suma items después: ${sumaItemsDespues.toFixed(2)}`);
     console.log(
-      `💸 Diferencia final: ${Math.abs(sumaItemsDespues - montoTotalConDescuentos).toFixed(4)}`,
+      `💸 Diferencia final: ${Math.abs(
+        sumaItemsDespues - montoTotalConDescuentos
+      ).toFixed(4)}`
     );
   }
 
@@ -1993,7 +2051,11 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     }
     // Si viene en otro formato, lo convertimos
     const date = new Date(fecha);
-    return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+    return `${date.getDate().toString().padStart(2, "0")}-${(
+      date.getMonth() + 1
+    )
+      .toString()
+      .padStart(2, "0")}-${date.getFullYear()}`;
   };
 
   // Estructura completa para TheFactoryHKA - CORREGIDA según ejemplo oficial
@@ -2006,99 +2068,99 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             TipoDocumento: facturaAdaptada.tipo,
             NCF: facturaAdaptada.ncf,
             FechaVencimientoSecuencia: esFechaVencimientoObligatoria(
-              facturaAdaptada.tipo,
+              facturaAdaptada.tipo
             )
               ? fechaVencimientoFormateada
               : null,
           };
 
           // Configuración específica por tipo de comprobante
-          if (facturaAdaptada.tipo === '31' || facturaAdaptada.tipo === '32') {
+          if (facturaAdaptada.tipo === "31" || facturaAdaptada.tipo === "32") {
             // Tipos 31, 32: Facturas de Crédito Fiscal y Consumo - incluyen indicadorEnvioDiferido
             return {
               ...baseIdDoc,
               IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? '1' : '0',
-              IndicadorEnvioDiferido: '1',
-              TipoIngresos: '01',
-              TipoPago: '1',
+                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorEnvioDiferido: "1",
+              TipoIngresos: "01",
+              TipoPago: "1",
               TablaFormasPago: [
                 {
-                  Forma: '1',
+                  Forma: "1",
                   Monto: montoTotalConDescuentos.toFixed(2),
                 },
               ],
             };
-          } else if (facturaAdaptada.tipo === '33') {
+          } else if (facturaAdaptada.tipo === "33") {
             // Tipo 33: Nota de Débito - SÍ incluir FechaVencimientoSecuencia (requerido por TheFactoryHKA)
             return {
               TipoDocumento: facturaAdaptada.tipo,
               NCF: facturaAdaptada.ncf,
               FechaVencimientoSecuencia: fechaVencimientoFormateada, // ✅ OBLIGATORIO para tipo 33
               IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? '1' : '0',
-              TipoIngresos: '03', // ESPECÍFICO para Nota de Débito (OBLIGATORIO)
-              TipoPago: '1',
+                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              TipoIngresos: "03", // ESPECÍFICO para Nota de Débito (OBLIGATORIO)
+              TipoPago: "1",
               TablaFormasPago: [
                 {
-                  Forma: '1',
+                  Forma: "1",
                   Monto: montoTotalConDescuentos.toFixed(2),
                 },
               ],
             };
-          } else if (facturaAdaptada.tipo === '34') {
+          } else if (facturaAdaptada.tipo === "34") {
             // Tipo 34: Nota de Crédito - estructura especial SIN fechaVencimiento ni indicadorEnvioDiferido
             return {
               TipoDocumento: facturaAdaptada.tipo,
               NCF: facturaAdaptada.ncf,
               // NO incluir FechaVencimientoSecuencia para tipo 34
               IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? '1' : '0',
-              IndicadorNotaCredito: '0', // OBLIGATORIO para tipo 34
-              TipoIngresos: '01',
-              TipoPago: '1',
+                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorNotaCredito: "0", // OBLIGATORIO para tipo 34
+              TipoIngresos: "01",
+              TipoPago: "1",
             };
-          } else if (facturaAdaptada.tipo === '41') {
+          } else if (facturaAdaptada.tipo === "41") {
             // Tipo 41: Compras - incluyen indicadorMontoGravado pero NO indicadorEnvioDiferido
             return {
               ...baseIdDoc,
               IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? '1' : '0',
-              TipoPago: '1',
+                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              TipoPago: "1",
               TablaFormasPago: [
                 {
-                  Forma: '1',
+                  Forma: "1",
                   Monto: montoTotalConDescuentos.toFixed(2),
                 },
               ],
             };
-          } else if (facturaAdaptada.tipo === '43') {
+          } else if (facturaAdaptada.tipo === "43") {
             // Tipo 43: Gastos Menores - estructura muy simple, solo campos básicos
             return {
               ...baseIdDoc,
             };
-          } else if (facturaAdaptada.tipo === '45') {
+          } else if (facturaAdaptada.tipo === "45") {
             // Tipo 45: Gubernamental - incluye indicadorMontoGravado y tipoIngresos pero NO tablaFormasPago
             return {
               ...baseIdDoc,
               IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? '1' : '0',
-              TipoIngresos: '01',
-              TipoPago: '1',
+                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              TipoIngresos: "01",
+              TipoPago: "1",
             };
           } else if (
-            facturaAdaptada.tipo === '44' ||
-            facturaAdaptada.tipo === '46' ||
-            facturaAdaptada.tipo === '47'
+            facturaAdaptada.tipo === "44" ||
+            facturaAdaptada.tipo === "46" ||
+            facturaAdaptada.tipo === "47"
           ) {
             // Tipos 44, 46, 47: Regímenes especiales - NO incluyen indicadorMontoGravado ni indicadorEnvioDiferido
             return {
               ...baseIdDoc,
-              TipoIngresos: '01',
-              TipoPago: '1',
+              TipoIngresos: "01",
+              TipoPago: "1",
               TablaFormasPago: [
                 {
-                  Forma: '1',
+                  Forma: "1",
                   Monto: montoTotalConDescuentos.toFixed(2),
                 },
               ],
@@ -2108,10 +2170,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           // Fallback por defecto
           return {
             ...baseIdDoc,
-            TipoPago: '1',
+            TipoPago: "1",
             TablaFormasPago: [
               {
-                Forma: '1',
+                Forma: "1",
                 Monto: montoTotalConDescuentos.toFixed(2),
               },
             ],
@@ -2130,10 +2192,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
           // Para tipos 31, 32, 33, 34: incluir campos adicionales del emisor
           if (
-            facturaAdaptada.tipo === '31' ||
-            facturaAdaptada.tipo === '32' ||
-            facturaAdaptada.tipo === '33' ||
-            facturaAdaptada.tipo === '34'
+            facturaAdaptada.tipo === "31" ||
+            facturaAdaptada.tipo === "32" ||
+            facturaAdaptada.tipo === "33" ||
+            facturaAdaptada.tipo === "34"
           ) {
             return {
               ...baseEmisor,
@@ -2143,7 +2205,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               codigoVendedor: facturaAdaptada.id || null,
               numeroFacturaInterna: stringVacioANull(facturaAdaptada.id),
               numeroPedidoInterno: stringVacioANull(facturaAdaptada.id),
-              zonaVenta: 'PRINCIPAL',
+              zonaVenta: "PRINCIPAL",
             };
           }
 
@@ -2151,10 +2213,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           return baseEmisor;
         })(),
         // Comprador: Tipo 43 NO incluye comprador según estructura oficial
-        ...(facturaAdaptada.tipo !== '43' && {
+        ...(facturaAdaptada.tipo !== "43" && {
           comprador: (() => {
             const baseComprador = {
-              rnc: facturaAdaptada.tipo === '32' ? null : comprador.rnc, // 🔧 Para tipo 32: null (consumidor final)
+              rnc: facturaAdaptada.tipo === "32" ? null : comprador.rnc, // 🔧 Para tipo 32: null (consumidor final)
               razonSocial: stringVacioANull(comprador.nombre),
               correo: stringVacioANull(comprador.correo),
               direccion: stringVacioANull(comprador.direccion),
@@ -2164,21 +2226,21 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
             // Para tipos 31, 32, 33, 34: incluir campos adicionales del comprador
             if (
-              facturaAdaptada.tipo === '31' ||
-              facturaAdaptada.tipo === '32' ||
-              facturaAdaptada.tipo === '33' ||
-              facturaAdaptada.tipo === '34'
+              facturaAdaptada.tipo === "31" ||
+              facturaAdaptada.tipo === "32" ||
+              facturaAdaptada.tipo === "33" ||
+              facturaAdaptada.tipo === "34"
             ) {
               return {
                 ...baseComprador,
                 contacto: stringVacioANull(comprador.nombre),
-                envioMail: stringVacioANull(comprador.correo) ? 'SI' : 'NO',
+                envioMail: stringVacioANull(comprador.correo) ? "SI" : "NO",
                 fechaEntrega: comprador.fechaEntrega || null,
                 fechaOrden: comprador.fechaOrden || null,
                 numeroOrden: comprador.numeroOrden || null,
                 codigoInterno:
                   comprador.codigoInterno ||
-                  (facturaAdaptada.tipo === '32' ? null : comprador.rnc), // 🔧 Para tipo 32: null
+                  (facturaAdaptada.tipo === "32" ? null : comprador.rnc), // 🔧 Para tipo 32: null
               };
             }
 
@@ -2187,10 +2249,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           })(),
         }),
         // informacionesAdicionales solo para tipos 31, 32, 33, 34
-        ...(facturaAdaptada.tipo === '31' ||
-        facturaAdaptada.tipo === '32' ||
-        facturaAdaptada.tipo === '33' ||
-        facturaAdaptada.tipo === '34'
+        ...(facturaAdaptada.tipo === "31" ||
+        facturaAdaptada.tipo === "32" ||
+        facturaAdaptada.tipo === "33" ||
+        facturaAdaptada.tipo === "34"
           ? {
               informacionesAdicionales: {
                 numeroContenedor: facturaAdaptada.numeroContenedor || null,
@@ -2209,7 +2271,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               parseFloat(montoGravadoConDescuentos) > 0
                 ? montoGravadoConDescuentos.toFixed(2)
                 : null,
-            itbiS1: parseFloat(montoGravadoConDescuentos) > 0 ? '18' : null,
+            itbiS1: parseFloat(montoGravadoConDescuentos) > 0 ? "18" : null,
             totalITBIS:
               parseFloat(montoGravadoConDescuentos) > 0
                 ? (parseFloat(montoGravadoConDescuentos) * 0.18).toFixed(2)
@@ -2223,10 +2285,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
           // Para tipos 31, 32, 33, 34: Incluir montoExento (según ejemplo oficial)
           if (
-            facturaAdaptada.tipo === '31' ||
-            facturaAdaptada.tipo === '32' ||
-            facturaAdaptada.tipo === '33' ||
-            facturaAdaptada.tipo === '34'
+            facturaAdaptada.tipo === "31" ||
+            facturaAdaptada.tipo === "32" ||
+            facturaAdaptada.tipo === "33" ||
+            facturaAdaptada.tipo === "34"
           ) {
             return {
               ...baseTotales,
@@ -2238,7 +2300,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           }
 
           // Para tipo 43: Gastos Menores - estructura muy simple
-          if (facturaAdaptada.tipo === '43') {
+          if (facturaAdaptada.tipo === "43") {
             return {
               montoExento: montoTotalConDescuentos.toFixed(2), // Para tipo 43, todo es monto exento
               montoTotal: montoTotalConDescuentos.toFixed(2),
@@ -2246,7 +2308,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           }
 
           // Para tipo 44: Régimen especial - NO incluir campos de retención
-          if (facturaAdaptada.tipo === '44') {
+          if (facturaAdaptada.tipo === "44") {
             return {
               ...baseTotales,
               montoExento:
@@ -2258,7 +2320,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           }
 
           // Para tipo 45: Gubernamental - incluir campos ITBIS pero NO retención
-          if (facturaAdaptada.tipo === '45') {
+          if (facturaAdaptada.tipo === "45") {
             // Después del ajuste de items, usar directamente la suma del detalle
             const montoGravadoFinal = parseFloat(sumaItemsGravados);
             const itbisCalculado = montoGravadoFinal * 0.18;
@@ -2281,7 +2343,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             // Solo incluir campos de impuestos si HAY montos gravados
             if (montoGravadoFinal > 0) {
               totales45.MontoGravadoTotal = sumaItemsGravados;
-              totales45.ITBIS1 = '18';
+              totales45.ITBIS1 = "18";
               totales45.TotalITBIS = itbisCalculado.toFixed(2);
               totales45.TotalITBIS1 = itbisCalculado.toFixed(2);
             }
@@ -2305,8 +2367,8 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             totalITBISRetenido:
               parseFloat(montoGravadoConDescuentos) > 0
                 ? (parseFloat(montoGravadoConDescuentos) * 0.18).toFixed(2)
-                : '0.00',
-            totalISRRetencion: '0.00',
+                : "0.00",
+            totalISRRetencion: "0.00",
           };
         })(),
       },
@@ -2316,32 +2378,32 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         DescuentosORecargos: descuentosArray,
       }),
       // Para tipo 45: Agregar sección vacía de descuentos/recargos para validación (si no hay descuentos)
-      ...(facturaAdaptada.tipo === '45' &&
+      ...(facturaAdaptada.tipo === "45" &&
         descuentosArray.length === 0 && {
           DescuentosORecargos: [],
         }),
       // Para tipos 33 y 34: Agregar InformacionReferencia OBLIGATORIA (con validación)
-      ...((facturaAdaptada.tipo === '33' || facturaAdaptada.tipo === '34') &&
+      ...((facturaAdaptada.tipo === "33" || facturaAdaptada.tipo === "34") &&
         (() => {
           // Validar que se proporcionen los campos obligatorios para tipos 33 y 34
           if (!facturaAdaptada.ncfModificado) {
             throw new Error(
-              `❌ Tipo ${facturaAdaptada.tipo} requiere "ncfModificado": NCF de la factura original que se está modificando`,
+              `❌ Tipo ${facturaAdaptada.tipo} requiere "ncfModificado": NCF de la factura original que se está modificando`
             );
           }
           if (!facturaAdaptada.fechaNCFModificado) {
             throw new Error(
-              `❌ Tipo ${facturaAdaptada.tipo} requiere "fechaNCFModificado": Fecha de la factura original`,
+              `❌ Tipo ${facturaAdaptada.tipo} requiere "fechaNCFModificado": Fecha de la factura original`
             );
           }
           if (!facturaAdaptada.codigoModificacion) {
             throw new Error(
-              `❌ Tipo ${facturaAdaptada.tipo} requiere "codigoModificacion": Código que indica el tipo de modificación (1,2,3,4)`,
+              `❌ Tipo ${facturaAdaptada.tipo} requiere "codigoModificacion": Código que indica el tipo de modificación (1,2,3,4)`
             );
           }
           if (!facturaAdaptada.razonModificacion) {
             throw new Error(
-              `❌ Tipo ${facturaAdaptada.tipo} requiere "razonModificacion": Razón descriptiva de la modificación`,
+              `❌ Tipo ${facturaAdaptada.tipo} requiere "razonModificacion": Razón descriptiva de la modificación`
             );
           }
 
@@ -2349,7 +2411,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             InformacionReferencia: {
               NCFModificado: facturaAdaptada.ncfModificado,
               FechaNCFModificado: formatearFecha(
-                facturaAdaptada.fechaNCFModificado,
+                facturaAdaptada.fechaNCFModificado
               ),
               CodigoModificacion: facturaAdaptada.codigoModificacion,
               RazonModificacion: facturaAdaptada.razonModificacion,
@@ -2374,16 +2436,33 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
         <div style="padding: 30px; background-color: #f8f9fa;">
           <h2 style="color: #dc3545;">Información del Error</h2>
           <div style="background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #dc3545;">
-            <p><strong>Fecha y Hora:</strong> ${new Date().toLocaleString('es-DO', { timeZone: 'America/Santo_Domingo' })}</p>
-            <p><strong>Tipo de Error:</strong> ${errorInfo.tipo || 'Error desconocido'}</p>
-            <p><strong>Mensaje:</strong> ${errorInfo.mensaje || 'N/A'}</p>
-            ${errorInfo.codigo ? `<p><strong>Código de Error:</strong> ${errorInfo.codigo}</p>` : ''}
-            ${errorInfo.statusCode ? `<p><strong>Status HTTP:</strong> ${errorInfo.statusCode}</p>` : ''}
+            <p><strong>Fecha y Hora:</strong> ${new Date().toLocaleString(
+              "es-DO",
+              { timeZone: "America/Santo_Domingo" }
+            )}</p>
+            <p><strong>Tipo de Error:</strong> ${
+              errorInfo.tipo || "Error desconocido"
+            }</p>
+            <p><strong>Mensaje:</strong> ${errorInfo.mensaje || "N/A"}</p>
+            ${
+              errorInfo.codigo
+                ? `<p><strong>Código de Error:</strong> ${errorInfo.codigo}</p>`
+                : ""
+            }
+            ${
+              errorInfo.statusCode
+                ? `<p><strong>Status HTTP:</strong> ${errorInfo.statusCode}</p>`
+                : ""
+            }
           </div>
           
           <h2 style="color: #333; margin-top: 30px;">Factura Original (JSON)</h2>
           <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0; overflow-x: auto;">
-            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${JSON.stringify(facturaOriginal, null, 2)}</pre>
+            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${JSON.stringify(
+              facturaOriginal,
+              null,
+              2
+            )}</pre>
           </div>
           
           ${
@@ -2391,10 +2470,14 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
               ? `
           <h2 style="color: #333; margin-top: 30px;">Respuesta de TheFactory</h2>
           <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${JSON.stringify(errorInfo.respuestaTheFactory, null, 2)}</pre>
+            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${JSON.stringify(
+              errorInfo.respuestaTheFactory,
+              null,
+              2
+            )}</pre>
           </div>
           `
-              : ''
+              : ""
           }
           
           <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-top: 30px;">
@@ -2410,26 +2493,38 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
     `;
 
     await sendEmail({
-      to: 'soporte@contrerasrobledo.com.do',
-      subject: `Error en Envío de Factura Electrónica - ${facturaOriginal.factura?.ncf || 'NCF No Disponible'}`,
+      to: "soporte@contrerasrobledo.com.do",
+      subject: `Error en Envío de Factura Electrónica - ${
+        facturaOriginal.factura?.ncf || "NCF No Disponible"
+      }`,
       htmlContent,
       textContent: `Error en Envío de Factura Electrónica
 
-      Fecha: ${new Date().toLocaleString('es-DO', { timeZone: 'America/Santo_Domingo' })}
-      Tipo de Error: ${errorInfo.tipo || 'Error desconocido'}
-      Mensaje: ${errorInfo.mensaje || 'N/A'}
-      Código de Error: ${errorInfo.codigo || 'N/A'}
-      Status HTTP: ${errorInfo.statusCode || 'N/A'}
+      Fecha: ${new Date().toLocaleString("es-DO", {
+        timeZone: "America/Santo_Domingo",
+      })}
+      Tipo de Error: ${errorInfo.tipo || "Error desconocido"}
+      Mensaje: ${errorInfo.mensaje || "N/A"}
+      Código de Error: ${errorInfo.codigo || "N/A"}
+      Status HTTP: ${errorInfo.statusCode || "N/A"}
 
       Factura Original:
       ${JSON.stringify(facturaOriginal, null, 2)}
 
-      ${errorInfo.respuestaTheFactory ? `Respuesta de TheFactory:\n${JSON.stringify(errorInfo.respuestaTheFactory, null, 2)}` : ''}`,
+      ${
+        errorInfo.respuestaTheFactory
+          ? `Respuesta de TheFactory:\n${JSON.stringify(
+              errorInfo.respuestaTheFactory,
+              null,
+              2
+            )}`
+          : ""
+      }`,
     });
 
-    console.log('✅ Email de error enviado a soporte@contrerasrobledo.com.do');
+    console.log("✅ Email de error enviado a soporte@contrerasrobledo.com.do");
   } catch (emailError) {
-    console.error('❌ Error al enviar email a soporte:', emailError);
+    console.error("❌ Error al enviar email a soporte:", emailError);
     // No lanzamos el error para no interrumpir el flujo principal
   }
 };
@@ -2437,23 +2532,40 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
 // Controlador para enviar factura a TheFactoryHKA
 const enviarFacturaElectronica = async (req, res) => {
   try {
-    console.log('Datos recibidos:', JSON.stringify(req.body, null, 2));
+    console.log("Datos recibidos:", JSON.stringify(req.body, null, 2));
+
+    // RNC del emisor: siempre se toma de emisor.rnc
+    const rnc =
+      req.body.emisor?.rnc != null && String(req.body.emisor.rnc).trim() !== ""
+        ? String(req.body.emisor.rnc).trim()
+        : null;
+    if (!rnc) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        status: "error",
+        message: "RNC del emisor es requerido",
+        details: "Debe proporcionar emisor.rnc en el body de la petición",
+      });
+    }
 
     // Obtener token de autenticación
-    const token = await obtenerTokenTheFactory();
+    const token = await obtenerTokenTheFactory(rnc);
 
     // Transformar el JSON simplificado al formato completo
-    const facturaCompleta = transformarFacturaParaTheFactory(req.body, token);
+    const facturaCompleta = transformarFacturaParaTheFactory(
+      req.body,
+      token,
+      rnc
+    );
 
     console.log(
-      'Factura transformada:',
-      JSON.stringify(facturaCompleta, null, 2),
+      "Factura transformada:",
+      JSON.stringify(facturaCompleta, null, 2)
     );
 
     // Enviar a TheFactoryHKA
     const response = await axios.post(THEFACTORY_ENVIAR_URL, facturaCompleta, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       timeout: 60000, // 60 segundos de timeout (aumentado)
     });
@@ -2464,27 +2576,27 @@ const enviarFacturaElectronica = async (req, res) => {
     if (!response.data.procesado || response.data.codigo !== 0) {
       // Error de negocio de TheFactoryHKA
       const errorMessages = {
-        108: 'NCF ya fue presentado anteriormente',
-        109: 'NCF vencido o inválido',
-        110: 'RNC no autorizado para este tipo de comprobante',
-        111: 'Datos de la factura inválidos',
+        108: "NCF ya fue presentado anteriormente",
+        109: "NCF vencido o inválido",
+        110: "RNC no autorizado para este tipo de comprobante",
+        111: "Datos de la factura inválidos",
       };
 
       const mensajeError =
         errorMessages[response.data.codigo] ||
         response.data.mensaje ||
-        'Error desconocido';
+        "Error desconocido";
 
       // Enviar factura original a soporte
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Error de negocio de TheFactoryHKA',
+        tipo: "Error de negocio de TheFactoryHKA",
         mensaje: mensajeError,
         codigo: response.data.codigo,
         respuestaTheFactory: response.data,
       });
 
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: `Error de TheFactoryHKA: ${mensajeError}`,
         details: {
           codigo: response.data.codigo,
@@ -2501,14 +2613,14 @@ const enviarFacturaElectronica = async (req, res) => {
 
     // 🔍 Consultar estatus inmediatamente (no crítico si falla)
     // console.log('📋 Consultando estatus inmediato post-envío...');
-    const estatusConsulta = await consultarEstatusInmediato(ncfGenerado);
+    const estatusConsulta = await consultarEstatusInmediato(ncfGenerado, rnc);
 
     // 📱 Generar URL para QR Code de la DGII
     const urlQR = generarUrlQR(response.data, req.body);
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Factura electrónica enviada exitosamente',
+      status: "success",
+      message: "Factura electrónica enviada exitosamente",
       data: {
         facturaOriginal: req.body,
         respuestaTheFactory: response.data,
@@ -2521,50 +2633,50 @@ const enviarFacturaElectronica = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error al enviar factura electrónica:', error);
+    console.error("Error al enviar factura electrónica:", error);
 
     // Error de autenticación - limpiar cache y reintentar una vez
     if (
-      error.message.includes('Error de autenticación') ||
-      error.message.includes('token') ||
-      error.message.includes('expirado') ||
-      error.message.includes('expired') ||
+      error.message.includes("Error de autenticación") ||
+      error.message.includes("token") ||
+      error.message.includes("expirado") ||
+      error.message.includes("expired") ||
       (error.response &&
         (error.response.status === 401 || error.response.status === 403))
     ) {
       console.log(
-        '🔄 Error de autenticación detectado, limpiando cache del token...',
+        "🔄 Error de autenticación detectado, limpiando cache del token..."
       );
       // Limpiar cache del token
       limpiarCacheToken();
 
       // Enviar factura original a soporte (aunque sea error de autenticación, puede ser útil para debugging)
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Error de autenticación',
-        mensaje: 'Token expirado o inválido',
+        tipo: "Error de autenticación",
+        mensaje: "Token expirado o inválido",
         statusCode: error.response?.status || 401,
       });
 
       return res.status(httpStatus.UNAUTHORIZED).json({
-        status: 'error',
-        message: 'Token expirado. Vuelve a intentar la operación',
+        status: "error",
+        message: "Token expirado. Vuelve a intentar la operación",
         details:
-          'El token de autenticación ha expirado. El sistema lo renovará automáticamente en el próximo intento.',
-        codigo: 'TOKEN_EXPIRADO',
-        sugerencia: 'Reintente la operación en unos segundos',
+          "El token de autenticación ha expirado. El sistema lo renovará automáticamente en el próximo intento.",
+        codigo: "TOKEN_EXPIRADO",
+        sugerencia: "Reintente la operación en unos segundos",
       });
     }
 
     if (error.response) {
       // Error de la API de TheFactoryHKA
-      console.error('❌ Respuesta de error de TheFactoryHKA:');
-      console.error('Status:', error.response.status);
-      console.error('Data:', JSON.stringify(error.response.data, null, 2));
+      console.error("❌ Respuesta de error de TheFactoryHKA:");
+      console.error("Status:", error.response.status);
+      console.error("Data:", JSON.stringify(error.response.data, null, 2));
 
       // Extraer errores de validación específicos si existen
       let detallesValidacion = error.response.data;
       if (error.response.data.errors) {
-        console.error('Errores de validación:');
+        console.error("Errores de validación:");
         console.error(JSON.stringify(error.response.data.errors, null, 2));
         detallesValidacion = {
           ...error.response.data,
@@ -2574,107 +2686,110 @@ const enviarFacturaElectronica = async (req, res) => {
 
       // Enviar factura original a soporte
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Error de respuesta HTTP de TheFactoryHKA',
-        mensaje: error.message || 'Error en el envío a TheFactoryHKA',
+        tipo: "Error de respuesta HTTP de TheFactoryHKA",
+        mensaje: error.message || "Error en el envío a TheFactoryHKA",
         statusCode: error.response.status,
         respuestaTheFactory: error.response.data,
       });
 
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'Error en el envío a TheFactoryHKA',
+        status: "error",
+        message: "Error en el envío a TheFactoryHKA",
         details: detallesValidacion,
         statusCode: error.response.status,
       });
     }
 
-    if (error.code === 'ECONNABORTED') {
+    if (error.code === "ECONNABORTED") {
       console.warn(
-        `⏰ TIMEOUT TheFactoryHKA para NCF: ${req.body.factura?.ncf || 'N/A'} - Duración: 60+ segundos`,
+        `⏰ TIMEOUT TheFactoryHKA para NCF: ${
+          req.body.factura?.ncf || "N/A"
+        } - Duración: 60+ segundos`
       );
 
       // Enviar factura original a soporte
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Timeout en TheFactoryHKA',
-        mensaje: 'TheFactoryHKA tardó más de 60 segundos en responder',
+        tipo: "Timeout en TheFactoryHKA",
+        mensaje: "TheFactoryHKA tardó más de 60 segundos en responder",
         ncf: req.body.factura?.ncf || null,
       });
 
       return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: 'error',
-        message: 'Timeout: TheFactoryHKA tardó más de 60 segundos en responder',
+        status: "error",
+        message: "Timeout: TheFactoryHKA tardó más de 60 segundos en responder",
         details:
-          'El servicio de TheFactoryHKA está experimentando lentitud. La factura puede haberse procesado correctamente. Consulte el estatus del documento.',
+          "El servicio de TheFactoryHKA está experimentando lentitud. La factura puede haberse procesado correctamente. Consulte el estatus del documento.",
         ncf: req.body.factura?.ncf || null,
         sugerencia:
-          'Usar el endpoint /consultar-estatus para verificar si la factura fue procesada',
+          "Usar el endpoint /consultar-estatus para verificar si la factura fue procesada",
       });
     }
 
-    if (error.message.includes('Faltan datos obligatorios')) {
+    if (error.message.includes("Faltan datos obligatorios")) {
       // Enviar factura original a soporte
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Error de validación',
+        tipo: "Error de validación",
         mensaje: error.message,
       });
 
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: error.message,
       });
     }
 
     if (
       error.message.includes(
-        'Timeout al conectar con el servicio de autenticación',
+        "Timeout al conectar con el servicio de autenticación"
       )
     ) {
       // Enviar factura original a soporte
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Timeout en autenticación',
+        tipo: "Timeout en autenticación",
         mensaje:
-          'Timeout al conectar con el servicio de autenticación de TheFactoryHKA',
+          "Timeout al conectar con el servicio de autenticación de TheFactoryHKA",
       });
 
       return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: 'error',
-        message: 'Timeout en la autenticación con TheFactoryHKA',
+        status: "error",
+        message: "Timeout en la autenticación con TheFactoryHKA",
       });
     }
 
     // Detectar si el servidor está caído
     if (
-      error.message.includes('SERVIDOR_CAIDO') ||
-      error.message.includes('SERVIDOR_NO_ENCONTRADO') ||
-      error.message.includes('SERVIDOR_RESETEO')
+      error.message.includes("SERVIDOR_CAIDO") ||
+      error.message.includes("SERVIDOR_NO_ENCONTRADO") ||
+      error.message.includes("SERVIDOR_RESETEO")
     ) {
-      console.error('🚨 SERVIDOR DE THEFACTORY CAÍDO O INACCESIBLE');
-      console.error('Detalles:', error.message);
+      console.error("🚨 SERVIDOR DE THEFACTORY CAÍDO O INACCESIBLE");
+      console.error("Detalles:", error.message);
 
       // Enviar factura original a soporte
       await enviarFacturaASoporte(req.body, {
-        tipo: 'Servidor de TheFactoryHKA caído o inaccesible',
+        tipo: "Servidor de TheFactoryHKA caído o inaccesible",
         mensaje: error.message,
       });
 
       return res.status(httpStatus.SERVICE_UNAVAILABLE).json({
-        status: 'error',
-        message: 'El servidor de TheFactoryHKA está caído o inaccesible',
+        status: "error",
+        message: "El servidor de TheFactoryHKA está caído o inaccesible",
         details: error.message,
-        sugerencia: 'Verifica el estado del servidor usando el endpoint /comprobantes/verificar-servidor o contacta con soporte de TheFactoryHKA',
+        sugerencia:
+          "Verifica el estado del servidor usando el endpoint /comprobantes/verificar-servidor o contacta con soporte de TheFactoryHKA",
       });
     }
 
     // Enviar factura original a soporte para errores generales
     await enviarFacturaASoporte(req.body, {
-      tipo: 'Error interno del servidor',
+      tipo: "Error interno del servidor",
       mensaje:
-        error.message || 'Error desconocido al procesar la factura electrónica',
+        error.message || "Error desconocido al procesar la factura electrónica",
     });
 
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al procesar la factura electrónica',
+      status: "error",
+      message: "Error interno del servidor al procesar la factura electrónica",
       details: error.message,
     });
   }
@@ -2689,15 +2804,25 @@ const consultarEstatusDocumento = async (req, res) => {
     // console.log('📥 Request body recibido:');
     // console.log(JSON.stringify(req.body, null, 2));
 
-    const { ncf, reintentar } = req.body;
+    const { ncf, rnc, reintentar } = req.body;
 
     // Validar que se proporcione el NCF
     if (!ncf) {
       // console.log('❌ NCF no proporcionado');
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'El campo NCF es requerido',
-        details: 'Debe proporcionar el NCF del documento a consultar',
+        status: "error",
+        message: "El campo NCF es requerido",
+        details: "Debe proporcionar el NCF del documento a consultar",
+      });
+    }
+
+    // Validar que se proporcione el RNC del emisor
+    if (!rnc) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        status: "error",
+        message: "El campo RNC es requerido",
+        details:
+          "Debe proporcionar el RNC del emisor para consultar el estatus",
       });
     }
 
@@ -2710,7 +2835,7 @@ const consultarEstatusDocumento = async (req, res) => {
     }
 
     // Consultar estatus en TheFactoryHKA
-    const estatusConsulta = await consultarEstatusInmediato(ncf);
+    const estatusConsulta = await consultarEstatusInmediato(ncf, rnc);
 
     // console.log('📊 Resultado de consultarEstatusInmediato:');
     // console.log(JSON.stringify(estatusConsulta, null, 2));
@@ -2721,7 +2846,7 @@ const consultarEstatusDocumento = async (req, res) => {
         estatusConsulta.datosEstatus.estado ||
         estatusConsulta.datosEstatus.status ||
         estatusConsulta.datosEstatus.mensaje ||
-        'DESCONOCIDO';
+        "DESCONOCIDO";
 
       // console.log(`📝 Estado original extraído: "${estadoOriginal}"`);
       // console.log('🔍 datosEstatus completos:');
@@ -2729,7 +2854,7 @@ const consultarEstatusDocumento = async (req, res) => {
 
       const estadoNormalizado = normalizarEstadoFactura(
         estadoOriginal,
-        estatusConsulta.datosEstatus,
+        estatusConsulta.datosEstatus
       );
 
       // console.log(`✅ Estado normalizado: "${estadoNormalizado}"`);
@@ -2738,23 +2863,23 @@ const consultarEstatusDocumento = async (req, res) => {
       // Agregar información adicional si el documento no fue encontrado
       let mensajeAdicional = null;
       if (
-        estadoNormalizado === 'NO_ENCONTRADO' ||
+        estadoNormalizado === "NO_ENCONTRADO" ||
         estatusConsulta.datosEstatus.codigo === 120
       ) {
         // console.log(
         //   '⚠️ ADVERTENCIA: Documento no encontrado en TheFactoryHKA (código 120)',
         // );
         mensajeAdicional =
-          'El documento no se encuentra en la base de datos de TheFactoryHKA. Posibles causas: ' +
-          '1) El documento nunca fue enviado, ' +
-          '2) Diferencia de ambiente (Demo vs Producción), ' +
-          '3) RNC incorrecto en la consulta, ' +
-          '4) Delay en la sincronización de TheFactoryHKA.';
+          "El documento no se encuentra en la base de datos de TheFactoryHKA. Posibles causas: " +
+          "1) El documento nunca fue enviado, " +
+          "2) Diferencia de ambiente (Demo vs Producción), " +
+          "3) RNC incorrecto en la consulta, " +
+          "4) Delay en la sincronización de TheFactoryHKA.";
       }
 
       const respuestaFinal = {
-        status: 'success',
-        message: 'Consulta de estatus realizada exitosamente',
+        status: "success",
+        message: "Consulta de estatus realizada exitosamente",
         data: {
           ncf: ncf,
           estado: estadoNormalizado,
@@ -2762,7 +2887,7 @@ const consultarEstatusDocumento = async (req, res) => {
           mensaje:
             estatusConsulta.datosEstatus.mensaje ||
             estatusConsulta.datosEstatus.description ||
-            'Sin mensaje',
+            "Sin mensaje",
           fechaConsulta: estatusConsulta.timestamp,
           datosCompletos: estatusConsulta.datosEstatus,
           ...(mensajeAdicional && { advertencia: mensajeAdicional }),
@@ -2784,8 +2909,8 @@ const consultarEstatusDocumento = async (req, res) => {
       // );
 
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'No se pudo consultar el estatus del documento',
+        status: "error",
+        message: "No se pudo consultar el estatus del documento",
         details: estatusConsulta.error,
         data: {
           ncf: ncf,
@@ -2794,15 +2919,15 @@ const consultarEstatusDocumento = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Error CRÍTICO en consulta de estatus:', error);
-    console.error('📚 Stack trace:', error.stack);
+    console.error("❌ Error CRÍTICO en consulta de estatus:", error);
+    console.error("📚 Stack trace:", error.stack);
     // console.log(
     //   `📋 ==================== FIN ENDPOINT CONSULTAR ESTATUS (ERROR CRÍTICO) ====================\n`,
     // );
 
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno del servidor al consultar estatus',
+      status: "error",
+      message: "Error interno del servidor al consultar estatus",
       details: error.message,
     });
   }
@@ -2814,14 +2939,14 @@ const limpiarTokenCache = async (req, res) => {
     limpiarCacheToken();
 
     return res.status(httpStatus.OK).json({
-      status: 'success',
-      message: 'Cache del token limpiado exitosamente',
-      details: 'El próximo envío obtendrá un token nuevo',
+      status: "success",
+      message: "Cache del token limpiado exitosamente",
+      details: "El próximo envío obtendrá un token nuevo",
     });
   } catch (error) {
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error al limpiar cache del token',
+      status: "error",
+      message: "Error al limpiar cache del token",
       details: error.message,
     });
   }
@@ -2830,7 +2955,7 @@ const limpiarTokenCache = async (req, res) => {
 // 📧 Endpoint para enviar email de documento electrónico vía The Factory HKA
 const enviarEmailFactura = async (req, res) => {
   // Importación lazy para evitar dependencia circular
-  const { enviarEmailDocumento } = require('../api/thefactory-email');
+  const { enviarEmailDocumento } = await import("@/app/api/thefactory-email");
   return await enviarEmailDocumento(req, res);
 };
 
@@ -2838,8 +2963,8 @@ const enviarEmailFactura = async (req, res) => {
 const anularComprobantes = async (req, res) => {
   try {
     console.log(
-      '📋 Solicitud de anulación recibida:',
-      JSON.stringify(req.body, null, 2),
+      "📋 Solicitud de anulación recibida:",
+      JSON.stringify(req.body, null, 2)
     );
 
     const { rnc, anulaciones, fechaHoraAnulacion } = req.body;
@@ -2849,8 +2974,8 @@ const anularComprobantes = async (req, res) => {
     // 1. Validar campos requeridos
     if (!rnc) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
-        message: 'El campo RNC es obligatorio',
+        status: "error",
+        message: "El campo RNC es obligatorio",
       });
     }
 
@@ -2860,24 +2985,24 @@ const anularComprobantes = async (req, res) => {
       anulaciones.length === 0
     ) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message:
-          'El campo anulaciones es obligatorio y debe ser un array con al menos una anulación',
+          "El campo anulaciones es obligatorio y debe ser un array con al menos una anulación",
       });
     }
 
     // 2. Validar tipos de documentos permitidos
     const tiposDocumentosValidos = [
-      '31',
-      '32',
-      '33',
-      '34',
-      '41',
-      '43',
-      '44',
-      '45',
-      '46',
-      '47',
+      "31",
+      "32",
+      "33",
+      "34",
+      "41",
+      "43",
+      "44",
+      "45",
+      "46",
+      "47",
     ];
 
     // 3. Validar formato de NCF (E + 2 dígitos + 8-10 dígitos de secuencia)
@@ -2890,15 +3015,19 @@ const anularComprobantes = async (req, res) => {
 
       if (!anulacion.tipoDocumento) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
+          status: "error",
           message: `Anulación ${i + 1}: El campo tipoDocumento es obligatorio`,
         });
       }
 
       if (!tiposDocumentosValidos.includes(anulacion.tipoDocumento)) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: Tipo de documento inválido. Debe ser uno de: ${tiposDocumentosValidos.join(', ')}`,
+          status: "error",
+          message: `Anulación ${
+            i + 1
+          }: Tipo de documento inválido. Debe ser uno de: ${tiposDocumentosValidos.join(
+            ", "
+          )}`,
         });
       }
 
@@ -2919,8 +3048,10 @@ const anularComprobantes = async (req, res) => {
       // Validar que al menos tengamos ncfDesde
       if (!anulacion.ncfDesde) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: Debe proporcionar 'ncf' o 'ncfDesde' (o ambos 'ncfDesde' y 'ncfHasta' para un rango)`,
+          status: "error",
+          message: `Anulación ${
+            i + 1
+          }: Debe proporcionar 'ncf' o 'ncfDesde' (o ambos 'ncfDesde' y 'ncfHasta' para un rango)`,
         });
       }
 
@@ -2932,15 +3063,19 @@ const anularComprobantes = async (req, res) => {
       // Validar formato de NCF
       if (!ncfRegex.test(anulacion.ncfDesde)) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: NCF Desde tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000098 o E310000000147`,
+          status: "error",
+          message: `Anulación ${
+            i + 1
+          }: NCF Desde tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000098 o E310000000147`,
         });
       }
 
       if (!ncfRegex.test(anulacion.ncfHasta)) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: NCF Hasta tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000099 o E310000000148`,
+          status: "error",
+          message: `Anulación ${
+            i + 1
+          }: NCF Hasta tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000099 o E310000000148`,
         });
       }
 
@@ -2950,15 +3085,19 @@ const anularComprobantes = async (req, res) => {
 
       if (tipoEnNCFDesde !== anulacion.tipoDocumento) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: El tipo de documento (${anulacion.tipoDocumento}) no coincide con el prefijo del NCF Desde (${tipoEnNCFDesde})`,
+          status: "error",
+          message: `Anulación ${i + 1}: El tipo de documento (${
+            anulacion.tipoDocumento
+          }) no coincide con el prefijo del NCF Desde (${tipoEnNCFDesde})`,
         });
       }
 
       if (tipoEnNCFHasta !== anulacion.tipoDocumento) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: El tipo de documento (${anulacion.tipoDocumento}) no coincide con el prefijo del NCF Hasta (${tipoEnNCFHasta})`,
+          status: "error",
+          message: `Anulación ${i + 1}: El tipo de documento (${
+            anulacion.tipoDocumento
+          }) no coincide con el prefijo del NCF Hasta (${tipoEnNCFHasta})`,
         });
       }
 
@@ -2968,8 +3107,10 @@ const anularComprobantes = async (req, res) => {
 
       if (secuenciaHasta < secuenciaDesde) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: `Anulación ${i + 1}: NCF Hasta debe ser mayor o igual a NCF Desde`,
+          status: "error",
+          message: `Anulación ${
+            i + 1
+          }: NCF Hasta debe ser mayor o igual a NCF Desde`,
         });
       }
     }
@@ -2983,20 +3124,20 @@ const anularComprobantes = async (req, res) => {
       const fechaRegex = /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$/;
       if (!fechaRegex.test(fechaHoraAnulacion)) {
         return res.status(httpStatus.BAD_REQUEST).json({
-          status: 'error',
-          message: 'Formato de fecha inválido. Debe ser DD-MM-YYYY HH:mm:ss',
+          status: "error",
+          message: "Formato de fecha inválido. Debe ser DD-MM-YYYY HH:mm:ss",
         });
       }
       fechaFormateada = fechaHoraAnulacion;
     } else {
       // Generar fecha/hora actual
       const ahora = new Date();
-      const dia = String(ahora.getDate()).padStart(2, '0');
-      const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+      const dia = String(ahora.getDate()).padStart(2, "0");
+      const mes = String(ahora.getMonth() + 1).padStart(2, "0");
       const anio = ahora.getFullYear();
-      const horas = String(ahora.getHours()).padStart(2, '0');
-      const minutos = String(ahora.getMinutes()).padStart(2, '0');
-      const segundos = String(ahora.getSeconds()).padStart(2, '0');
+      const horas = String(ahora.getHours()).padStart(2, "0");
+      const minutos = String(ahora.getMinutes()).padStart(2, "0");
+      const segundos = String(ahora.getSeconds()).padStart(2, "0");
       fechaFormateada = `${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos}`;
     }
 
@@ -3017,13 +3158,13 @@ const anularComprobantes = async (req, res) => {
             NCFHasta: anulacion.ncfHasta,
           },
         ],
-        Cantidad: String(cantidad).padStart(2, '0'),
+        Cantidad: String(cantidad).padStart(2, "0"),
       };
     });
 
     // Obtener token de autenticación
-    console.log('🔑 Obteniendo token de autenticación...');
-    const token = await obtenerTokenTheFactory();
+    console.log("🔑 Obteniendo token de autenticación...");
+    const token = await obtenerTokenTheFactory(rnc);
 
     // Construir payload completo para TheFactoryHKA
     const payloadAnulacion = {
@@ -3031,7 +3172,7 @@ const anularComprobantes = async (req, res) => {
       Anulacion: {
         Encabezado: {
           RNC: rnc,
-          Cantidad: String(cantidadTotal).padStart(2, '0'),
+          Cantidad: String(cantidadTotal).padStart(2, "0"),
           FechaHoraAnulacioneNCF: fechaFormateada,
         },
         DetallesAnulacion: detallesAnulacion,
@@ -3039,8 +3180,8 @@ const anularComprobantes = async (req, res) => {
     };
 
     console.log(
-      '📤 Enviando anulación a TheFactoryHKA:',
-      JSON.stringify(payloadAnulacion, null, 2),
+      "📤 Enviando anulación a TheFactoryHKA:",
+      JSON.stringify(payloadAnulacion, null, 2)
     );
 
     // Enviar a TheFactoryHKA
@@ -3049,15 +3190,15 @@ const anularComprobantes = async (req, res) => {
       payloadAnulacion,
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         timeout: 30000, // 30 segundos de timeout
-      },
+      }
     );
 
     console.log(
-      '📥 Respuesta de TheFactoryHKA:',
-      JSON.stringify(response.data, null, 2),
+      "📥 Respuesta de TheFactoryHKA:",
+      JSON.stringify(response.data, null, 2)
     );
 
     // Verificar respuesta
@@ -3070,8 +3211,8 @@ const anularComprobantes = async (req, res) => {
     ) {
       // Éxito
       return res.status(httpStatus.OK).json({
-        status: 'success',
-        message: 'Secuencias anuladas exitosamente',
+        status: "success",
+        message: "Secuencias anuladas exitosamente",
         data: {
           codigo: response.data.codigo,
           mensaje: response.data.mensaje,
@@ -3089,7 +3230,7 @@ const anularComprobantes = async (req, res) => {
     } else {
       // Error de negocio de TheFactoryHKA
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: `Error al anular: ${response.data.mensaje}`,
         details: {
           codigo: response.data.codigo,
@@ -3099,13 +3240,13 @@ const anularComprobantes = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Error al anular comprobantes:', error);
+    console.error("❌ Error al anular comprobantes:", error);
 
     // Manejo de errores de axios
     if (error.response) {
       return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        status: 'error',
-        message: 'Error en la respuesta de TheFactoryHKA',
+        status: "error",
+        message: "Error en la respuesta de TheFactoryHKA",
         details: {
           status: error.response.status,
           data: error.response.data,
@@ -3113,17 +3254,17 @@ const anularComprobantes = async (req, res) => {
       });
     }
 
-    if (error.code === 'ECONNABORTED') {
+    if (error.code === "ECONNABORTED") {
       return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: 'error',
-        message: 'Timeout al conectar con TheFactoryHKA',
+        status: "error",
+        message: "Timeout al conectar con TheFactoryHKA",
       });
     }
 
     // Error genérico
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno al procesar la anulación',
+      status: "error",
+      message: "Error interno al procesar la anulación",
       details: error.message,
     });
   }
@@ -3141,42 +3282,42 @@ const descargarArchivo = async (req, res) => {
     // Validar parámetros requeridos
     if (!rnc) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: 'El parámetro "rnc" es obligatorio',
       });
     }
 
     if (!documento) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: 'El parámetro "documento" es obligatorio (número de e-NCF)',
       });
     }
 
     if (!extension) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message:
           'El parámetro "extension" es obligatorio (valores permitidos: "xml" o "pdf")',
       });
     }
 
     // Validar que la extensión sea válida
-    const extensionesPermitidas = ['xml', 'pdf'];
+    const extensionesPermitidas = ["xml", "pdf"];
     if (!extensionesPermitidas.includes(extension.toLowerCase())) {
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: 'El parámetro "extension" debe ser "xml" o "pdf"',
       });
     }
 
-    console.log('📥 Descargando archivo desde TheFactoryHKA...');
+    console.log("📥 Descargando archivo desde TheFactoryHKA...");
     console.log(`   RNC: ${rnc}`);
     console.log(`   Documento: ${documento}`);
     console.log(`   Extensión: ${extension}`);
 
     // Obtener token de autenticación
-    const token = await obtenerTokenTheFactory();
+    const token = await obtenerTokenTheFactory(rnc);
 
     // Preparar request para TheFactoryHKA
     const descargaRequest = {
@@ -3186,7 +3327,7 @@ const descargarArchivo = async (req, res) => {
       extension: extension.toLowerCase(),
     };
 
-    console.log('📤 Enviando solicitud de descarga a TheFactoryHKA...');
+    console.log("📤 Enviando solicitud de descarga a TheFactoryHKA...");
 
     // Enviar solicitud a TheFactoryHKA
     const response = await axios.post(
@@ -3194,13 +3335,13 @@ const descargarArchivo = async (req, res) => {
       descargaRequest,
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         timeout: 30000, // 30 segundos para descarga
-      },
+      }
     );
 
-    console.log('✅ Respuesta de TheFactoryHKA recibida');
+    console.log("✅ Respuesta de TheFactoryHKA recibida");
     console.log(`   Código: ${response.data.codigo}`);
     console.log(`   Mensaje: ${response.data.mensaje}`);
     console.log(`   Procesado: ${response.data.procesado}`);
@@ -3213,8 +3354,8 @@ const descargarArchivo = async (req, res) => {
     ) {
       // Descarga exitosa
       return res.status(httpStatus.OK).json({
-        status: 'success',
-        message: 'Archivo descargado exitosamente',
+        status: "success",
+        message: "Archivo descargado exitosamente",
         data: {
           archivo: response.data.archivo, // Base64 del archivo
           extension: extension.toLowerCase(),
@@ -3227,9 +3368,9 @@ const descargarArchivo = async (req, res) => {
       });
     } else {
       // Error en la descarga
-      console.error('❌ Error en la descarga:', response.data.mensaje);
+      console.error("❌ Error en la descarga:", response.data.mensaje);
       return res.status(httpStatus.BAD_REQUEST).json({
-        status: 'error',
+        status: "error",
         message: `Error al descargar archivo: ${response.data.mensaje}`,
         details: {
           codigo: response.data.codigo,
@@ -3239,13 +3380,13 @@ const descargarArchivo = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Error al descargar archivo:', error);
+    console.error("❌ Error al descargar archivo:", error);
 
     // Manejo de errores de axios
     if (error.response) {
       return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        status: 'error',
-        message: 'Error en la respuesta de TheFactoryHKA',
+        status: "error",
+        message: "Error en la respuesta de TheFactoryHKA",
         details: {
           status: error.response.status,
           data: error.response.data,
@@ -3253,17 +3394,17 @@ const descargarArchivo = async (req, res) => {
       });
     }
 
-    if (error.code === 'ECONNABORTED') {
+    if (error.code === "ECONNABORTED") {
       return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: 'error',
-        message: 'Timeout al conectar con TheFactoryHKA',
+        status: "error",
+        message: "Timeout al conectar con TheFactoryHKA",
       });
     }
 
     // Error genérico
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error interno al procesar la descarga',
+      status: "error",
+      message: "Error interno al procesar la descarga",
       details: error.message,
     });
   }
@@ -3272,27 +3413,29 @@ const descargarArchivo = async (req, res) => {
 // Endpoint para verificar el estado del servidor de TheFactoryHKA
 const verificarServidorTheFactory = async (req, res) => {
   try {
-    const { verificarEstadoTheFactory } = await import('@/utils/verificarTheFactory');
+    const { verificarEstadoTheFactory } = await import(
+      "@/utils/verificarTheFactory"
+    );
     const resultados = await verificarEstadoTheFactory();
 
     // Determinar código de estado HTTP según el resultado
     let statusCode = httpStatus.OK;
-    if (resultados.estado === 'SERVIDOR_CAIDO') {
+    if (resultados.estado === "SERVIDOR_CAIDO") {
       statusCode = httpStatus.SERVICE_UNAVAILABLE;
-    } else if (resultados.estado === 'AUTENTICACION_FALLIDA') {
+    } else if (resultados.estado === "AUTENTICACION_FALLIDA") {
       statusCode = httpStatus.UNAUTHORIZED;
     }
 
     return res.status(statusCode).json({
-      status: resultados.estado === 'FUNCIONANDO' ? 'success' : 'error',
+      status: resultados.estado === "FUNCIONANDO" ? "success" : "error",
       message: resultados.recomendacion,
       data: resultados,
     });
   } catch (error) {
-    console.error('❌ Error al verificar servidor de TheFactoryHKA:', error);
+    console.error("❌ Error al verificar servidor de TheFactoryHKA:", error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      message: 'Error al verificar el estado del servidor',
+      status: "error",
+      message: "Error al verificar el estado del servidor",
       details: error.message,
     });
   }

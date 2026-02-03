@@ -1,7 +1,15 @@
-
+// Configuración FileMaker (opcional)
+const FILEMAKER_URL = process.env.FILEMAKER_URL || "";
+const FILEMAKER_DATABASE = process.env.FILEMAKER_DATABASE || "";
+const FILEMAKER_CREDENTIALS_BASE64 =
+  process.env.FILEMAKER_CREDENTIALS_BASE64 || "";
+const FILEMAKER_RESULTADOSLAYOUT = process.env.FILEMAKER_RESULTADOSLAYOUT || "";
+const FILEMAKER_MEDICOSLAYOUT = process.env.FILEMAKER_MEDICOSLAYOUT || "";
+const FILEMAKER_PUBLICACIONESLAYOUT =
+  process.env.FILEMAKER_PUBLICACIONESLAYOUT || "";
 
 // Configuración para TheFactoryHKA e-CF API
-let THEFACTORY_BASE_URL = 'https://demoemision.thefactoryhka.com.do/api';
+let THEFACTORY_BASE_URL = "https://demoemision.thefactoryhka.com.do/api";
 let THEFACTORY_AUTH_URL = `${THEFACTORY_BASE_URL}/Autenticacion`;
 let THEFACTORY_ENVIAR_URL = `${THEFACTORY_BASE_URL}/Enviar`;
 let THEFACTORY_ESTATUS_URL = `${THEFACTORY_BASE_URL}/EstatusDocumento`;

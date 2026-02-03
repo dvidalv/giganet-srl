@@ -1383,6 +1383,20 @@ const stringVacioANull = (valor) => {
   return typeof valor === "string" ? valor.trim() || null : valor;
 };
 
+const stringVacioANullLimit = (valor, max) => {
+  const sanitized = stringVacioANull(valor);
+  if (!sanitized || typeof sanitized !== "string" || !max) return sanitized;
+  return sanitized.length > max ? sanitized.slice(0, max) : sanitized;
+};
+
+// Formato de teléfono para DGII/TheFactory (TelefonoValidationType): XXX-XXX-XXXX
+const formatearTelefonoDGII = (tel) => {
+  if (tel == null || tel === "") return null;
+  const digits = String(tel).replace(/\D/g, "");
+  if (digits.length !== 10) return null;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
+
 // Función para transformar JSON simplificado al formato de TheFactoryHKA
 const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   const {
@@ -1403,6 +1417,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       : null;
   let facturaAdaptada = { ...factura, rnc: rncEmisor };
   let itemsAdaptados = items;
+  const MAX_INTERNO_LENGTH = 12;
 
   // 🔧 ADAPTACIÓN PARA TIPOS 33 Y 34: Mapear estructura específica de FileMaker
   if ((factura?.tipo === "33" || factura?.tipo === "34") && modificacion) {
@@ -1691,17 +1706,17 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           totalDescuentos += montoDescuento;
 
           return {
-            NumeroLinea: (index + 1).toString(),
-            TipoAjuste: "D", // D = Descuento (formato TheFactoryHKA)
-            IndicadorFacturacion: descuento.indicadorFacturacion || "4", // 4 = Exento por defecto para descuentos
-            Descripcion:
+            numeroLinea: (index + 1).toString(),
+            tipoAjuste: "D", // D = Descuento
+            descripcion:
               descuento.Descripcion ||
               descuento.descripcion ||
               descuento.concepto ||
               "Descuento aplicado",
-            TipoValor: "$", // $ = Monto en pesos (requerido por DGII)
-            Valor: montoDescuento.toFixed(2),
-            Monto: montoDescuento.toFixed(2),
+            tipoValor: "$",
+            montoDescuentooRecargo: montoDescuento.toFixed(2),
+            indicadorFacturacionDescuentooRecargo:
+              descuento.indicadorFacturacion || "1",
           };
         });
       }
@@ -1740,22 +1755,24 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       if (montoDescuento > 0) {
         totalDescuentos = montoDescuento;
 
+        const valorCampo = descuentosParaProcesar.porcentaje
+          ? parseFloat(descuentosParaProcesar.porcentaje).toFixed(2)
+          : montoDescuento.toFixed(2);
+        const montoCampo = montoDescuento.toFixed(2);
+
         descuentosArray = [
           {
-            NumeroLinea: "1",
-            TipoAjuste: "D", // D = Descuento (formato TheFactoryHKA)
-            IndicadorFacturacion:
-              descuentosParaProcesar.indicadorFacturacion || "4", // 4 = Exento por defecto para descuentos
-            Descripcion:
+            numeroLinea: "1",
+            tipoAjuste: "D", // D = Descuento
+            descripcion:
               descuentosParaProcesar.Descripcion ||
               descuentosParaProcesar.descripcion ||
               descuentosParaProcesar.concepto ||
               "Descuento global",
-            TipoValor: descuentosParaProcesar.porcentaje ? "%" : "$", // % = Porcentaje, $ = Monto en pesos
-            Valor: descuentosParaProcesar.porcentaje
-              ? parseFloat(descuentosParaProcesar.porcentaje).toFixed(2)
-              : montoDescuento.toFixed(2),
-            Monto: montoDescuento.toFixed(2),
+            tipoValor: descuentosParaProcesar.porcentaje ? "%" : "$",
+            montoDescuentooRecargo: montoCampo,
+            indicadorFacturacionDescuentooRecargo:
+              descuentosParaProcesar.indicadorFacturacion || "1",
           },
         ];
 
@@ -2180,13 +2197,18 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           };
         })(),
         Emisor: (() => {
+          const telefonosRaw = emisor.telefono || [];
+          const arr = Array.isArray(telefonosRaw) ? telefonosRaw : [telefonosRaw];
+          const tablatelefono = arr
+            .map((t) => formatearTelefonoDGII(t))
+            .filter((t) => t != null);
           const baseEmisor = {
             RNC: emisor.rnc,
             RazonSocial: stringVacioANull(emisor.razonSocial),
             Direccion: stringVacioANull(emisor.direccion),
             Municipio: emisor.municipio || null,
             Provincia: emisor.provincia || null,
-            TablaTelefono: emisor.telefono || [],
+            TablaTelefono: tablatelefono,
             FechaEmision: formatearFecha(facturaAdaptada.fecha),
           };
 
@@ -2202,9 +2224,18 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               nombreComercial: stringVacioANull(emisor.razonSocial),
               correo: stringVacioANull(emisor.correo),
               webSite: emisor.webSite || null,
-              codigoVendedor: facturaAdaptada.id || null,
-              numeroFacturaInterna: stringVacioANull(facturaAdaptada.id),
-              numeroPedidoInterno: stringVacioANull(facturaAdaptada.id),
+              codigoVendedor: stringVacioANullLimit(
+                facturaAdaptada.id,
+                MAX_INTERNO_LENGTH
+              ),
+              numeroFacturaInterna: stringVacioANullLimit(
+                facturaAdaptada.id,
+                MAX_INTERNO_LENGTH
+              ),
+              numeroPedidoInterno: stringVacioANullLimit(
+                facturaAdaptada.id,
+                MAX_INTERNO_LENGTH
+              ),
               zonaVenta: "PRINCIPAL",
             };
           }
@@ -2256,7 +2287,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           ? {
               informacionesAdicionales: {
                 numeroContenedor: facturaAdaptada.numeroContenedor || null,
-                numeroReferencia: stringVacioANull(facturaAdaptada.id),
+                numeroReferencia: stringVacioANullLimit(
+                  facturaAdaptada.id,
+                  MAX_INTERNO_LENGTH
+                ),
               },
             }
           : {}),
@@ -2373,14 +2407,14 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         })(),
       },
       DetallesItems: detallesItems,
-      // Agregar sección de descuentos/recargos si existen
+      // Agregar sección de descuentos/recargos (TheFactory espera array, no objeto con descuentoORecargo)
       ...(descuentosArray.length > 0 && {
-        DescuentosORecargos: descuentosArray,
+        descuentosORecargos: descuentosArray,
       }),
-      // Para tipo 45: Agregar sección vacía de descuentos/recargos para validación (si no hay descuentos)
+      // Para tipo 45: Agregar sección vacía si no hay descuentos
       ...(facturaAdaptada.tipo === "45" &&
         descuentosArray.length === 0 && {
-          DescuentosORecargos: [],
+          descuentosORecargos: [],
         }),
       // Para tipos 33 y 34: Agregar InformacionReferencia OBLIGATORIA (con validación)
       ...((facturaAdaptada.tipo === "33" || facturaAdaptada.tipo === "34") &&
@@ -2562,7 +2596,7 @@ const enviarFacturaElectronica = async (req, res) => {
       JSON.stringify(facturaCompleta, null, 2)
     );
 
-    // Enviar a TheFactoryHKA
+    // Enviar a TheFactoryHKA (Token y DocumentoElectronico en la raíz del body)
     const response = await axios.post(THEFACTORY_ENVIAR_URL, facturaCompleta, {
       headers: {
         "Content-Type": "application/json",
@@ -2575,6 +2609,7 @@ const enviarFacturaElectronica = async (req, res) => {
     // 🔧 VALIDAR RESPUESTA ANTES DE ACCEDER A PROPIEDADES
     if (!response.data.procesado || response.data.codigo !== 0) {
       // Error de negocio de TheFactoryHKA
+      console.error("❌ Error de TheFactoryHKA (validación/documento):", response.data.mensaje);
       const errorMessages = {
         108: "NCF ya fue presentado anteriormente",
         109: "NCF vencido o inválido",

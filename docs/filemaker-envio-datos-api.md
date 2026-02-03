@@ -51,8 +51,8 @@ Insert from URL [ Select ; No dialog ; Target: $response ; $cURLOptions ]
 
 ## 2. Enviar factura electrónica a TheFactory
 
-**POST** (ruta que use el controlador `enviarFacturaElectronica`)  
-**Auth:** Sesión (o API Key si se expone así).  
+**POST** `/api/comprobantes/enviar-factura`  
+**Auth:** API Key (igual que solicitar-numero: `Authorization: Bearer <api_key>` o `X-API-Key: <api_key>`). También acepta sesión si se llama desde la web.  
 **Body:** JSON con la factura. El **RNC del emisor** va siempre en `emisor.rnc`.
 
 Estructura mínima de referencia:

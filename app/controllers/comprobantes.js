@@ -2563,33 +2563,37 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
   }
 };
 
-// Controlador para enviar factura a TheFactoryHKA
-const enviarFacturaElectronica = async (req, res) => {
+/**
+ * Lógica de negocio para enviar factura a TheFactoryHKA.
+ * Devuelve { status, data } para uso directo con NextResponse.
+ * @param {Object} body - Body de la petición (emisor, comprador, factura, items, etc.)
+ * @returns {Promise<{ status: number, data: Object }>}
+ */
+export async function enviarFacturaElectronicaLogic(body) {
   try {
-    console.log("Datos recibidos:", JSON.stringify(req.body, null, 2));
+    console.log("Datos recibidos:", JSON.stringify(body, null, 2));
 
     // RNC del emisor: siempre se toma de emisor.rnc
     const rnc =
-      req.body.emisor?.rnc != null && String(req.body.emisor.rnc).trim() !== ""
-        ? String(req.body.emisor.rnc).trim()
+      body.emisor?.rnc != null && String(body.emisor.rnc).trim() !== ""
+        ? String(body.emisor.rnc).trim()
         : null;
     if (!rnc) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "RNC del emisor es requerido",
-        details: "Debe proporcionar emisor.rnc en el body de la petición",
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "RNC del emisor es requerido",
+          details: "Debe proporcionar emisor.rnc en el body de la petición",
+        },
+      };
     }
 
     // Obtener token de autenticación
     const token = await obtenerTokenTheFactory(rnc);
 
     // Transformar el JSON simplificado al formato completo
-    const facturaCompleta = transformarFacturaParaTheFactory(
-      req.body,
-      token,
-      rnc
-    );
+    const facturaCompleta = transformarFacturaParaTheFactory(body, token, rnc);
 
     console.log(
       "Factura transformada:",
@@ -2601,76 +2605,69 @@ const enviarFacturaElectronica = async (req, res) => {
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 60000, // 60 segundos de timeout (aumentado)
+      timeout: 60000,
     });
 
-    // console.log('Respuesta de TheFactoryHKA:', response.data);
-
-    // 🔧 VALIDAR RESPUESTA ANTES DE ACCEDER A PROPIEDADES
     if (!response.data.procesado || response.data.codigo !== 0) {
-      // Error de negocio de TheFactoryHKA
-      console.error("❌ Error de TheFactoryHKA (validación/documento):", response.data.mensaje);
+      console.error("❌ Error de TheFactoryHKA:", response.data.mensaje);
       const errorMessages = {
         108: "NCF ya fue presentado anteriormente",
         109: "NCF vencido o inválido",
         110: "RNC no autorizado para este tipo de comprobante",
         111: "Datos de la factura inválidos",
       };
-
       const mensajeError =
         errorMessages[response.data.codigo] ||
         response.data.mensaje ||
         "Error desconocido";
 
-      // Enviar factura original a soporte
-      await enviarFacturaASoporte(req.body, {
+      await enviarFacturaASoporte(body, {
         tipo: "Error de negocio de TheFactoryHKA",
         mensaje: mensajeError,
         codigo: response.data.codigo,
         respuestaTheFactory: response.data,
       });
 
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: `Error de TheFactoryHKA: ${mensajeError}`,
-        details: {
-          codigo: response.data.codigo,
-          mensajeOriginal: response.data.mensaje,
-          procesado: response.data.procesado,
-          codigoSeguridad: response.data.codigoSeguridad || null,
-          respuestaCompleta: response.data,
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: `Error de TheFactoryHKA: ${mensajeError}`,
+          details: {
+            codigo: response.data.codigo,
+            mensajeOriginal: response.data.mensaje,
+            procesado: response.data.procesado,
+            codigoSeguridad: response.data.codigoSeguridad || null,
+            respuestaCompleta: response.data,
+          },
         },
-      });
+      };
     }
 
-    // ✅ Si llegamos aquí, la factura fue procesada exitosamente
-    const ncfGenerado = req.body.factura.ncf; // Usar el NCF que enviamos
-
-    // 🔍 Consultar estatus inmediatamente (no crítico si falla)
-    // console.log('📋 Consultando estatus inmediato post-envío...');
+    const ncfGenerado = body.factura.ncf;
     const estatusConsulta = await consultarEstatusInmediato(ncfGenerado, rnc);
+    const urlQR = generarUrlQR(response.data, body);
 
-    // 📱 Generar URL para QR Code de la DGII
-    const urlQR = generarUrlQR(response.data, req.body);
-
-    return res.status(httpStatus.OK).json({
-      status: "success",
-      message: "Factura electrónica enviada exitosamente",
+    return {
+      status: httpStatus.OK,
       data: {
-        facturaOriginal: req.body,
-        respuestaTheFactory: response.data,
-        ncfGenerado: ncfGenerado,
-        codigoSeguridad: response.data.codigoSeguridad,
-        fechaFirma: response.data.fechaFirma,
-        xmlBase64: response.data.xmlBase64,
-        urlQR: urlQR, // ✅ NUEVO: URL para generar QR Code
-        estatusInicial: estatusConsulta,
+        status: "success",
+        message: "Factura electrónica enviada exitosamente",
+        data: {
+          facturaOriginal: body,
+          respuestaTheFactory: response.data,
+          ncfGenerado,
+          codigoSeguridad: response.data.codigoSeguridad,
+          fechaFirma: response.data.fechaFirma,
+          xmlBase64: response.data.xmlBase64,
+          urlQR,
+          estatusInicial: estatusConsulta,
+        },
       },
-    });
+    };
   } catch (error) {
     console.error("Error al enviar factura electrónica:", error);
 
-    // Error de autenticación - limpiar cache y reintentar una vez
     if (
       error.message.includes("Error de autenticación") ||
       error.message.includes("token") ||
@@ -2679,155 +2676,138 @@ const enviarFacturaElectronica = async (req, res) => {
       (error.response &&
         (error.response.status === 401 || error.response.status === 403))
     ) {
-      console.log(
-        "🔄 Error de autenticación detectado, limpiando cache del token..."
-      );
-      // Limpiar cache del token
+      console.log("🔄 Error de autenticación detectado, limpiando cache...");
       limpiarCacheToken();
-
-      // Enviar factura original a soporte (aunque sea error de autenticación, puede ser útil para debugging)
-      await enviarFacturaASoporte(req.body, {
+      await enviarFacturaASoporte(body, {
         tipo: "Error de autenticación",
         mensaje: "Token expirado o inválido",
         statusCode: error.response?.status || 401,
       });
-
-      return res.status(httpStatus.UNAUTHORIZED).json({
-        status: "error",
-        message: "Token expirado. Vuelve a intentar la operación",
-        details:
-          "El token de autenticación ha expirado. El sistema lo renovará automáticamente en el próximo intento.",
-        codigo: "TOKEN_EXPIRADO",
-        sugerencia: "Reintente la operación en unos segundos",
-      });
+      return {
+        status: httpStatus.UNAUTHORIZED,
+        data: {
+          status: "error",
+          message: "Token expirado. Vuelve a intentar la operación",
+          details:
+            "El token de autenticación ha expirado. El sistema lo renovará automáticamente en el próximo intento.",
+          codigo: "TOKEN_EXPIRADO",
+          sugerencia: "Reintente la operación en unos segundos",
+        },
+      };
     }
 
     if (error.response) {
-      // Error de la API de TheFactoryHKA
-      console.error("❌ Respuesta de error de TheFactoryHKA:");
-      console.error("Status:", error.response.status);
-      console.error("Data:", JSON.stringify(error.response.data, null, 2));
-
-      // Extraer errores de validación específicos si existen
+      console.error("❌ Respuesta de error de TheFactoryHKA:", error.response.status);
       let detallesValidacion = error.response.data;
-      if (error.response.data.errors) {
-        console.error("Errores de validación:");
-        console.error(JSON.stringify(error.response.data.errors, null, 2));
+      if (error.response.data?.errors) {
         detallesValidacion = {
           ...error.response.data,
           erroresDetallados: error.response.data.errors,
         };
       }
-
-      // Enviar factura original a soporte
-      await enviarFacturaASoporte(req.body, {
+      await enviarFacturaASoporte(body, {
         tipo: "Error de respuesta HTTP de TheFactoryHKA",
         mensaje: error.message || "Error en el envío a TheFactoryHKA",
         statusCode: error.response.status,
         respuestaTheFactory: error.response.data,
       });
-
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "Error en el envío a TheFactoryHKA",
-        details: detallesValidacion,
-        statusCode: error.response.status,
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "Error en el envío a TheFactoryHKA",
+          details: detallesValidacion,
+          statusCode: error.response.status,
+        },
+      };
     }
 
     if (error.code === "ECONNABORTED") {
-      console.warn(
-        `⏰ TIMEOUT TheFactoryHKA para NCF: ${
-          req.body.factura?.ncf || "N/A"
-        } - Duración: 60+ segundos`
-      );
-
-      // Enviar factura original a soporte
-      await enviarFacturaASoporte(req.body, {
+      console.warn("⏰ TIMEOUT TheFactoryHKA");
+      await enviarFacturaASoporte(body, {
         tipo: "Timeout en TheFactoryHKA",
         mensaje: "TheFactoryHKA tardó más de 60 segundos en responder",
-        ncf: req.body.factura?.ncf || null,
+        ncf: body.factura?.ncf || null,
       });
-
-      return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: "error",
-        message: "Timeout: TheFactoryHKA tardó más de 60 segundos en responder",
-        details:
-          "El servicio de TheFactoryHKA está experimentando lentitud. La factura puede haberse procesado correctamente. Consulte el estatus del documento.",
-        ncf: req.body.factura?.ncf || null,
-        sugerencia:
-          "Usar el endpoint /consultar-estatus para verificar si la factura fue procesada",
-      });
+      return {
+        status: httpStatus.REQUEST_TIMEOUT,
+        data: {
+          status: "error",
+          message: "Timeout: TheFactoryHKA tardó más de 60 segundos en responder",
+          details:
+            "El servicio está experimentando lentitud. Consulte el estatus del documento.",
+          ncf: body.factura?.ncf || null,
+          sugerencia: "Usar el endpoint /consultar-estatus para verificar",
+        },
+      };
     }
 
     if (error.message.includes("Faltan datos obligatorios")) {
-      // Enviar factura original a soporte
-      await enviarFacturaASoporte(req.body, {
+      await enviarFacturaASoporte(body, {
         tipo: "Error de validación",
         mensaje: error.message,
       });
-
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: error.message,
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: { status: "error", message: error.message },
+      };
     }
 
-    if (
-      error.message.includes(
-        "Timeout al conectar con el servicio de autenticación"
-      )
-    ) {
-      // Enviar factura original a soporte
-      await enviarFacturaASoporte(req.body, {
+    if (error.message.includes("Timeout al conectar con el servicio de autenticación")) {
+      await enviarFacturaASoporte(body, {
         tipo: "Timeout en autenticación",
-        mensaje:
-          "Timeout al conectar con el servicio de autenticación de TheFactoryHKA",
+        mensaje: "Timeout al conectar con TheFactoryHKA",
       });
-
-      return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: "error",
-        message: "Timeout en la autenticación con TheFactoryHKA",
-      });
+      return {
+        status: httpStatus.REQUEST_TIMEOUT,
+        data: {
+          status: "error",
+          message: "Timeout en la autenticación con TheFactoryHKA",
+        },
+      };
     }
 
-    // Detectar si el servidor está caído
     if (
       error.message.includes("SERVIDOR_CAIDO") ||
       error.message.includes("SERVIDOR_NO_ENCONTRADO") ||
       error.message.includes("SERVIDOR_RESETEO")
     ) {
       console.error("🚨 SERVIDOR DE THEFACTORY CAÍDO O INACCESIBLE");
-      console.error("Detalles:", error.message);
-
-      // Enviar factura original a soporte
-      await enviarFacturaASoporte(req.body, {
+      await enviarFacturaASoporte(body, {
         tipo: "Servidor de TheFactoryHKA caído o inaccesible",
         mensaje: error.message,
       });
-
-      return res.status(httpStatus.SERVICE_UNAVAILABLE).json({
-        status: "error",
-        message: "El servidor de TheFactoryHKA está caído o inaccesible",
-        details: error.message,
-        sugerencia:
-          "Verifica el estado del servidor usando el endpoint /comprobantes/verificar-servidor o contacta con soporte de TheFactoryHKA",
-      });
+      return {
+        status: httpStatus.SERVICE_UNAVAILABLE,
+        data: {
+          status: "error",
+          message: "El servidor de TheFactoryHKA está caído o inaccesible",
+          details: error.message,
+          sugerencia:
+            "Verifica el estado del servidor o contacta con soporte",
+        },
+      };
     }
 
-    // Enviar factura original a soporte para errores generales
-    await enviarFacturaASoporte(req.body, {
+    await enviarFacturaASoporte(body, {
       tipo: "Error interno del servidor",
-      mensaje:
-        error.message || "Error desconocido al procesar la factura electrónica",
+      mensaje: error.message || "Error desconocido al procesar la factura electrónica",
     });
-
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: "error",
-      message: "Error interno del servidor al procesar la factura electrónica",
-      details: error.message,
-    });
+    return {
+      status: httpStatus.INTERNAL_SERVER_ERROR,
+      data: {
+        status: "error",
+        message: "Error interno del servidor al procesar la factura electrónica",
+        details: error.message,
+      },
+    };
   }
+}
+
+// Controlador Express (req, res) - mantiene compatibilidad con runWithNext
+const enviarFacturaElectronica = async (req, res) => {
+  const result = await enviarFacturaElectronicaLogic(req.body);
+  return res.status(result.status).json(result.data);
 };
 
 // 🔍 Endpoint independiente para consultar estatus de documento

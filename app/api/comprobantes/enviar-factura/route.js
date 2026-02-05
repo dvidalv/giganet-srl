@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { runWithNext } from "@/lib/nextControllerAdapter";
-import { enviarFacturaElectronica } from "@/app/controllers/comprobantes";
 import { auth } from "@/auth";
 import { hashApiKey } from "@/utils/apiKey";
+import { enviarFacturaElectronicaLogic } from "@/app/controllers/comprobantes";
 
 function getApiKeyFromRequest(request) {
   const authHeader = request.headers.get("authorization");
@@ -28,23 +27,28 @@ async function getUserIdByApiKey(apiKey) {
  * y la envía a TheFactoryHKA para emisión del e-CF.
  *
  * Autorización: sesión (cookie) O API Key (Authorization: Bearer <api_key> o X-API-Key).
- * FileMaker envía la misma API Key que usa en solicitar-numero.
  * Body: ver docs/filemaker-envio-datos-api.md
  */
 export async function POST(request) {
   const session = await auth();
-  if (session?.user?.id) {
-    return runWithNext(enviarFacturaElectronica, request, {
-      requireAuth: true,
-    });
+  if (!session?.user?.id) {
+    const apiKey = getApiKeyFromRequest(request);
+    if (!apiKey) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const userId = await getUserIdByApiKey(apiKey);
+    if (!userId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
   }
-  const apiKey = getApiKeyFromRequest(request);
-  if (!apiKey) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
-  const userId = await getUserIdByApiKey(apiKey);
-  if (!userId) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-  return runWithNext(enviarFacturaElectronica, request, { requireAuth: false });
+
+  const result = await enviarFacturaElectronicaLogic(body);
+  return NextResponse.json(result.data, { status: result.status });
 }

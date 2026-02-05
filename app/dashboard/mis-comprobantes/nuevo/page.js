@@ -4,13 +4,18 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import SecuenciaForm from "@/components/dashboard/SecuenciaForm";
 
-export default async function NuevoComprobante() {
+export default async function NuevoComprobante({ searchParams }) {
   const session = await auth();
   const user = session?.user;
 
   if (!user || user.role !== "user") {
     redirect("/login");
   }
+
+  const tipoPreseleccionado =
+    typeof searchParams?.tipo === "string" && searchParams.tipo.trim() !== ""
+      ? searchParams.tipo.trim()
+      : null;
 
   return (
     <div className={styles.wrapper}>
@@ -22,7 +27,7 @@ export default async function NuevoComprobante() {
         ← Volver a Mis Comprobantes
       </Link>
       <div className={styles.formSection}>
-        <SecuenciaForm />
+        <SecuenciaForm tipoPreseleccionado={tipoPreseleccionado} />
       </div>
     </div>
   );

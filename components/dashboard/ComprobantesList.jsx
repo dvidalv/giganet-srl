@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { FaReceipt, FaFileInvoiceDollar } from "react-icons/fa";
+import { FaFileCircleMinus } from "react-icons/fa6";
 import styles from "./ComprobantesList.module.css";
 
 const MENSAJE_CONFIRMAR_ELIMINAR =
@@ -26,6 +28,48 @@ function formatVencimiento(fecha) {
 }
 
 const ESTADOS_ACTIVOS = ["activo", "alerta", "pocos"];
+
+const TIPO_ICON_MAP = {
+  31: { Icon: FaReceipt, iconClass: "cardIcon_tipo31" },
+  32: { Icon: FaReceipt, iconClass: "cardIcon_tipo32" },
+  33: { Icon: FaFileInvoiceDollar, iconClass: "cardIcon_tipo33" },
+  34: { Icon: FaFileCircleMinus, iconClass: "cardIcon_tipo34" },
+  36: { Icon: FaFileInvoiceDollar, iconClass: "cardIcon_tipo36" },
+};
+
+function getTipoTheme(tipo) {
+  const t = tipo != null ? Number(tipo) : null;
+  const mapped = t != null && TIPO_ICON_MAP[t];
+  if (mapped) {
+    return { Icon: mapped.Icon, iconClass: styles[mapped.iconClass] };
+  }
+  return { Icon: FaReceipt, iconClass: styles.cardIcon_default };
+}
+
+function getCardTheme(estadoTipo) {
+  const e = (estadoTipo ?? "activo").toString().toLowerCase();
+  const isInactive = ["agotado", "vencido", "inactivo"].includes(e);
+  const isAlerta = ["alerta", "pocos"].includes(e);
+  if (isInactive) {
+    return {
+      disponiblesClass: styles.cardBoxDisponibles_agotado,
+      badgeClass: styles.cardBadge_agotado,
+      canGenerate: false,
+    };
+  }
+  if (isAlerta) {
+    return {
+      disponiblesClass: styles.cardBoxDisponibles_alerta,
+      badgeClass: styles.cardBadge_alerta,
+      canGenerate: true,
+    };
+  }
+  return {
+    disponiblesClass: styles.cardBoxDisponibles_activo,
+    badgeClass: styles.cardBadge_activo,
+    canGenerate: true,
+  };
+}
 
 function normalizarComprobante(r) {
   return {
@@ -303,150 +347,179 @@ export default function ComprobantesList() {
             const cardEstado =
               (c.estadoTipo ?? c.estado_tipo) === "pocos"
                 ? "alerta"
-                : c.estadoTipo ?? c.estado_tipo ?? "activo";
+                : (c.estadoTipo ?? c.estado_tipo ?? "activo").toString();
+            const estadoTheme = getCardTheme(c.estado_tipo ?? c.estadoTipo);
+            const tipoTheme = getTipoTheme(c.tipo ?? c.tipo_comprobante);
+            const { Icon, iconClass } = tipoTheme;
+            const { disponiblesClass, badgeClass, canGenerate } = estadoTheme;
+            const detallesHref = `/dashboard/mis-comprobantes/${c.id ?? c._id}`;
+            const tipoComprobante = c.tipo ?? c.tipo_comprobante;
+            const generarHref =
+              tipoComprobante != null && String(tipoComprobante).trim() !== ""
+                ? `/dashboard/mis-comprobantes/nuevo?tipo=${encodeURIComponent(String(tipoComprobante).trim())}`
+                : "/dashboard/mis-comprobantes/nuevo";
+            const disponibles =
+              c.disponibles ?? c.numeros_disponibles ?? 0;
+            const utilizados =
+              c.utilizados ?? c.numeros_utilizados ?? 0;
+            const proximoNum =
+              c.proximoNumero ?? c.proximo_numero ?? 0;
+
             return (
               <article
                 key={c.id ?? c._id}
                 className={`${styles.card} ${
                   styles[`card_${cardEstado}`] ?? ""
                 }`}>
-                <div className={styles.cardHeader}>
-                  <h2 className={styles.cardTitle}>
-                    {c.titulo ??
-                      c.descripcion_tipo ??
-                      `Tipo ${c.tipo ?? c.tipo_comprobante}`}
-                  </h2>
-                  <div className={styles.cardActions}>
-                    <Link
-                      href={`/dashboard/mis-comprobantes/${c.id ?? c._id}`}
-                      className={styles.actionBtn}
-                      title="Editar"
-                      aria-label="Editar comprobante">
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </Link>
-                    <button
-                      type="button"
-                      className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                      title="Eliminar"
-                      aria-label="Eliminar comprobante"
-                      onClick={() => openDeleteModal(c)}
-                      disabled={deletingId === (c.id ?? c._id)}>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                        <path d="M10 11v6M14 11v6" />
-                      </svg>
-                    </button>
+                <div>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardHeaderInner}>
+                      <div className={`${styles.cardIcon} ${iconClass}`}>
+                        <Icon className={styles.cardIconSvg} size={20} />
+                      </div>
+                      <div className={styles.cardTitleWrap}>
+                        <h2 className={styles.cardTitle}>
+                          {c.titulo ??
+                            c.descripcion_tipo ??
+                            `Tipo ${c.tipo ?? c.tipo_comprobante}`}
+                        </h2>
+                        <p className={styles.cardSubtitle}>Electrónica</p>
+                      </div>
+                    </div>
+                    <div className={styles.cardActions}>
+                      <Link
+                        href={detallesHref}
+                        className={styles.actionBtn}
+                        title="Editar"
+                        aria-label="Editar comprobante">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden>
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </Link>
+                      <button
+                        type="button"
+                        className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                        title="Eliminar"
+                        aria-label="Eliminar comprobante"
+                        onClick={() => openDeleteModal(c)}
+                        disabled={deletingId === (c.id ?? c._id)}>
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden>
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className={styles.cardDivider} />
+                  <div className={styles.cardBody}>
+                    <div className={styles.cardGrid2}>
+                      <div>
+                        <p className={styles.cardLabel}>RNC</p>
+                        <p className={styles.cardValue}>{c.rnc}</p>
+                      </div>
+                      <div>
+                        <p className={styles.cardLabel}>Tipo</p>
+                        <p className={styles.cardValue}>
+                          {c.tipo ?? c.tipo_comprobante}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className={styles.cardLabel}>Razón Social</p>
+                      <p className={styles.cardValue}>
+                        {c.razonSocial ?? c.razon_social}
+                      </p>
+                    </div>
+                    <div className={styles.cardGrid2}>
+                      <div>
+                        <p className={styles.cardLabel}>Prefijo</p>
+                        <p className={styles.cardValue}>{c.prefijo}</p>
+                      </div>
+                      <div>
+                        <p className={styles.cardLabel}>Rango</p>
+                        <p className={styles.cardValue}>
+                          {formatRango(
+                            c.numeroInicial ?? c.numero_inicial,
+                            c.numeroFinal ?? c.numero_final
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={styles.cardGrid2}>
+                      <div className={`${styles.cardBoxDisponibles} ${disponiblesClass}`}>
+                        <p className={styles.cardLabel}>Disponibles</p>
+                        <p className={styles.cardValue}>
+                          {disponibles.toLocaleString("es-DO")}
+                        </p>
+                      </div>
+                      <div className={styles.cardBoxUtilizados}>
+                        <p className={styles.cardLabel}>Utilizados</p>
+                        <p className={styles.cardValue}>
+                          {utilizados.toLocaleString("es-DO")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={styles.cardEstadoRow}>
+                      <div>
+                        <p className={styles.cardLabel}>Estado</p>
+                        <span
+                          className={`${styles.cardBadge} ${badgeClass}`}
+                          aria-label={`Estado: ${c.estado ?? "ACTIVO"}`}>
+                          <span className={styles.cardBadgeDot} aria-hidden />
+                          {c.estado ?? "ACTIVO"}
+                        </span>
+                      </div>
+                      <div>
+                        <p className={styles.cardLabel}>Próximo #</p>
+                        <p className={styles.cardValue}>
+                          {canGenerate
+                            ? proximoNum.toLocaleString("es-DO")
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className={styles.cardLabel}>Vencimiento</p>
+                      <p className={styles.cardValue}>
+                        {c.vencimiento ?? "No especificado"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className={styles.cardDivider} />
-                <dl className={styles.fields}>
-                  <div className={styles.field}>
-                    <dt>RNC</dt>
-                    <dd>{c.rnc}</dd>
-                  </div>
-                  <div className={styles.field}>
-                    <dt>Razón Social</dt>
-                    <dd>{c.razonSocial ?? c.razon_social}</dd>
-                  </div>
-                  <div className={styles.fieldRow}>
-                    <div className={styles.field}>
-                      <dt>Tipo</dt>
-                      <dd>{c.tipo ?? c.tipo_comprobante}</dd>
-                    </div>
-                    <div className={styles.field}>
-                      <dt>Prefijo</dt>
-                      <dd>{c.prefijo}</dd>
-                    </div>
-                  </div>
-                  <div className={styles.field}>
-                    <dt>Rango</dt>
-                    <dd>
-                      {formatRango(
-                        c.numeroInicial ?? c.numero_inicial,
-                        c.numeroFinal ?? c.numero_final
-                      )}
-                    </dd>
-                  </div>
-                  <div className={styles.fieldRow}>
-                    <div className={styles.field}>
-                      <dt>Disponibles</dt>
-                      <dd>
-                        <span
-                          className={
-                            (c.estadoTipo ?? c.estado_tipo) === "pocos"
-                              ? styles.numPocos
-                              : styles.numDisponibles
-                          }>
-                          {(
-                            c.disponibles ??
-                            c.numeros_disponibles ??
-                            0
-                          ).toLocaleString("es-DO")}
-                        </span>
-                      </dd>
-                    </div>
-                    <div className={styles.field}>
-                      <dt>Utilizados</dt>
-                      <dd className={styles.numUtilizados}>
-                        {(
-                          c.utilizados ??
-                          c.numeros_utilizados ??
-                          0
-                        ).toLocaleString("es-DO")}
-                      </dd>
-                    </div>
-                  </div>
-                  <div className={styles.field}>
-                    <dt>Próximo Número</dt>
-                    <dd>
-                      {(
-                        c.proximoNumero ??
-                        c.proximo_numero ??
-                        0
-                      ).toLocaleString("es-DO")}
-                    </dd>
-                  </div>
-                  <div className={styles.field}>
-                    <dt>Estado</dt>
-                    <dd>
-                      <span
-                        className={`${styles.badge} ${
-                          styles[
-                            `badge_${(
-                              c.estadoTipo ??
-                              c.estado_tipo ??
-                              "activo"
-                            ).toString()}`
-                          ] || styles.badge_activo
-                        }`}>
-                        {c.estado ?? "ACTIVO"}
-                      </span>
-                    </dd>
-                  </div>
-                  <div className={styles.field}>
-                    <dt>Vencimiento</dt>
-                    <dd>{c.vencimiento ?? "No especificado"}</dd>
-                  </div>
-                </dl>
+                <div className={styles.cardActionsFooter}>
+                  {canGenerate ? (
+                    <Link
+                      href={generarHref}
+                      className={styles.cardBtnGenerar}>
+                      Generar
+                    </Link>
+                  ) : (
+                    <span
+                      className={`${styles.cardBtnGenerar} ${styles.cardBtnGenerarDisabled}`}
+                      aria-disabled="true">
+                      Generar
+                    </span>
+                  )}
+                </div>
               </article>
             );
           })}

@@ -32,8 +32,8 @@ function getDescripcionByTipo(tipo) {
   return item.label.replace(/^\d+\s*-\s*/, "").trim();
 }
 
-function getInitialForm() {
-  return {
+function getInitialForm(tipoPreseleccionado) {
+  const initial = {
     razon_social: "",
     tipo_comprobante: "",
     descripcion_tipo: "",
@@ -45,11 +45,19 @@ function getInitialForm() {
     alerta_minima_restante: "10",
     comentario: "",
   };
+  if (tipoPreseleccionado && String(tipoPreseleccionado).trim()) {
+    const tipo = String(tipoPreseleccionado).trim();
+    initial.tipo_comprobante = tipo;
+    initial.descripcion_tipo = getDescripcionByTipo(tipo);
+  }
+  return initial;
 }
 
-export default function SecuenciaForm({ onSuccess }) {
+export default function SecuenciaForm({ onSuccess, tipoPreseleccionado }) {
   const [empresa, setEmpresa] = useState({ rnc: "", razonSocial: "" });
-  const [form, setForm] = useState(getInitialForm);
+  const [form, setForm] = useState(() =>
+    getInitialForm(tipoPreseleccionado)
+  );
   const [loadingEmpresa, setLoadingEmpresa] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);

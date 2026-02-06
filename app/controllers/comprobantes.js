@@ -23,6 +23,9 @@ import { Comprobante } from "@/app/models/comprobante";
 import User from "@/app/models/user";
 import { hashApiKey } from "@/utils/apiKey";
 import axios from "axios";
+import QRCode from "qrcode";
+
+
 
 const TIPOS_COMPROBANTE = ["31", "32", "33", "34", "41", "43", "44", "45"];
 const RNC_MIN = 9;
@@ -52,7 +55,6 @@ function formatFechaVencimiento(fecha) {
   const año = d.getFullYear();
   return `${dia}-${mes}-${año}`;
 }
-import QRCode from "qrcode";
 import { sendEmail } from "@/api-mail_brevo";
 import {
   THEFACTORY_AUTH_URL,
@@ -201,11 +203,30 @@ const esFechaVencimientoObligatoria = (tipoDocumento) => {
   return esObligatorio;
 };
 
+// URLs DGII para QR: desarrollo (TesteCF) vs producción (ecf)
+const URLS_DGII_QR = {
+  desarrollo: {
+    ConsultaTimbreFC: "https://fc.dgii.gov.do/TesteCF/ConsultaTimbreFC",
+    ConsultaTimbre: "https://ecf.dgii.gov.do/TesteCF/ConsultaTimbre",
+  },
+  produccion: {
+    ConsultaTimbreFC: "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC",
+    ConsultaTimbre: "https://ecf.dgii.gov.do/ecf/ConsultaTimbre",
+  },
+};
+
 // Función para generar URL del QR Code para la DGII según el tipo de comprobante
 const generarUrlQR = (responseData, facturaOriginal) => {
   try {
     const montoTotal = parseFloat(facturaOriginal.factura.total || 0);
     const tipoComprobante = facturaOriginal.factura.tipo;
+    const ambiente =
+      String(
+        facturaOriginal.ambiente || process.env.DGII_AMBIENTE || ""
+      ).toLowerCase() === "desarrollo"
+        ? "desarrollo"
+        : "produccion";
+    const urlsDGII = URLS_DGII_QR[ambiente];
 
     // 🔍 DEBUG: Verificar datos recibidos
     console.log("🔍 DEBUG generarUrlQR - Datos recibidos:");
@@ -213,6 +234,7 @@ const generarUrlQR = (responseData, facturaOriginal) => {
     console.log("facturaOriginal:", JSON.stringify(facturaOriginal, null, 2));
     console.log("montoTotal calculado:", montoTotal);
     console.log("tipoComprobante:", tipoComprobante);
+    console.log("ambiente DGII:", ambiente);
 
     // Formatear fechas al formato DD-MM-YYYY
     const formatearFechaUrl = (fecha) => {
@@ -235,7 +257,7 @@ const generarUrlQR = (responseData, facturaOriginal) => {
 
     // TIPO 32 (Consumo Final): usar endpoint ConsultaTimbreFC (parámetros básicos)
     if (tipoComprobante === "32") {
-      baseUrl = "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC";
+      baseUrl = urlsDGII.ConsultaTimbreFC;
       params = new URLSearchParams({
         RncEmisor: facturaOriginal.emisor.rnc,
         ENCF: facturaOriginal.factura.ncf,
@@ -244,12 +266,12 @@ const generarUrlQR = (responseData, facturaOriginal) => {
       });
 
       console.log(
-        "📋 Usando endpoint ConsultaTimbreFC (consumo final tipo 32)"
+        `📋 Usando endpoint ConsultaTimbreFC (${ambiente}): ${baseUrl}`
       );
     } else {
       // TIPOS 31, 33, 34, etc.: usar endpoint ConsultaTimbre (parámetros completos)
       // Estos tipos SIEMPRE requieren RncComprador, FechaEmision y FechaFirma
-      baseUrl = "https://ecf.dgii.gov.do/ecf/ConsultaTimbre";
+      baseUrl = urlsDGII.ConsultaTimbre;
 
       params = new URLSearchParams({
         RncEmisor: facturaOriginal.emisor.rnc,
@@ -264,7 +286,7 @@ const generarUrlQR = (responseData, facturaOriginal) => {
       });
 
       console.log(
-        `📋 Usando endpoint ConsultaTimbre (tipo ${tipoComprobante} con parámetros completos)`
+        `📋 Usando endpoint ConsultaTimbre (tipo ${tipoComprobante}, ${ambiente}): ${baseUrl}`
       );
     }
 
@@ -281,58 +303,55 @@ const generarUrlQR = (responseData, facturaOriginal) => {
   }
 };
 
-// Función para generar código QR según especificaciones de la DGII
-const generarCodigoQR = async (req, res) => {
+/**
+ * Lógica para generar código QR según especificaciones DGII (sin Express).
+ * Devuelve { status, data } para uso directo con NextResponse.
+ * @param {Object} body - { url?, rnc?, rncComprador?, ncf?, codigo?, fecha?, fechaFirma?, monto?, tipo?, formato?, tamaño?, ambiente? }
+ * @param {string} body.ambiente - "produccion" (default) | "desarrollo"
+ * @returns {Promise<{ status: number, data: object }>}
+ */
+export async function generarCodigoQRLogic(body) {
   try {
-    // 🔍 DEBUG: Log completo de datos recibidos desde FileMaker
-    console.log("🔍 === DEBUG generarCodigoQR ===");
-    console.log("req.body completo:", JSON.stringify(req.body, null, 2));
-    console.log("req.headers:", JSON.stringify(req.headers, null, 2));
-
     const {
       url,
       rnc,
-      rncComprador, // ✅ Agregar rncComprador a la desestructuración
+      rncComprador,
       ncf,
       codigo,
       fecha,
-      fechaFirma, // ✅ Agregar fechaFirma a la desestructuración
+      fechaFirma,
       monto,
-      tipo, // ✅ Agregar tipo de comprobante
+      tipo,
       formato = "png",
       tamaño = 300,
-    } = req.body;
+      ambiente: ambienteBody,
+    } = body ?? {};
+    const ambiente =
+      String(
+        ambienteBody || process.env.DGII_AMBIENTE || ""
+      ).toLowerCase() === "desarrollo"
+        ? "desarrollo"
+        : "produccion";
 
-    console.log("🔍 Parámetros extraídos:");
-    console.log("rnc:", rnc);
-    console.log("rncComprador:", rncComprador);
-    console.log("ncf:", ncf);
-    console.log("codigo:", codigo);
-    console.log("fecha:", fecha);
-    console.log("fechaFirma:", fechaFirma);
-    console.log("monto:", monto);
-    console.log("tipo:", tipo);
+    const urlsDGII =
+      ambiente === "desarrollo"
+        ? URLS_DGII_QR.desarrollo
+        : URLS_DGII_QR.produccion;
 
     let urlParaQR;
 
-    // Opción 1: URL completa proporcionada (método anterior)
+    // Opción 1: URL completa proporcionada
     if (url) {
       urlParaQR = url;
     }
-    // Opción 2: Parámetros individuales (método mejorado)
+    // Opción 2: Parámetros individuales
     else if (rnc && ncf) {
-      // Determinar endpoint y parámetros según el tipo de comprobante
       const montoTotal = parseFloat(monto || 0);
       let baseUrl, params;
 
-      // Formatear fechas al formato DD-MM-YYYY
       const formatearFechaUrl = (fechaInput) => {
         if (!fechaInput) return "";
-        // Si viene en formato DD-MM-YYYY, mantenerlo
-        if (fechaInput.match(/^\d{2}-\d{2}-\d{4}$/)) {
-          return fechaInput;
-        }
-        // Si viene en otro formato, convertirlo
+        if (fechaInput.match(/^\d{2}-\d{2}-\d{4}$/)) return fechaInput;
         const date = new Date(fechaInput);
         return `${date.getDate().toString().padStart(2, "0")}-${(
           date.getMonth() + 1
@@ -341,45 +360,41 @@ const generarCodigoQR = async (req, res) => {
           .padStart(2, "0")}-${date.getFullYear()}`;
       };
 
-      // TIPO 32 (Consumo Final): usar endpoint ConsultaTimbreFC (parámetros básicos)
       if (tipo === "32") {
         if (!codigo) {
-          return res.status(httpStatus.BAD_REQUEST).json({
-            status: "error",
-            message:
-              "Parámetros insuficientes para generar el código QR tipo 32",
-            details:
-              "Para facturas tipo 32 se requiere: rnc, ncf, monto y codigo (código de seguridad)",
-          });
+          return {
+            status: httpStatus.BAD_REQUEST,
+            data: {
+              status: "error",
+              message:
+                "Parámetros insuficientes para generar el código QR tipo 32",
+              details:
+                "Para facturas tipo 32 se requiere: rnc, ncf, monto y codigo (código de seguridad)",
+            },
+          };
         }
-
-        baseUrl = "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC";
+        baseUrl = urlsDGII.ConsultaTimbreFC;
         params = new URLSearchParams({
           RncEmisor: rnc,
           ENCF: ncf,
           MontoTotal: montoTotal.toFixed(2),
           CodigoSeguridad: codigo,
         });
-
-        console.log(
-          "📋 Usando endpoint ConsultaTimbreFC (consumo final tipo 32)"
-        );
       } else {
-        // TIPOS 31, 33, 34, etc.: usar endpoint ConsultaTimbre (parámetros completos)
-        // Estos tipos SIEMPRE requieren RncComprador, FechaEmision y FechaFirma
         if (!codigo || !fecha) {
-          return res.status(httpStatus.BAD_REQUEST).json({
-            status: "error",
-            message: `Parámetros insuficientes para generar el código QR tipo ${
-              tipo || "desconocido"
-            }`,
-            details:
-              "Para facturas tipo 31, 33, 34, etc. se requiere: rnc, ncf, codigo, fecha, rncComprador, monto, fechaFirma",
-          });
+          return {
+            status: httpStatus.BAD_REQUEST,
+            data: {
+              status: "error",
+              message: `Parámetros insuficientes para generar el código QR tipo ${
+                tipo || "desconocido"
+              }`,
+              details:
+                "Para facturas tipo 31, 33, 34, etc. se requiere: rnc, ncf, codigo, fecha, rncComprador, monto, fechaFirma",
+            },
+          };
         }
-
-        baseUrl = "https://ecf.dgii.gov.do/ecf/ConsultaTimbre";
-
+        baseUrl = urlsDGII.ConsultaTimbre;
         params = new URLSearchParams({
           RncEmisor: rnc,
           RncComprador: rncComprador || "",
@@ -389,52 +404,30 @@ const generarCodigoQR = async (req, res) => {
           FechaFirma: fechaFirma || fecha,
           CodigoSeguridad: codigo,
         });
-
-        console.log(
-          `📋 Usando endpoint ConsultaTimbre (tipo ${tipo} con parámetros completos)`
-        );
       }
 
       urlParaQR = `${baseUrl}?${params.toString()}`;
-
-      console.log("🎯 URL QR generada según tipo:", urlParaQR);
-      console.log("📊 Endpoint usado:", baseUrl);
-      console.log("📊 Parámetros incluidos:", params.toString());
-      console.log("📋 Tipo comprobante:", tipo || "NO ESPECIFICADO");
-
-      // console.log(
-      //   `📱 URL QR oficial DGII para monto RD$${montoTotal.toLocaleString()}: ${urlParaQR}`,
-      // );
-      // console.log(
-      //   `📊 Endpoint: ${esMontoAlto ? 'ALTO VALOR (≥$250K)' : 'ESTÁNDAR (<$250K)'} - ${baseUrl}`,
-      // );
     } else {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "Parámetros insuficientes para generar el código QR",
-        details:
-          "Debe proporcionar: url completa O al menos (rnc + ncf) para generar el QR",
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "Parámetros insuficientes para generar el código QR",
+          details:
+            "Debe proporcionar: url completa O al menos (rnc + ncf) para generar el QR",
+        },
+      };
     }
 
-    // Configuración según recomendaciones de la DGII (ajustada para URLs largas)
     const opcionesQR = {
-      // No especificar version para que se calcule automáticamente según el contenido
-      errorCorrectionLevel: "M", // Nivel medio de corrección de errores
+      errorCorrectionLevel: "M",
       type: formato === "svg" ? "svg" : "image/png",
       quality: 0.92,
-      margin: 1, // Margen recomendado (4 módulos para mejor lectura)
-      color: {
-        dark: "#000000", // Color negro para el QR
-        light: "#FFFFFF", // Fondo blanco
-      },
-      width: Math.max(parseInt(tamaño) || 300, 150), // Mínimo 150px (~2.5cm a 150 DPI)
+      margin: 1,
+      color: { dark: "#000000", light: "#FFFFFF" },
+      width: Math.max(parseInt(tamaño) || 300, 150),
     };
 
-    // console.log(`📱 Generando QR Code versión 8 para URL: ${urlParaQR}`);
-    // console.log(`📏 Configuración: ${formato.toUpperCase()}, ${tamaño}px`);
-
-    // Generar el código QR
     let qrData;
     if (formato === "svg") {
       qrData = await QRCode.toString(urlParaQR, { ...opcionesQR, type: "svg" });
@@ -442,34 +435,46 @@ const generarCodigoQR = async (req, res) => {
       qrData = await QRCode.toDataURL(urlParaQR, opcionesQR);
     }
 
-    // Respuesta exitosa
-    return res.status(httpStatus.OK).json({
-      status: "success",
-      message: "Código QR generado exitosamente",
+    return {
+      status: httpStatus.OK,
       data: {
-        url: urlParaQR,
-        qrCode: qrData,
-        formato: formato,
-        tamaño: tamaño,
-        versionCalculada: "auto", // Se calcula automáticamente según el contenido
-        parametrosUsados: url ? "URL completa" : "Parámetros individuales",
-        especificaciones: {
-          errorCorrection: "M",
-          cumpleNormativaDGII: true,
-          versionOptimizada: true,
+        status: "success",
+        message: "Código QR generado exitosamente",
+        data: {
+          url: urlParaQR,
+          qrCode: qrData,
+          formato,
+          tamaño,
+          ambiente: ambiente === "desarrollo" ? "desarrollo" : "produccion",
+          versionCalculada: "auto",
+          parametrosUsados: url ? "URL completa" : "Parámetros individuales",
+          especificaciones: {
+            errorCorrection: "M",
+            cumpleNormativaDGII: true,
+            versionOptimizada: true,
+          },
+          timestamp: new Date().toISOString(),
         },
-        timestamp: new Date().toISOString(),
       },
-    });
+    };
   } catch (error) {
     console.error("❌ Error al generar código QR:", error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: "error",
-      message: "Error interno al generar el código QR",
-      details: error.message,
-      timestamp: new Date().toISOString(),
-    });
+    return {
+      status: httpStatus.INTERNAL_SERVER_ERROR,
+      data: {
+        status: "error",
+        message: "Error interno al generar el código QR",
+        details: error.message,
+        timestamp: new Date().toISOString(),
+      },
+    };
   }
+}
+
+// Controlador Express (req, res) - mantiene compatibilidad con runWithNext
+const generarCodigoQR = async (req, res) => {
+  const result = await generarCodigoQRLogic(req.body);
+  return res.status(result.status).json(result.data);
 };
 
 // Función para normalizar el estado de la factura devuelto por TheFactoryHKA
@@ -2648,6 +2653,41 @@ export async function enviarFacturaElectronicaLogic(body) {
     const estatusConsulta = await consultarEstatusInmediato(ncfGenerado, rnc);
     const urlQR = generarUrlQR(response.data, body);
 
+    // Generar QR (imagen base64) con los datos de la factura aprobada
+    let qrCode = null;
+    const qrBody = {
+      rnc: body.emisor?.rnc,
+      rncComprador: body.comprador?.rnc,
+      ncf: body.factura?.ncf,
+      codigo: response.data.codigoSeguridad,
+      fecha: response.data.fechaEmision || body.factura?.fecha,
+      fechaFirma: response.data.fechaFirma || response.data.fechaEmision,
+      monto: body.factura?.total,
+      tipo: body.factura?.tipo,
+      ambiente:
+        String(
+          body.ambiente || process.env.DGII_AMBIENTE || ""
+        ).toLowerCase() === "desarrollo"
+          ? "desarrollo"
+          : "produccion",
+      formato: "png",
+      tamaño: 300,
+    };
+    const qrResult = await generarCodigoQRLogic(qrBody);
+    if (qrResult.status === httpStatus.OK && qrResult.data?.data?.qrCode) {
+      qrCode = qrResult.data.data.qrCode;
+    } else if (urlQR) {
+      // Fallback: generar QR desde la URL ya construida
+      const qrFallback = await generarCodigoQRLogic({
+        url: urlQR,
+        formato: "png",
+        tamaño: 300,
+      });
+      if (qrFallback.status === httpStatus.OK && qrFallback.data?.data?.qrCode) {
+        qrCode = qrFallback.data.data.qrCode;
+      }
+    }
+
     return {
       status: httpStatus.OK,
       data: {
@@ -2661,6 +2701,7 @@ export async function enviarFacturaElectronicaLogic(body) {
           fechaFirma: response.data.fechaFirma,
           xmlBase64: response.data.xmlBase64,
           urlQR,
+          qrCode,
           estatusInicial: estatusConsulta,
         },
       },
@@ -2697,6 +2738,7 @@ export async function enviarFacturaElectronicaLogic(body) {
     }
 
     if (error.response) {
+      console.log("respuesta del TheFactoryHKA:", error.response.data);
       console.error("❌ Respuesta de error de TheFactoryHKA:", error.response.status);
       let detallesValidacion = error.response.data;
       if (error.response.data?.errors) {
@@ -2810,50 +2852,48 @@ const enviarFacturaElectronica = async (req, res) => {
   return res.status(result.status).json(result.data);
 };
 
-// 🔍 Endpoint independiente para consultar estatus de documento
-const consultarEstatusDocumento = async (req, res) => {
+/**
+ * Lógica para consultar el estatus de un documento desde Next.js (sin Express).
+ * Devuelve { status, data } para uso directo con NextResponse.
+ * @param {{ ncf: string, rnc: string, reintentar?: boolean }} body
+ * @returns {Promise<{ status: number, data: object }>}
+ */
+export async function consultarEstatusDocumentoLogic(body) {
   try {
-    // console.log(
-    //   `\n📋 ==================== ENDPOINT CONSULTAR ESTATUS ====================`,
-    // );
-    // console.log('📥 Request body recibido:');
-    // console.log(JSON.stringify(req.body, null, 2));
-
-    const { ncf, rnc, reintentar } = req.body;
+    const { ncf, rnc, reintentar } = body ?? {};
 
     // Validar que se proporcione el NCF
     if (!ncf) {
-      // console.log('❌ NCF no proporcionado');
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "El campo NCF es requerido",
-        details: "Debe proporcionar el NCF del documento a consultar",
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "El campo NCF es requerido",
+          details: "Debe proporcionar el NCF del documento a consultar",
+        },
+      };
     }
 
     // Validar que se proporcione el RNC del emisor
     if (!rnc) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "El campo RNC es requerido",
-        details:
-          "Debe proporcionar el RNC del emisor para consultar el estatus",
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "El campo RNC es requerido",
+          details:
+            "Debe proporcionar el RNC del emisor para consultar el estatus",
+        },
+      };
     }
-
-    // console.log(`🔍 Consulta de estatus solicitada para NCF: ${ncf}`);
 
     // Si se solicita reintentar, esperar 2 segundos antes de consultar
     if (reintentar) {
-      // console.log('🔄 Reintento solicitado, esperando 2 segundos...');
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
     // Consultar estatus en TheFactoryHKA
     const estatusConsulta = await consultarEstatusInmediato(ncf, rnc);
-
-    // console.log('📊 Resultado de consultarEstatusInmediato:');
-    // console.log(JSON.stringify(estatusConsulta, null, 2));
 
     if (estatusConsulta.consultaExitosa) {
       // Interpretar el estado devuelto por TheFactoryHKA
@@ -2893,59 +2933,58 @@ const consultarEstatusDocumento = async (req, res) => {
       }
 
       const respuestaFinal = {
-        status: "success",
-        message: "Consulta de estatus realizada exitosamente",
+        status: httpStatus.OK,
         data: {
-          ncf: ncf,
-          estado: estadoNormalizado,
-          estadoOriginal: estadoOriginal,
-          mensaje:
-            estatusConsulta.datosEstatus.mensaje ||
-            estatusConsulta.datosEstatus.description ||
-            "Sin mensaje",
-          fechaConsulta: estatusConsulta.timestamp,
-          datosCompletos: estatusConsulta.datosEstatus,
-          ...(mensajeAdicional && { advertencia: mensajeAdicional }),
+          status: "success",
+          message: "Consulta de estatus realizada exitosamente",
+          data: {
+            ncf: ncf,
+            estado: estadoNormalizado,
+            estadoOriginal: estadoOriginal,
+            mensaje:
+              estatusConsulta.datosEstatus.mensaje ||
+              estatusConsulta.datosEstatus.description ||
+              "Sin mensaje",
+            fechaConsulta: estatusConsulta.timestamp,
+            datosCompletos: estatusConsulta.datosEstatus,
+            ...(mensajeAdicional && { advertencia: mensajeAdicional }),
+          },
         },
       };
 
-      // console.log('📤 Respuesta final que se enviará:');
-      // console.log(JSON.stringify(respuestaFinal, null, 2));
-      // console.log(
-      //   `📋 ==================== FIN ENDPOINT CONSULTAR ESTATUS ====================\n`,
-      // );
-
-      return res.status(httpStatus.OK).json(respuestaFinal);
+      return respuestaFinal;
     } else {
-      // console.log('❌ Consulta NO exitosa');
-      // console.log(`❌ Error: ${estatusConsulta.error}`);
-      // console.log(
-      //   `📋 ==================== FIN ENDPOINT CONSULTAR ESTATUS (ERROR) ====================\n`,
-      // );
-
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "No se pudo consultar el estatus del documento",
-        details: estatusConsulta.error,
+      return {
+        status: httpStatus.BAD_REQUEST,
         data: {
-          ncf: ncf,
-          timestamp: estatusConsulta.timestamp,
+          status: "error",
+          message: "No se pudo consultar el estatus del documento",
+          details: estatusConsulta.error,
+          data: {
+            ncf: ncf,
+            timestamp: estatusConsulta.timestamp,
+          },
         },
-      });
+      };
     }
   } catch (error) {
     console.error("❌ Error CRÍTICO en consulta de estatus:", error);
     console.error("📚 Stack trace:", error.stack);
-    // console.log(
-    //   `📋 ==================== FIN ENDPOINT CONSULTAR ESTATUS (ERROR CRÍTICO) ====================\n`,
-    // );
-
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: "error",
-      message: "Error interno del servidor al consultar estatus",
-      details: error.message,
-    });
+    return {
+      status: httpStatus.INTERNAL_SERVER_ERROR,
+      data: {
+        status: "error",
+        message: "Error interno del servidor al consultar estatus",
+        details: error.message,
+      },
+    };
   }
+}
+
+// 🔍 Endpoint independiente para consultar estatus de documento (modo Express)
+const consultarEstatusDocumento = async (req, res) => {
+  const result = await consultarEstatusDocumentoLogic(req.body);
+  return res.status(result.status).json(result.data);
 };
 
 // Endpoint para limpiar cache del token (útil para debugging)

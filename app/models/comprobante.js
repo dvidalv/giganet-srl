@@ -393,7 +393,7 @@ comprobanteSchema.set('toJSON', {
   },
 });
 
-const Comprobante = mongoose.model('Comprobante', comprobanteSchema, 'comprobantes');
+const Comprobante = mongoose.models.Comprobante || mongoose.model('Comprobante', comprobanteSchema, 'comprobantes');
 
 // Asegurar conexión a MongoDB antes de cada operación (Next.js/serverless)
 if (!Comprobante._connectionWrapped) {

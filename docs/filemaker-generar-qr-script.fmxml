@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fmxmlsnippet type="FMObjectList">
+
+  <Step enable="True" id="89" name="# (comment)">
+    <Text>Generar código QR de factura electrónica (e-CF) según DGII</Text>
+  </Step>
+
+  <!-- ============================================================
+       1) Configuración
+       ============================================================ -->
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$URL_BASE</Name>
+    <Value>
+      <Calculation><![CDATA[$$API_URL_BASE]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$API_KEY</Name>
+    <Value>
+      <Calculation><![CDATA[$$API_KEY]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNC</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::RNC]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$NCF</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::NCF]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$CodigoSeguridad</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::CodigoSeguridad]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$Monto</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::MontoTotal]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$TipoComprobante</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::TipoComprobante]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNCComprador</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::RNCComprador]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$FechaEmision</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::FechaEmision]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$FechaFirma</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::FechaFirma]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- $$AMBIENTE_DGII: "desarrollo" | "produccion". Si vacío, usa produccion -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$Ambiente</Name>
+    <Value>
+      <Calculation><![CDATA[If ( IsEmpty ( $$AMBIENTE_DGII ) ; "produccion" ; $$AMBIENTE_DGII )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       2) Validar datos mínimos
+       ============================================================ -->
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[
+IsEmpty ( $API_KEY ) or IsEmpty ( $RNC ) or IsEmpty ( $NCF ) or IsEmpty ( $CodigoSeguridad ) or IsEmpty ( $Monto )
+]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Faltan datos"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["Configure API Key, RNC, NCF, CodigoSeguridad y MontoTotal."]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- Validar tipo 31/33/34: requieren fecha -->
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[
+$TipoComprobante ≠ "32" and IsEmpty ( $FechaEmision )
+]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Faltan datos"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["Para tipo 31, 33, 34 se requiere FechaEmision."]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       3) Armar JSON (RNC limpio, fechas DD-MM-YYYY)
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNC_Limpio</Name>
+    <Value>
+      <Calculation><![CDATA[
+Substitute ( $RNC ;
+  [ "-" ; "" ] ;
+  [ " " ; "" ] ;
+  [ "." ; "" ]
+)
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNCComprador_Limpio</Name>
+    <Value>
+      <Calculation><![CDATA[
+Substitute ( $RNCComprador ;
+  [ "-" ; "" ] ;
+  [ " " ; "" ] ;
+  [ "." ; "" ]
+)
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( "{}" ; "rnc" ; $RNC_Limpio ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "ncf" ; $NCF ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "codigo" ; $CodigoSeguridad ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "monto" ; GetAsNumber ( $Monto ) ; JSONNumber )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "tipo" ; $TipoComprobante ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "ambiente" ; $Ambiente ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[$TipoComprobante ≠ "32"]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "rncComprador" ; $RNCComprador_Limpio ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "fecha" ; $FechaEmision ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "fechaFirma" ; If ( not IsEmpty ( $FechaFirma ) ; $FechaFirma ; $FechaEmision ) ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       4) URL del endpoint
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$URL</Name>
+    <Value>
+      <Calculation><![CDATA[
+$URL_BASE &amp; "/api/comprobantes/generar-qr"
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       5) cURL Options + Insert from URL (POST)
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$cURLOptions</Name>
+    <Value>
+      <Calculation><![CDATA[
+"-X POST " &amp;
+"-H " &amp; Quote ( "Authorization: Bearer " &amp; $API_KEY ) &amp; " " &amp;
+"-H " &amp; Quote ( "Content-Type: application/json" ) &amp; " " &amp;
+"-d " &amp; Quote ( $JSON )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="160" name="Insert from URL">
+    <SelectAll state="True"/>
+    <NoInteract state="True"/>
+    <VerifySSLCertificates state="False"/>
+    <Target>$response</Target>
+    <Calculation><![CDATA[$URL]]></Calculation>
+    <CURLOptions>
+      <Calculation><![CDATA[$cURLOptions]]></Calculation>
+    </CURLOptions>
+  </Step>
+
+  <!-- ============================================================
+       6) Revisar error de conexión
+       ============================================================ -->
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[Get ( LastError ) ≠ 0]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Error de conexión"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["No se pudo conectar. Código: " &amp; Get ( LastError )]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       7) Parsear respuesta
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$status</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "status" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$message</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "message" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$details</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "details" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[$status ≠ "success"]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$msg</Name>
+    <Value>
+      <Calculation><![CDATA[
+$message &amp; If ( not IsEmpty ( $details ) ; "¶¶Detalle: " &amp; $details ; "" )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Error al generar QR"]]></Calculation></Title>
+    <Message><Calculation><![CDATA[$msg]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       8) Extraer datos
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$urlQR</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "data.url" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$qrCode</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "data.qrCode" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       9) Guardar en campos
+       ============================================================ -->
+  <Step enable="True" id="76" name="Set Field">
+    <Field table="Comprobantes" name="QRCodeURL"/>
+    <Calculation><![CDATA[$urlQR]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="76" name="Set Field">
+    <Field table="Comprobantes" name="QRCodeData"/>
+    <Calculation><![CDATA[$qrCode]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="76" name="Set Field">
+    <Field table="Comprobantes" name="RespuestaQR"/>
+    <Calculation><![CDATA[$response]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="75" name="Commit Records/Requests">
+    <NoInteract state="True"/>
+    <Option state="False"/>
+    <ESSForceCommit state="False"/>
+  </Step>
+
+  <!-- ============================================================
+       10) Devolver URL del QR
+       ============================================================ -->
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[$urlQR]]></Calculation></Result>
+  </Step>
+
+</fmxmlsnippet>

@@ -44,7 +44,7 @@ export async function POST(request) {
 
   let body;
   try {
-    body = await request.json();
+    body = await request.json(); 
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }

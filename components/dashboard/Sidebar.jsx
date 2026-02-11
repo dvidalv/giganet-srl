@@ -43,9 +43,11 @@ export default function Sidebar({ user }) {
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className={`${styles.navLink} ${isActive ? styles.active : ""}`}>
+                    className={`${styles.navLink} ${isActive ? styles.active : ""}`}
+                    title={item.label}
+                    aria-label={item.label}>
                     <span className={styles.icon}>{item.icon}</span>
-                    <span>{item.label}</span>
+                    <span className={styles.label}>{item.label}</span>
                   </Link>
                 </li>
               );

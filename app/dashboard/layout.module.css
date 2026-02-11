@@ -9,13 +9,15 @@
 .mainContent {
     display: flex;
     flex-direction: column;
-    margin-top: var(--headerHeight);
+    /* margin-top: var(--headerHeight); */
     min-height: 100%;
 }
 
 .content {
     flex: 1;
     overflow-y: auto;
+    min-height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+    margin-top: var(--headerHeight);
 }
 
 /* Mobile: sidebar debajo del contenido, encima del footer */

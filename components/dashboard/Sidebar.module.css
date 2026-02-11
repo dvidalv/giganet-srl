@@ -19,6 +19,68 @@
         width: 100%;
         min-height: auto;
     }
+
+    .sidebarContent {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .nav {
+        flex: none;
+        padding: 0.5rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .navList {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+
+    .navLink {
+        padding: 0.5rem;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+
+    .navLink.active {
+        border-left-color: transparent;
+        /* border-bottom-color: #3b82f6; */
+    }
+
+    .navLink .label {
+        display: none;
+    }
+
+    .icon {
+        margin-right: 0;
+    }
+
+    .userInfo {
+        padding: 0.5rem 1rem;
+        flex-shrink: 0;
+    }
+
+    .userAvatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.875rem;
+    }
+
+    .userDetails {
+        min-width: 0;
+    }
+
+    .userName {
+        font-size: 0.8rem;
+    }
+
+    .userRole {
+        font-size: 0.65rem;
+    }
 }
 
 .sidebarContent {
@@ -66,7 +128,7 @@
     transition: all 0.2s;
     font-size: 0.95rem;
     font-weight: 500;
-    border-left: 3px solid transparent;
+    /* border-left: 3px solid transparent; */
 }
 
 .navLink:hover {
@@ -88,6 +150,7 @@
     align-items: center;
     justify-content: center;
 }
+
 
 .userInfo {
     display: flex;

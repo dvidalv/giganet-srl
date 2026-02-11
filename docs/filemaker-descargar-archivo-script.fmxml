@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fmxmlsnippet type="FMObjectList">
+
+  <Step enable="True" id="89" name="# (comment)">
+    <Text>Descargar archivo PDF o XML del comprobante desde TheFactoryHKA</Text>
+  </Step>
+
+  <!-- ============================================================
+       1) Configuración
+       ============================================================ -->
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$URL_BASE</Name>
+    <Value>
+      <Calculation><![CDATA[$$API_URL_BASE]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$API_KEY</Name>
+    <Value>
+      <Calculation><![CDATA[$$API_KEY]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNC</Name>
+    <Value>
+      <Calculation><![CDATA[FACTURAS::RNC]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$Documento</Name>
+    <Value>
+      <Calculation><![CDATA[FACTURAS::NCF]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$Extension</Name>
+    <Value>
+      <Calculation><![CDATA["pdf"]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       2) Validar datos
+       ============================================================ -->
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[
+IsEmpty ( $API_KEY ) or IsEmpty ( $RNC ) or IsEmpty ( $Documento )
+]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Faltan datos"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["Configure API Key, RNC y NCF (documento)."]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[
+not ( $Extension = "pdf" or $Extension = "xml" )
+]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Extensión inválida"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["Extension debe ser ""pdf"" o ""xml""."]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       3) Armar JSON (RNC solo dígitos)
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNC_Limpio</Name>
+    <Value>
+      <Calculation><![CDATA[
+Substitute ( $RNC ;
+  [ "-" ; "" ] ;
+  [ " " ; "" ] ;
+  [ "." ; "" ]
+)
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( "{}" ; "rnc" ; $RNC_Limpio ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "documento" ; $Documento ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[
+JSONSetElement ( $JSON ; "extension" ; Lower ( $Extension ) ; JSONString )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       4) URL del endpoint
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$URL</Name>
+    <Value>
+      <Calculation><![CDATA[
+$URL_BASE &amp; "/api/comprobantes/descargar"
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       5) cURL Options + Insert from URL (POST)
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$cURLOptions</Name>
+    <Value>
+      <Calculation><![CDATA[
+"-X POST " &amp;
+"-H " &amp; Quote ( "Authorization: Bearer " &amp; $API_KEY ) &amp; " " &amp;
+"-H " &amp; Quote ( "Content-Type: application/json" ) &amp; " " &amp;
+"-d " &amp; Quote ( $JSON )
+]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="160" name="Insert from URL">
+    <SelectAll state="True"/>
+    <NoInteract state="True"/>
+    <VerifySSLCertificates state="False"/>
+    <Target>$response</Target>
+    <Calculation><![CDATA[$URL]]></Calculation>
+    <CURLOptions>
+      <Calculation><![CDATA[$cURLOptions]]></Calculation>
+    </CURLOptions>
+  </Step>
+
+  <!-- ============================================================
+       6) Revisar error de conexión
+       ============================================================ -->
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[Get ( LastError ) ≠ 0]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Error de conexión"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["No se pudo conectar. Código: " &amp; Get ( LastError )]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       7) Parsear respuesta
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$status</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "status" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$message</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "message" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="68" name="If">
+    <Calculation><![CDATA[$status ≠ "success"]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Error al descargar"]]></Calculation></Title>
+    <Message><Calculation><![CDATA[$message]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       8) Extraer archivo (base64) y guardar
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$archivoBase64</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "data.archivo" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$extension</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "data.extension" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Guardar respuesta raw (opcional) -->
+  <Step enable="True" id="76" name="Set Field">
+    <Field table="FACTURAS" name="RespuestaDescarga"/>
+    <Calculation><![CDATA[$response]]></Calculation>
+  </Step>
+
+  <!-- Guardar base64 del archivo (para PDF/XML) -->
+  <Step enable="True" id="76" name="Set Field">
+    <Field table="FACTURAS" name="ArchivoBase64"/>
+    <Calculation><![CDATA[$archivoBase64]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="75" name="Commit Records/Requests">
+    <NoInteract state="True"/>
+    <Option state="False"/>
+    <ESSForceCommit state="False"/>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title><Calculation><![CDATA["Descarga exitosa"]]></Calculation></Title>
+    <Message><Calculation><![CDATA["Archivo " &amp; $extension &amp; " descargado. Guardado en ArchivoBase64."]]></Calculation></Message>
+    <Buttons>
+      <Button CommitState="True"><Calculation><![CDATA["OK"]]></Calculation></Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <!-- ============================================================
+       9) Devolver extensión
+       ============================================================ -->
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[$extension]]></Calculation></Result>
+  </Step>
+
+</fmxmlsnippet>

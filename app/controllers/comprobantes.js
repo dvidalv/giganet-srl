@@ -3325,105 +3325,100 @@ const anularComprobantes = async (req, res) => {
 };
 
 /**
- * @description Descarga archivo XML o PDF de un documento electrónico desde TheFactoryHKA
- * @route POST /comprobantes/descargar-archivo
- * @access Privado (requiere autenticación)
+ * Lógica para descargar archivo XML o PDF desde TheFactoryHKA (sin Express).
+ * Devuelve { status, data } para uso directo con NextResponse.
+ * @param {{ rnc: string, documento: string, extension: "xml"|"pdf" }} body
+ * @returns {Promise<{ status: number, data: object }>}
  */
-const descargarArchivo = async (req, res) => {
+export async function descargarArchivoLogic(body) {
   try {
-    const { rnc, documento, extension } = req.body;
+    const { rnc, documento, extension } = body ?? {};
 
-    // Validar parámetros requeridos
     if (!rnc) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: 'El parámetro "rnc" es obligatorio',
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: 'El parámetro "rnc" es obligatorio',
+        },
+      };
     }
 
     if (!documento) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: 'El parámetro "documento" es obligatorio (número de e-NCF)',
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: 'El parámetro "documento" es obligatorio (número de e-NCF)',
+        },
+      };
     }
 
     if (!extension) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message:
-          'El parámetro "extension" es obligatorio (valores permitidos: "xml" o "pdf")',
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message:
+            'El parámetro "extension" es obligatorio (valores permitidos: "xml" o "pdf")',
+        },
+      };
     }
 
-    // Validar que la extensión sea válida
     const extensionesPermitidas = ["xml", "pdf"];
-    if (!extensionesPermitidas.includes(extension.toLowerCase())) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: 'El parámetro "extension" debe ser "xml" o "pdf"',
-      });
+    const ext = extension.toLowerCase();
+    if (!extensionesPermitidas.includes(ext)) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: 'El parámetro "extension" debe ser "xml" o "pdf"',
+        },
+      };
     }
 
-    console.log("📥 Descargando archivo desde TheFactoryHKA...");
-    console.log(`   RNC: ${rnc}`);
-    console.log(`   Documento: ${documento}`);
-    console.log(`   Extensión: ${extension}`);
-
-    // Obtener token de autenticación
     const token = await obtenerTokenTheFactory(rnc);
-
-    // Preparar request para TheFactoryHKA
     const descargaRequest = {
-      token: token,
-      rnc: rnc,
-      documento: documento,
-      extension: extension.toLowerCase(),
+      token,
+      rnc,
+      documento,
+      extension: ext,
     };
 
-    console.log("📤 Enviando solicitud de descarga a TheFactoryHKA...");
-
-    // Enviar solicitud a TheFactoryHKA
     const response = await axios.post(
       THEFACTORY_DESCARGA_URL,
       descargaRequest,
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 30000, // 30 segundos para descarga
+        headers: { "Content-Type": "application/json" },
+        timeout: 30000,
       }
     );
 
-    console.log("✅ Respuesta de TheFactoryHKA recibida");
-    console.log(`   Código: ${response.data.codigo}`);
-    console.log(`   Mensaje: ${response.data.mensaje}`);
-    console.log(`   Procesado: ${response.data.procesado}`);
-
-    // Verificar respuesta exitosa
-    // Códigos exitosos: 0 (éxito general) o 130 (descarga exitosa)
     if (
       (response.data.codigo === 0 || response.data.codigo === 130) &&
       response.data.procesado
     ) {
-      // Descarga exitosa
-      return res.status(httpStatus.OK).json({
-        status: "success",
-        message: "Archivo descargado exitosamente",
+      return {
+        status: httpStatus.OK,
         data: {
-          archivo: response.data.archivo, // Base64 del archivo
-          extension: extension.toLowerCase(),
-          documento: documento,
-          rnc: rnc,
-          procesado: response.data.procesado,
-          codigo: response.data.codigo,
-          mensaje: response.data.mensaje,
+          status: "success",
+          message: "Archivo descargado exitosamente",
+          data: {
+            archivo: response.data.archivo,
+            extension: ext,
+            documento,
+            rnc,
+            procesado: response.data.procesado,
+            codigo: response.data.codigo,
+            mensaje: response.data.mensaje,
+          },
         },
-      });
-    } else {
-      // Error en la descarga
-      console.error("❌ Error en la descarga:", response.data.mensaje);
-      return res.status(httpStatus.BAD_REQUEST).json({
+      };
+    }
+
+    return {
+      status: httpStatus.BAD_REQUEST,
+      data: {
         status: "error",
         message: `Error al descargar archivo: ${response.data.mensaje}`,
         details: {
@@ -3431,37 +3426,54 @@ const descargarArchivo = async (req, res) => {
           mensaje: response.data.mensaje,
           procesado: response.data.procesado,
         },
-      });
-    }
+      },
+    };
   } catch (error) {
     console.error("❌ Error al descargar archivo:", error);
 
-    // Manejo de errores de axios
     if (error.response) {
-      return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        status: "error",
-        message: "Error en la respuesta de TheFactoryHKA",
-        details: {
-          status: error.response.status,
-          data: error.response.data,
+      return {
+        status: httpStatus.INTERNAL_SERVER_ERROR,
+        data: {
+          status: "error",
+          message: "Error en la respuesta de TheFactoryHKA",
+          details: {
+            status: error.response.status,
+            data: error.response.data,
+          },
         },
-      });
+      };
     }
 
     if (error.code === "ECONNABORTED") {
-      return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: "error",
-        message: "Timeout al conectar con TheFactoryHKA",
-      });
+      return {
+        status: httpStatus.REQUEST_TIMEOUT,
+        data: {
+          status: "error",
+          message: "Timeout al conectar con TheFactoryHKA",
+        },
+      };
     }
 
-    // Error genérico
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: "error",
-      message: "Error interno al procesar la descarga",
-      details: error.message,
-    });
+    return {
+      status: httpStatus.INTERNAL_SERVER_ERROR,
+      data: {
+        status: "error",
+        message: "Error interno al procesar la descarga",
+        details: error.message,
+      },
+    };
   }
+}
+
+/**
+ * @description Descarga archivo XML o PDF de un documento electrónico desde TheFactoryHKA
+ * @route POST /comprobantes/descargar-archivo
+ * @access Privado (requiere autenticación)
+ */
+const descargarArchivo = async (req, res) => {
+  const result = await descargarArchivoLogic(req.body);
+  return res.status(result.status).json(result.data);
 };
 
 // Endpoint para verificar el estado del servidor de TheFactoryHKA

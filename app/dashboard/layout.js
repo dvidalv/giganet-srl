@@ -13,7 +13,9 @@ export default async function DashboardLayout({ children }) {
 
   return (
     <div className={styles.dashboardLayout}>
-      <Sidebar user={user} />
+      <div className={styles.sidebarWrapper}>
+        <Sidebar user={user} />
+      </div>
 
       <div className={styles.mainContent}>
 

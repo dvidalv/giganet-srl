@@ -10,6 +10,17 @@
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
+@media (max-width: 768px) {
+    .sidebar {
+        position: relative;
+        left: auto;
+        top: auto;
+        height: auto;
+        width: 100%;
+        min-height: auto;
+    }
+}
+
 .sidebarContent {
     display: flex;
     flex-direction: column;

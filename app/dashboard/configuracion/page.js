@@ -13,11 +13,11 @@ export default async function Configuracion() {
 
   return (
     <div className={styles.configuracion}>
-      <h1>En construcción</h1>
-      <p>Esta sección está en construcción. Por favor, inténtelo más tarde.</p>
       <Link href="/dashboard" className={styles.back}>
         ← Volver a Dashboard
       </Link>
+      <h1>En construcción</h1>
+      <p>Esta sección está en construcción. Por favor, inténtelo más tarde.</p>
     </div>
   );    
 }

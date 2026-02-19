@@ -54,7 +54,7 @@ Set Variable [ $URL ; Value: $URL_BASE & "/api/comprobantes/solicitar-numero" ]
 
 # 5. Insert from URL (POST con cabeceras y cuerpo)
 # cURL options: -X POST, Authorization Bearer, Content-Type, -d body
-Set Variable [ $cURLOptions ; Value: 
+Set Variable [ $cURLOptions ; Value:
     "-X POST " &
     "-H \"Authorization: Bearer " & $API_KEY & "\" " &
     "-H \"Content-Type: application/json\" " &
@@ -78,10 +78,11 @@ End If
 # Si usas versión anterior, tendrás que extraer con funciones de texto o un plug-in
 Set Variable [ $status ; Value: JSONGetElement ( $response ; "status" ) ]
 Set Variable [ $errorMsg ; Value: JSONGetElement ( $response ; "error" ) ]
+Set Variable [ $mensaje ; Value: JSONGetElement ( $response ; "mensaje" ) ]
 
 If [ $status ≠ "success" ]
-    # Error del servidor
-    Set Variable [ $msg ; Value: If ( not IsEmpty ( $errorMsg ) ; $errorMsg ; $response ) ]
+    # Error del servidor (404 agotado, 400, etc.). Priorizar mensaje amigable para el usuario
+    Set Variable [ $msg ; Value: If ( not IsEmpty ( $mensaje ) ; $mensaje ; If ( not IsEmpty ( $errorMsg ) ; $errorMsg ; $response ) ) ]
     Show Custom Dialog [ "Error al solicitar número" ; $msg ]
     Exit Script [ Result: "" ]
 End If
@@ -91,14 +92,17 @@ Set Variable [ $numeroFormateado ; Value: JSONGetElement ( $response ; "data.num
 Set Variable [ $numeroConsumido ; Value: JSONGetElement ( $response ; "data.numeroConsumido" ) ]
 Set Variable [ $numerosDisponibles ; Value: JSONGetElement ( $response ; "data.numerosDisponibles" ) ]
 Set Variable [ $estadoRango ; Value: JSONGetElement ( $response ; "data.estadoRango" ) ]
+# mensaje: mensaje para mostrar al usuario cuando números bajos o agotados (éxito o error)
+Set Variable [ $mensaje ; Value: JSONGetElement ( $response ; "mensaje" ) ]
 Set Variable [ $mensajeAlerta ; Value: JSONGetElement ( $response ; "data.mensajeAlerta" ) ]
 
 # 9. Opcional: guardar en campo del registro actual
 Set Field [ Comprobantes::NumeroFormateado ; $numeroFormateado ]
 Set Field [ Comprobantes::NumeroSecuencial ; $numeroConsumido ]
-# Si hay alerta, notificar
-If [ not IsEmpty ( $mensajeAlerta ) ]
-    Show Custom Dialog [ "Aviso" ; $mensajeAlerta ]
+# Si hay mensaje para el usuario (números bajos o agotados), notificar
+Set Variable [ $msgUsuario ; Value: If ( not IsEmpty ( $mensaje ) ; $mensaje ; $mensajeAlerta ) ]
+If [ not IsEmpty ( $msgUsuario ) ]
+    Show Custom Dialog [ "Aviso" ; $msgUsuario ]
 End If
 
 # 10. Devolver el número formateado para usar en el script que llamó
@@ -115,9 +119,9 @@ Si no tienes `JSONGetElement`, puedes extraer valores con funciones de texto. Ej
 # Ejemplo: extraer "numeroFormateado" del JSON en $response
 # Buscar "numeroFormateado":" y luego tomar hasta la siguiente "
 Set Variable [ $inicio ; Value: Position ( $response ; "\"numeroFormateado\":\"" ; 1 ; 1 ) ]
-Set Variable [ $numeroFormateado ; Value: 
+Set Variable [ $numeroFormateado ; Value:
     If ( $inicio > 0 ;
-        Middle ( $response ; $inicio + 20 ; 
+        Middle ( $response ; $inicio + 20 ;
             Position ( $response ; "\"" ; $inicio + 20 ; 1 ) - ( $inicio + 20 )
         ) ;
         ""
@@ -145,13 +149,14 @@ La respuesta traerá `data.proximoNumero` y `data.numeroFormateado` (el próximo
 
 ## Resumen de campos/variables
 
-| Dónde        | Nombre sugerido   | Uso                                      |
-|-------------|-------------------|------------------------------------------|
-| Global      | `$$API_KEY`       | API Key copiada del dashboard            |
-| Campo/var   | RNC               | RNC de la empresa (9–11 dígitos)         |
-| Campo/var   | TipoComprobante   | 31, 32, 33, 34, 41, 43, 44, 45            |
-| Respuesta   | `data.numeroFormateado` | Número e-CF para el comprobante  |
-| Respuesta   | `data.numerosDisponibles` | Cuántos quedan en la secuencia   |
+| Dónde     | Nombre sugerido           | Uso                                                                     |
+| --------- | ------------------------- | ----------------------------------------------------------------------- |
+| Global    | `$$API_KEY`               | API Key copiada del dashboard                                           |
+| Campo/var | RNC                       | RNC de la empresa (9–11 dígitos)                                        |
+| Campo/var | TipoComprobante           | 31, 32, 33, 34, 41, 43, 44, 45                                          |
+| Respuesta | `data.numeroFormateado`   | Número e-CF para el comprobante                                         |
+| Respuesta | `data.numerosDisponibles` | Cuántos quedan en la secuencia                                          |
+| Respuesta | `mensaje`                 | Mensaje para el usuario cuando números bajos o agotados (éxito o error) |
 
 ---
 
@@ -175,4 +180,29 @@ La respuesta traerá `data.proximoNumero` y `data.numeroFormateado` (el próximo
 }
 ```
 
-Si hay error (401, 404, 400), el cuerpo tendrá `"error": "mensaje"`; úsalo en el diálogo de error del script.
+Si hay error (401, 404, 400), el cuerpo tendrá `"error": "mensaje"`. Cuando los números están agotados o bajos, también incluye `"mensaje"` con un mensaje amigable para mostrar al usuario:
+
+```json
+{
+  "error": "Secuencia no encontrada o no autorizada",
+  "mensaje": "Los números de comprobantes están agotados. Solicitar nuevo rango urgente."
+}
+```
+
+Prioriza `mensaje` en el diálogo de error para que el usuario sepa que debe solicitar un nuevo rango.
+
+---
+
+## Importar el script FMXML
+
+Para usar el archivo `filemaker-solicitar-numero-script.fmxml`:
+
+1. Abre el archivo en un editor de texto.
+2. Selecciona todo el contenido (Cmd+A / Ctrl+A) y copia (Cmd+C / Ctrl+C).
+3. En FileMaker: Script Workspace → crea un script nuevo → pega (Cmd+V / Ctrl+V).
+
+Si el pegado no funciona, puede que necesites una de estas opciones:
+
+- **MBS Plugin** (v15.4+): incluye ClipboardConverter que permite pegar XML directamente.
+- **FmClipTools** (macOS): ejecuta "fmClip - Clipboard XML to FM Objects" tras copiar el XML.
+- **Importar desde .fmp12**: Scripts → Import → selecciona un archivo que contenga el script.

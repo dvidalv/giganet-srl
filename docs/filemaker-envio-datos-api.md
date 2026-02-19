@@ -167,8 +167,8 @@ Desde FileMaker: armar el JSON con el NCF y el RNC del emisor (ej. el mismo RNC 
 
 ## 6. Enviar email del documento
 
-**POST** (ruta que use `enviarEmailFactura` / `enviarEmailDocumento`)  
-**Auth:** Sesión.  
+**POST** `/api/comprobantes/enviar-email`  
+**Auth:** Sesión (cookie) O API Key (`Authorization: Bearer <api_key>` o `X-API-Key`).  
 **Body:** RNC + documento + lista de correos.
 
 ```json

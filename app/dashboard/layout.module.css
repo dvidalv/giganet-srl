@@ -14,9 +14,10 @@
 }
 
 .content {
-    flex: 1;
+    flex: 1; 
     overflow-y: auto;
     min-height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+
     margin-top: var(--headerHeight);
 }
 

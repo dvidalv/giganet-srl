@@ -50,9 +50,10 @@ function formatFechaVencimiento(fecha) {
   if (!fecha) return null;
   const d = new Date(fecha);
   if (isNaN(d.getTime())) return null;
-  const dia = d.getDate().toString().padStart(2, "0");
-  const mes = (d.getMonth() + 1).toString().padStart(2, "0");
-  const año = d.getFullYear();
+  // Usar UTC para evitar desfase por zona horaria (ej: 31-12-2028 en DB → 30-12-2028 en local)
+  const dia = d.getUTCDate().toString().padStart(2, "0");
+  const mes = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const año = d.getUTCFullYear();
   return `${dia}-${mes}-${año}`;
 }
 import { sendEmail } from "@/api-mail_brevo";

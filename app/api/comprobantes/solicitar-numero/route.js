@@ -47,7 +47,7 @@ export async function POST(request) {
   const apiKey = getApiKeyFromRequest(request);
   console.log(
     "API Key recibida:",
-    apiKey ? `${apiKey.substring(0, 10)}...` : "null"
+    apiKey ? `${apiKey.substring(0, 10)}...` : "null",
   );
 
   if (!apiKey) {
@@ -86,11 +86,11 @@ export async function POST(request) {
 
   if (!rncRaw || rncRaw.length < RNC_MIN || rncRaw.length > RNC_MAX) {
     console.log(
-      `ERROR: RNC inválido - longitud: ${rncRaw.length}, valor: ${rncRaw}`
+      `ERROR: RNC inválido - longitud: ${rncRaw.length}, valor: ${rncRaw}`,
     );
     return NextResponse.json(
       { error: "RNC inválido (debe tener entre 9 y 11 dígitos)" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   if (!TIPOS_COMPROBANTE.includes(tipo_comprobante)) {
@@ -100,7 +100,7 @@ export async function POST(request) {
         error:
           "Tipo de comprobante inválido. Debe ser: 31, 32, 33, 34, 41, 43, 44, 45",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -137,9 +137,38 @@ export async function POST(request) {
 
     if (!rango) {
       console.log("ERROR: No se encontró ningún rango válido");
+      // Consultar si existen rangos agotados o vencidos para dar mensaje útil a FileMaker
+      const queryDiagnostico = {
+        usuario: new mongoose.default.Types.ObjectId(userId),
+        rnc: rncRaw,
+        tipo_comprobante,
+      };
+      const rangosExistentes = await Comprobante.find(queryDiagnostico)
+        .select("estado numeros_disponibles")
+        .lean();
+      let mensaje = null;
+      if (rangosExistentes.length > 0) {
+        const totalDisponible = rangosExistentes.reduce(
+          (sum, r) => sum + (r.numeros_disponibles ?? 0),
+          0,
+        );
+        if (totalDisponible === 0) {
+          mensaje =
+            "Los números de comprobantes están agotados. Solicitar nuevo rango urgente.";
+        } else {
+          mensaje =
+            "No hay números disponibles. Los rangos pueden estar agotados o vencidos. Solicitar nuevo rango urgente.";
+        }
+      } else {
+        mensaje =
+          "No hay rangos configurados para este RNC y tipo de comprobante. Solicitar nuevo rango.";
+      }
       return NextResponse.json(
-        { error: "Secuencia no encontrada o no autorizada" },
-        { status: 404 }
+        {
+          error: "Secuencia no encontrada o no autorizada",
+          mensaje,
+        },
+        { status: 404 },
       );
     }
 
@@ -156,11 +185,15 @@ export async function POST(request) {
 
     if (!rango.esValido()) {
       console.log(
-        "ERROR: El rango no es válido (método esValido() retornó false)"
+        "ERROR: El rango no es válido (método esValido() retornó false)",
       );
       return NextResponse.json(
-        { error: "El rango no está disponible (vencido, agotado o inactivo)" },
-        { status: 400 }
+        {
+          error: "El rango no está disponible (vencido, agotado o inactivo)",
+          mensaje:
+            "Los números de comprobantes están agotados o vencidos. Solicitar nuevo rango urgente.",
+        },
+        { status: 400 },
       );
     }
 
@@ -170,9 +203,10 @@ export async function POST(request) {
       if (!fecha) return null;
       const d = new Date(fecha);
       if (isNaN(d.getTime())) return null;
-      const dia = d.getDate().toString().padStart(2, "0");
-      const mes = (d.getMonth() + 1).toString().padStart(2, "0");
-      const año = d.getFullYear();
+      // Usar UTC para evitar desfase por zona horaria (ej: 31-12-2028 en DB → 30-12-2028 en local)
+      const dia = d.getUTCDate().toString().padStart(2, "0");
+      const mes = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+      const año = d.getUTCFullYear();
       return `${dia}-${mes}-${año}`;
     };
     const fechaVencimiento = formatFechaVencimiento(rango.fecha_vencimiento);
@@ -209,7 +243,10 @@ export async function POST(request) {
         numeroFormateado,
         totalGrupo: totalDisponiblesGrupoPreview,
       });
-      return NextResponse.json({
+      const mensajePreview = alertaPreview
+        ? `Quedan ${totalDisponiblesGrupoPreview} comprobantes - Solicitar nuevo rango pronto`
+        : null;
+      const previewBody = {
         status: "success",
         message: "Próximo número (sin consumir)",
         data: {
@@ -221,7 +258,9 @@ export async function POST(request) {
           fechaVencimiento,
           alertaAgotamiento: alertaPreview,
         },
-      });
+      };
+      if (mensajePreview) previewBody.mensaje = mensajePreview;
+      return NextResponse.json(previewBody);
     }
 
     console.log("Consumiendo número del rango...");
@@ -273,17 +312,17 @@ export async function POST(request) {
       } else {
         mensajeAlerta = `Quedan ${totalDisponiblesGrupo} comprobantes en total - Solicitar nuevo rango pronto`;
         console.log(
-          `⚠️ ALERTA: Total del grupo bajo (${totalDisponiblesGrupo} disponibles)`
+          `⚠️ ALERTA: Total del grupo bajo (${totalDisponiblesGrupo} disponibles)`,
         );
       }
     } else {
       console.log(
-        `✓ Total del grupo suficiente (${totalDisponiblesGrupo} disponibles), no se muestra alerta`
+        `✓ Total del grupo suficiente (${totalDisponiblesGrupo} disponibles), no se muestra alerta`,
       );
     }
 
     console.log("=== FIN solicitar-numero (éxito) ===");
-    return NextResponse.json({
+    const responseBody = {
       status: "success",
       message: "Número consumido exitosamente",
       data: {
@@ -299,7 +338,11 @@ export async function POST(request) {
         tipoComprobante: rango.tipo_comprobante,
         prefijo: rango.prefijo ?? "E",
       },
-    });
+    };
+    if (alertaAgotamiento && mensajeAlerta) {
+      responseBody.mensaje = mensajeAlerta;
+    }
+    return NextResponse.json(responseBody);
   } catch (err) {
     console.log("=== ERROR en solicitar-numero ===");
     console.error("Error completo:", err);
@@ -308,14 +351,18 @@ export async function POST(request) {
     if (err.message && err.message.includes("No hay números disponibles")) {
       console.log("ERROR: No hay números disponibles en el rango");
       return NextResponse.json(
-        { error: "No hay números disponibles en el rango" },
-        { status: 400 }
+        {
+          error: "No hay números disponibles en el rango",
+          mensaje:
+            "Los números de comprobantes están agotados. Solicitar nuevo rango urgente.",
+        },
+        { status: 400 },
       );
     }
     console.error("POST /api/comprobantes/solicitar-numero:", err);
     return NextResponse.json(
       { error: "Error al solicitar número" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

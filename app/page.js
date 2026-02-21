@@ -166,9 +166,9 @@ export default async function Home() {
                 <Image 
                   src={client.logo} 
                   alt={client.name}
-                  width={200}
-                  height={100}
-                  style={{ width: 'auto', height: 'auto' }}
+                  width={150}
+                  height={75}
+                  // style={{ width: 'auto', height: 'auto' }}
                   className={styles.logoImage}
                 />
               </div>

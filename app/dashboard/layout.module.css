@@ -2,11 +2,17 @@
     display: grid;
     grid-template-columns: 260px 1fr;
     grid-template-rows: 1fr;
+    grid-template-areas: "sidebar main";
     min-height: calc(100vh - var(--headerHeight) - var(--footerHeight));
     background: #f9fafb;
 }
 
+.sidebarWrapper {
+    grid-area: sidebar;
+}
+
 .mainContent {
+    grid-area: main;
     display: flex;
     flex-direction: column;
     /* margin-top: var(--headerHeight); */
@@ -26,14 +32,9 @@
     .dashboardLayout {
         grid-template-columns: 1fr;
         grid-template-rows: 1fr auto;
-    }
-
-    .mainContent {
-        grid-row: 1;
-    }
-
-    .sidebarWrapper {
-        grid-row: 2;
+        grid-template-areas:
+            "main"
+            "sidebar";
     }
 
     .content {

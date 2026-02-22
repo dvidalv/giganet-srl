@@ -100,6 +100,10 @@ export default function Contacto() {
           <button type="submit" className={styles.submitButton} disabled={isPending}>
             {isPending ? "Enviando..." : "Enviar Mensaje"}
           </button>
+
+          {state.errors?.general && (
+            <p className={styles.fieldError}>{state.errors.general}</p>
+          )}
         </form>
 
         {/* Mensaje de éxito */}

@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fmxmlsnippet type="FMObjectList">
+
+  <Step enable="True" id="89" name="# (comment)">
+    <Text>Anular secuencias de comprobantes (NCF no usados) ante DGII/TheFactoryHKA</Text>
+  </Step>
+
+  <!-- ============================================================
+       1) Configuración - Ajusta las variables según tu solución
+       ============================================================ -->
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$URL_BASE</Name>
+    <Value>
+      <Calculation><![CDATA[$$API_URL_BASE]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$API_KEY</Name>
+    <Value>
+      <Calculation><![CDATA[$$API_KEY]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- RNC del emisor (puedes usar un campo como Comprobantes::RNC) -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNC</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::RNC]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Tipo de documento: 31, 32, 33, 34, 41, 43, 44, 45, 46, 47 -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$TipoDocumento</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::TipoComprobante]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- NCF inicial del rango a anular (ej. E310000000002) -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$NCF_Desde</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::NCF_Desde]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- NCF final del rango a anular (ej. E310000000010). Si vacío, se anula solo NCF_Desde -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$NCF_Hasta</Name>
+    <Value>
+      <Calculation><![CDATA[If ( IsEmpty ( Comprobantes::NCF_Hasta ) ; Comprobantes::NCF_Desde ; Comprobantes::NCF_Hasta )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Fecha/hora opcional. Formato: DD-MM-YYYY HH:mm:ss. Vacío = usa fecha actual -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$FechaHoraAnulacion</Name>
+    <Value>
+      <Calculation><![CDATA[Comprobantes::FechaHoraAnulacion]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       2) Validar datos requeridos
+       ============================================================ -->
+  <Step enable="True" id="68" name="If">
+    <Restore state="False"/>
+    <Calculation><![CDATA[IsEmpty ( $API_KEY ) or IsEmpty ( $RNC ) or IsEmpty ( $TipoDocumento ) or IsEmpty ( $NCF_Desde )]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title>
+      <Calculation><![CDATA["Faltan datos"]]></Calculation>
+    </Title>
+    <Message>
+      <Calculation><![CDATA["Configure API Key, RNC, Tipo de documento y NCF Desde."]]></Calculation>
+    </Message>
+    <Buttons>
+      <Button CommitState="True">
+        <Calculation><![CDATA["OK"]]></Calculation>
+      </Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       3) Limpiar RNC y construir JSON
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$RNC_Limpio</Name>
+    <Value>
+      <Calculation><![CDATA[Substitute ( $RNC ; [ "-" ; "" ] ; [ " " ; "" ] ; [ "." ; "" ] )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Construir objeto de una anulación -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$objAnulacion</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( "{}" ; "tipoDocumento" ; $TipoDocumento ; JSONString )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$objAnulacion</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( $objAnulacion ; "ncfDesde" ; $NCF_Desde ; JSONString )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$objAnulacion</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( $objAnulacion ; "ncfHasta" ; $NCF_Hasta ; JSONString )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Construir array anulaciones con un elemento -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$arrAnulaciones</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( "[]" ; "[1]" ; $objAnulacion ; JSONObject )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Construir body completo -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( "{}" ; "rnc" ; $RNC_Limpio ; JSONString )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( $JSON ; "anulaciones" ; $arrAnulaciones ; JSONArray )]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- Opcional: fechaHoraAnulacion -->
+  <Step enable="True" id="68" name="If">
+    <Restore state="False"/>
+    <Calculation><![CDATA[not IsEmpty ( $FechaHoraAnulacion )]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$JSON</Name>
+    <Value>
+      <Calculation><![CDATA[JSONSetElement ( $JSON ; "fechaHoraAnulacion" ; $FechaHoraAnulacion ; JSONString )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       4) URL del endpoint
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$URL</Name>
+    <Value>
+      <Calculation><![CDATA[$URL_BASE & "/api/comprobantes/anular"]]></Calculation>
+    </Value>
+  </Step>
+
+  <!-- ============================================================
+       5) cURL Options + Insert from URL (POST)
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$cURLOptions</Name>
+    <Value>
+      <Calculation><![CDATA["-X POST " &
+"-H " & Quote ( "Authorization: Bearer " & $API_KEY ) & " " &
+"-H " & Quote ( "Content-Type: application/json" ) & " " &
+"-d " & Quote ( $JSON )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="160" name="Insert from URL">
+    <SelectAll state="True"/>
+    <NoInteract state="True"/>
+    <VerifySSLCertificates state="False"/>
+    <Target>$response</Target>
+    <Calculation><![CDATA[$URL]]></Calculation>
+    <CURLOptions>
+      <Calculation><![CDATA[$cURLOptions]]></Calculation>
+    </CURLOptions>
+  </Step>
+
+  <!-- ============================================================
+       6) Revisar error de conexión
+       ============================================================ -->
+  <Step enable="True" id="68" name="If">
+    <Restore state="False"/>
+    <Calculation><![CDATA[Get ( LastError ) ≠ 0]]></Calculation>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title>
+      <Calculation><![CDATA["Error de conexión"]]></Calculation>
+    </Title>
+    <Message>
+      <Calculation><![CDATA["No se pudo conectar. Código: " & Get ( LastError )]]></Calculation>
+    </Message>
+    <Buttons>
+      <Button CommitState="True">
+        <Calculation><![CDATA["OK"]]></Calculation>
+      </Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+  <!-- ============================================================
+       7) Parsear respuesta
+       ============================================================ -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$status</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "status" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$message</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "message" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$error</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "error" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="68" name="If">
+    <Restore state="False"/>
+    <Calculation><![CDATA[$status = "success"]]></Calculation>
+  </Step>
+
+  <!-- Éxito -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$cantidadAnulada</Name>
+    <Value>
+      <Calculation><![CDATA[JSONGetElement ( $response ; "data.cantidadAnulada" )]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title>
+      <Calculation><![CDATA["Secuencias anuladas"]]></Calculation>
+    </Title>
+    <Message>
+      <Calculation><![CDATA[$message & "¶¶Cantidad anulada: " & $cantidadAnulada]]></Calculation>
+    </Message>
+    <Buttons>
+      <Button CommitState="True">
+        <Calculation><![CDATA["OK"]]></Calculation>
+      </Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA["OK"]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="69" name="Else">
+    <Restore state="False"/>
+  </Step>
+
+  <!-- Error -->
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$msgUsuario</Name>
+    <Value>
+      <Calculation><![CDATA[Case (
+  not IsEmpty ( $message ) ; $message ;
+  not IsEmpty ( $error ) ; $error ;
+  $response
+)]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="141" name="Set Variable">
+    <Name>$titulo</Name>
+    <Value>
+      <Calculation><![CDATA[Case (
+  $error = "No autorizado" ; "Error de autenticación" ;
+  "Error al anular secuencias"
+)]]></Calculation>
+    </Value>
+  </Step>
+
+  <Step enable="True" id="87" name="Show Custom Dialog">
+    <Title>
+      <Calculation><![CDATA[$titulo]]></Calculation>
+    </Title>
+    <Message>
+      <Calculation><![CDATA[$msgUsuario]]></Calculation>
+    </Message>
+    <Buttons>
+      <Button CommitState="True">
+        <Calculation><![CDATA["OK"]]></Calculation>
+      </Button>
+      <Button CommitState="False"/>
+      <Button CommitState="False"/>
+    </Buttons>
+  </Step>
+
+  <Step enable="True" id="90" name="Exit Script">
+    <Result><Calculation><![CDATA[""]]></Calculation></Result>
+  </Step>
+
+  <Step enable="True" id="70" name="End If"/>
+
+</fmxmlsnippet>

@@ -117,8 +117,8 @@ Desde FileMaker: armar el JSON con el NCF y el RNC del emisor (ej. el mismo RNC 
 
 ## 4. Anular comprobantes
 
-**POST** (ruta que use `anularComprobantes`)  
-**Auth:** Sesión.  
+**POST** `/api/comprobantes/anular`  
+**Auth:** Sesión O API Key (Authorization: Bearer o X-API-Key).  
 **Body:** RNC + lista de anulaciones.
 
 ```json

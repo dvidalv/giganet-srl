@@ -299,6 +299,25 @@
   cursor: not-allowed;
 }
 
+.actionBtnAnular {
+  color: #92400e;
+}
+
+.actionBtnAnular:hover {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.actionBtnAnular:focus-visible {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+}
+
+.actionBtnAnular:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .cardDivider {
   height: 1px;
   background: linear-gradient(90deg, transparent 0%, #bfdbfe 50%, transparent 100%);
@@ -634,6 +653,75 @@
 
 .modalDetail strong {
   color: #0f172a;
+}
+
+.modalIconAnular {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  background: #fffbeb;
+  color: #b45309;
+  border-radius: 50%;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.modalLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modalInput {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.15);
+}
+
+.modalInput:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.modalConfirmAnular {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: #d97706;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modalConfirmAnular:hover:not(:disabled) {
+  background: #b45309;
+}
+
+.modalConfirmAnular:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
 }
 
 .modalActions {

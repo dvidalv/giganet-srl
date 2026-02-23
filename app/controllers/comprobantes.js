@@ -3014,24 +3014,35 @@ const enviarEmailFactura = async (req, res) => {
   return await enviarEmailDocumento(req, res);
 };
 
-// Función para anular comprobantes fiscales
-const anularComprobantes = async (req, res) => {
+/**
+ * Lógica para anular comprobantes fiscales ante TheFactoryHKA/DGII (sin Express).
+ * Devuelve { status, data } para uso directo con NextResponse.
+ * Si se proporciona userId, actualiza los Comprobante locales para reflejar las anulaciones
+ * (numeros_utilizados, numeros_disponibles, estado) y evitar que el sistema reasigne esos NCF.
+ * @param {{ rnc: string, anulaciones: Array, fechaHoraAnulacion?: string }} body
+ * @param {{ userId?: string }} options - userId para sincronizar Comprobante locales (requerido desde API autenticada)
+ * @returns {Promise<{ status: number, data: object }>}
+ */
+export async function anularComprobantesLogic(body, options = {}) {
   try {
     console.log(
       "📋 Solicitud de anulación recibida:",
-      JSON.stringify(req.body, null, 2)
+      JSON.stringify(body, null, 2)
     );
 
-    const { rnc, anulaciones, fechaHoraAnulacion } = req.body;
+    const { rnc, anulaciones, fechaHoraAnulacion } = body ?? {};
 
     // ====== VALIDACIONES ======
 
     // 1. Validar campos requeridos
     if (!rnc) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: "El campo RNC es obligatorio",
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "El campo RNC es obligatorio",
+        },
+      };
     }
 
     if (
@@ -3039,11 +3050,14 @@ const anularComprobantes = async (req, res) => {
       !Array.isArray(anulaciones) ||
       anulaciones.length === 0
     ) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message:
-          "El campo anulaciones es obligatorio y debe ser un array con al menos una anulación",
-      });
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message:
+            "El campo anulaciones es obligatorio y debe ser un array con al menos una anulación",
+        },
+      };
     }
 
     // 2. Validar tipos de documentos permitidos
@@ -3069,21 +3083,27 @@ const anularComprobantes = async (req, res) => {
       const anulacion = anulaciones[i];
 
       if (!anulacion.tipoDocumento) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${i + 1}: El campo tipoDocumento es obligatorio`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${i + 1}: El campo tipoDocumento es obligatorio`,
+          },
+        };
       }
 
       if (!tiposDocumentosValidos.includes(anulacion.tipoDocumento)) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${
-            i + 1
-          }: Tipo de documento inválido. Debe ser uno de: ${tiposDocumentosValidos.join(
-            ", "
-          )}`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${
+              i + 1
+            }: Tipo de documento inválido. Debe ser uno de: ${tiposDocumentosValidos.join(
+              ", "
+            )}`,
+          },
+        };
       }
 
       // 🔧 MEJORA: Soportar diferentes formatos de entrada
@@ -3102,12 +3122,15 @@ const anularComprobantes = async (req, res) => {
 
       // Validar que al menos tengamos ncfDesde
       if (!anulacion.ncfDesde) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${
-            i + 1
-          }: Debe proporcionar 'ncf' o 'ncfDesde' (o ambos 'ncfDesde' y 'ncfHasta' para un rango)`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${
+              i + 1
+            }: Debe proporcionar 'ncf' o 'ncfDesde' (o ambos 'ncfDesde' y 'ncfHasta' para un rango)`,
+          },
+        };
       }
 
       // Asegurar que ncfHasta existe
@@ -3117,21 +3140,27 @@ const anularComprobantes = async (req, res) => {
 
       // Validar formato de NCF
       if (!ncfRegex.test(anulacion.ncfDesde)) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${
-            i + 1
-          }: NCF Desde tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000098 o E310000000147`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${
+              i + 1
+            }: NCF Desde tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000098 o E310000000147`,
+          },
+        };
       }
 
       if (!ncfRegex.test(anulacion.ncfHasta)) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${
-            i + 1
-          }: NCF Hasta tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000099 o E310000000148`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${
+              i + 1
+            }: NCF Hasta tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ejemplos: E310000000099 o E310000000148`,
+          },
+        };
       }
 
       // Validar que el tipo de documento coincida con el prefijo del NCF
@@ -3139,21 +3168,27 @@ const anularComprobantes = async (req, res) => {
       const tipoEnNCFHasta = anulacion.ncfHasta.substring(1, 3);
 
       if (tipoEnNCFDesde !== anulacion.tipoDocumento) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${i + 1}: El tipo de documento (${
-            anulacion.tipoDocumento
-          }) no coincide con el prefijo del NCF Desde (${tipoEnNCFDesde})`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${i + 1}: El tipo de documento (${
+              anulacion.tipoDocumento
+            }) no coincide con el prefijo del NCF Desde (${tipoEnNCFDesde})`,
+          },
+        };
       }
 
       if (tipoEnNCFHasta !== anulacion.tipoDocumento) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${i + 1}: El tipo de documento (${
-            anulacion.tipoDocumento
-          }) no coincide con el prefijo del NCF Hasta (${tipoEnNCFHasta})`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${i + 1}: El tipo de documento (${
+              anulacion.tipoDocumento
+            }) no coincide con el prefijo del NCF Hasta (${tipoEnNCFHasta})`,
+          },
+        };
       }
 
       // Validar que ncfHasta >= ncfDesde
@@ -3161,12 +3196,15 @@ const anularComprobantes = async (req, res) => {
       const secuenciaHasta = parseInt(anulacion.ncfHasta.substring(3), 10);
 
       if (secuenciaHasta < secuenciaDesde) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: `Anulación ${
-            i + 1
-          }: NCF Hasta debe ser mayor o igual a NCF Desde`,
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: `Anulación ${
+              i + 1
+            }: NCF Hasta debe ser mayor o igual a NCF Desde`,
+          },
+        };
       }
     }
 
@@ -3178,10 +3216,13 @@ const anularComprobantes = async (req, res) => {
       // Si el usuario proporciona la fecha, validar formato
       const fechaRegex = /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$/;
       if (!fechaRegex.test(fechaHoraAnulacion)) {
-        return res.status(httpStatus.BAD_REQUEST).json({
-          status: "error",
-          message: "Formato de fecha inválido. Debe ser DD-MM-YYYY HH:mm:ss",
-        });
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: "Formato de fecha inválido. Debe ser DD-MM-YYYY HH:mm:ss",
+          },
+        };
       }
       fechaFormateada = fechaHoraAnulacion;
     } else {
@@ -3264,65 +3305,117 @@ const anularComprobantes = async (req, res) => {
       response.data.codigo === 0 ||
       response.data.codigo === 100
     ) {
+      // Sincronizar Comprobante locales: marcar los NCF anulados para que no se reasignen
+      const { userId } = options;
+      if (userId) {
+        try {
+          for (const anulacion of anulaciones) {
+            const secuenciaDesde = parseInt(
+              anulacion.ncfDesde.substring(3),
+              10
+            );
+            const secuenciaHasta = parseInt(
+              anulacion.ncfHasta.substring(3),
+              10
+            );
+            await Comprobante.marcarNumerosComoAnulados(
+              rnc,
+              anulacion.tipoDocumento,
+              secuenciaDesde,
+              secuenciaHasta,
+              userId
+            );
+          }
+          console.log("✅ Comprobantes locales actualizados tras anulación");
+        } catch (errSync) {
+          console.error(
+            "⚠️ Anulación en DGII exitosa pero error al actualizar comprobantes locales:",
+            errSync
+          );
+          // No fallar la respuesta: la anulación en DGII fue exitosa
+        }
+      }
+
       // Éxito
-      return res.status(httpStatus.OK).json({
-        status: "success",
-        message: "Secuencias anuladas exitosamente",
+      return {
+        status: httpStatus.OK,
         data: {
-          codigo: response.data.codigo,
-          mensaje: response.data.mensaje,
-          procesado: response.data.procesado,
-          xmlBase64: response.data.xmlBase64, // XML firmado de la anulación
-          cantidadAnulada: cantidadTotal,
-          detalles: anulaciones.map((a, i) => ({
-            tipoDocumento: a.tipoDocumento,
-            ncfDesde: a.ncfDesde,
-            ncfHasta: a.ncfHasta,
-            cantidad: detallesAnulacion[i].Cantidad,
-          })),
+          status: "success",
+          message: "Secuencias anuladas exitosamente",
+          data: {
+            codigo: response.data.codigo,
+            mensaje: response.data.mensaje,
+            procesado: response.data.procesado,
+            xmlBase64: response.data.xmlBase64, // XML firmado de la anulación
+            cantidadAnulada: cantidadTotal,
+            detalles: anulaciones.map((a, i) => ({
+              tipoDocumento: a.tipoDocumento,
+              ncfDesde: a.ncfDesde,
+              ncfHasta: a.ncfHasta,
+              cantidad: detallesAnulacion[i].Cantidad,
+            })),
+          },
         },
-      });
+      };
     } else {
       // Error de negocio de TheFactoryHKA
-      return res.status(httpStatus.BAD_REQUEST).json({
-        status: "error",
-        message: `Error al anular: ${response.data.mensaje}`,
-        details: {
-          codigo: response.data.codigo,
-          mensaje: response.data.mensaje,
-          procesado: response.data.procesado,
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: `Error al anular: ${response.data.mensaje}`,
+          details: {
+            codigo: response.data.codigo,
+            mensaje: response.data.mensaje,
+            procesado: response.data.procesado,
+          },
         },
-      });
+      };
     }
   } catch (error) {
     console.error("❌ Error al anular comprobantes:", error);
 
     // Manejo de errores de axios
     if (error.response) {
-      return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-        status: "error",
-        message: "Error en la respuesta de TheFactoryHKA",
-        details: {
-          status: error.response.status,
-          data: error.response.data,
+      return {
+        status: httpStatus.INTERNAL_SERVER_ERROR,
+        data: {
+          status: "error",
+          message: "Error en la respuesta de TheFactoryHKA",
+          details: {
+            status: error.response.status,
+            data: error.response.data,
+          },
         },
-      });
+      };
     }
 
     if (error.code === "ECONNABORTED") {
-      return res.status(httpStatus.REQUEST_TIMEOUT).json({
-        status: "error",
-        message: "Timeout al conectar con TheFactoryHKA",
-      });
+      return {
+        status: httpStatus.REQUEST_TIMEOUT,
+        data: {
+          status: "error",
+          message: "Timeout al conectar con TheFactoryHKA",
+        },
+      };
     }
 
     // Error genérico
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      status: "error",
-      message: "Error interno al procesar la anulación",
-      details: error.message,
-    });
+    return {
+      status: httpStatus.INTERNAL_SERVER_ERROR,
+      data: {
+        status: "error",
+        message: "Error interno al procesar la anulación",
+        details: error.message,
+      },
+    };
   }
+}
+
+// Función para anular comprobantes fiscales (wrapper Express)
+const anularComprobantes = async (req, res) => {
+  const result = await anularComprobantesLogic(req.body);
+  return res.status(result.status).json(result.data);
 };
 
 /**

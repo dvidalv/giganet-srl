@@ -323,6 +323,43 @@ comprobanteSchema.methods.esValido = function () {
   );
 };
 
+/**
+ * Marca números como anulados en los rangos locales después de una anulación exitosa en DGII.
+ * Actualiza numeros_utilizados para que el sistema no intente usar esos NCF de nuevo.
+ * @param {string} rnc - RNC del emisor
+ * @param {string} tipoDocumento - Tipo de comprobante (31, 32, etc.)
+ * @param {number} secuenciaDesde - Secuencia inicial anulada (parte numérica del NCF)
+ * @param {number} secuenciaHasta - Secuencia final anulada
+ * @param {string} usuarioId - ID del usuario dueño de los comprobantes
+ */
+comprobanteSchema.statics.marcarNumerosComoAnulados = async function (
+  rnc,
+  tipoDocumento,
+  secuenciaDesde,
+  secuenciaHasta,
+  usuarioId,
+) {
+  const mongoose = await import('mongoose');
+  const rncLimpio = String(rnc ?? '').replace(/\D/g, '').trim();
+  const query = {
+    usuario: new mongoose.default.Types.ObjectId(usuarioId),
+    rnc: rncLimpio,
+    tipo_comprobante: String(tipoDocumento),
+    numero_inicial: { $lte: secuenciaHasta },
+    numero_final: { $gte: secuenciaDesde },
+  };
+  const rangos = await this.find(query);
+  for (const rango of rangos) {
+    const hastaEnRango = Math.min(rango.numero_final, secuenciaHasta);
+    const nuevosUtilizados = hastaEnRango - rango.numero_inicial + 1;
+    if (nuevosUtilizados > rango.numeros_utilizados) {
+      rango.numeros_utilizados = nuevosUtilizados;
+      rango.estado = 'inactivo'; // Excluir de solicitar-numero; pre-save respeta 'inactivo'
+      await rango.save();
+    }
+  }
+};
+
 // Método estático para obtener rangos disponibles por RNC y tipo (FileMaker)
 comprobanteSchema.statics.obtenerRangosPorRnc = function (
   rnc,
@@ -394,6 +431,37 @@ comprobanteSchema.set('toJSON', {
 });
 
 const Comprobante = mongoose.models.Comprobante || mongoose.model('Comprobante', comprobanteSchema, 'comprobantes');
+
+// Asegurar que marcarNumerosComoAnulados exista (evita problemas con modelo cacheado en Next.js/Turbopack)
+if (typeof Comprobante.marcarNumerosComoAnulados !== 'function') {
+  Comprobante.marcarNumerosComoAnulados = async function (
+    rnc,
+    tipoDocumento,
+    secuenciaDesde,
+    secuenciaHasta,
+    usuarioId,
+  ) {
+    const mongooseMod = await import('mongoose');
+    const rncLimpio = String(rnc ?? '').replace(/\D/g, '').trim();
+    const query = {
+      usuario: new mongooseMod.default.Types.ObjectId(usuarioId),
+      rnc: rncLimpio,
+      tipo_comprobante: String(tipoDocumento),
+      numero_inicial: { $lte: secuenciaHasta },
+      numero_final: { $gte: secuenciaDesde },
+    };
+    const rangos = await this.find(query);
+    for (const rango of rangos) {
+      const hastaEnRango = Math.min(rango.numero_final, secuenciaHasta);
+      const nuevosUtilizados = hastaEnRango - rango.numero_inicial + 1;
+      if (nuevosUtilizados > rango.numeros_utilizados) {
+        rango.numeros_utilizados = nuevosUtilizados;
+        rango.estado = 'inactivo';
+        await rango.save();
+      }
+    }
+  };
+}
 
 // Asegurar conexión a MongoDB antes de cada operación (Next.js/serverless)
 if (!Comprobante._connectionWrapped) {

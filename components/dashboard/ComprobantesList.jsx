@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { FaReceipt, FaFileInvoiceDollar } from "react-icons/fa";
+import { FaReceipt, FaFileInvoiceDollar, FaBan } from "react-icons/fa";
 import { FaFileCircleMinus } from "react-icons/fa6";
 import styles from "./ComprobantesList.module.css";
 
@@ -26,6 +26,14 @@ function formatVencimiento(fecha) {
         year: "numeric",
       });
 }
+
+function formatearNCF(prefijo, tipo, secuencia) {
+  const tipoStr = String(tipo ?? "").padStart(2, "0");
+  const secStr = String(secuencia ?? 0).padStart(10, "0");
+  return `${prefijo ?? "E"}${tipoStr}${secStr}`;
+}
+
+const NCF_REGEX = /^E\d{2}\d{8,10}$/;
 
 const ESTADOS_ACTIVOS = ["activo", "alerta", "pocos"];
 
@@ -109,6 +117,10 @@ export default function ComprobantesList() {
   const [filterEstado, setFilterEstado] = useState("activos");
   const [deletingId, setDeletingId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingAnular, setPendingAnular] = useState(null);
+  const [anulandoId, setAnulandoId] = useState(null);
+  const [anularNcfDesde, setAnularNcfDesde] = useState("");
+  const [anularNcfHasta, setAnularNcfHasta] = useState("");
 
   const fetchComprobantes = useCallback(async () => {
     setLoading(true);
@@ -143,6 +155,89 @@ export default function ComprobantesList() {
     if (!deletingId) setPendingDelete(null);
   }, [deletingId]);
 
+  const openAnularModal = useCallback((c) => {
+    setPendingAnular(c);
+    const prefijo = c.prefijo ?? "E";
+    const tipo = c.tipo ?? c.tipo_comprobante;
+    const proximo = c.proximoNumero ?? c.proximo_numero ?? 0;
+    const fin = c.numeroFinal ?? c.numero_final ?? 0;
+    setAnularNcfDesde(formatearNCF(prefijo, tipo, proximo));
+    setAnularNcfHasta(formatearNCF(prefijo, tipo, fin));
+  }, []);
+
+  const closeAnularModal = useCallback(() => {
+    if (!anulandoId) {
+      setPendingAnular(null);
+      setAnularNcfDesde("");
+      setAnularNcfHasta("");
+    }
+  }, [anulandoId]);
+
+  const handleAnular = useCallback(async () => {
+    if (!pendingAnular) return;
+    const ncfDesde = anularNcfDesde.trim();
+    const ncfHasta = anularNcfHasta.trim();
+    if (!ncfDesde || !ncfHasta) {
+      alert("Debe indicar NCF Desde y NCF Hasta.");
+      return;
+    }
+    if (!NCF_REGEX.test(ncfDesde)) {
+      alert(
+        "NCF Desde tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ej: E310000000044"
+      );
+      return;
+    }
+    if (!NCF_REGEX.test(ncfHasta)) {
+      alert(
+        "NCF Hasta tiene formato inválido. Debe ser E + tipo (2 dígitos) + secuencia (8-10 dígitos). Ej: E310000000050"
+      );
+      return;
+    }
+    const secDesde = parseInt(ncfDesde.substring(3), 10);
+    const secHasta = parseInt(ncfHasta.substring(3), 10);
+    if (secHasta < secDesde) {
+      alert("NCF Hasta debe ser mayor o igual a NCF Desde.");
+      return;
+    }
+    const id = pendingAnular.id ?? pendingAnular._id;
+    setAnulandoId(id);
+    try {
+      const rnc = String(pendingAnular.rnc ?? "").replace(/\D/g, "").trim();
+      const tipoDocumento = pendingAnular.tipo ?? pendingAnular.tipo_comprobante;
+      const res = await fetch("/api/comprobantes/anular", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rnc,
+          anulaciones: [{ tipoDocumento, ncfDesde, ncfHasta }],
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          json.message ?? json.error ?? "Error al anular secuencias";
+        alert(msg);
+        return;
+      }
+      setPendingAnular(null);
+      setAnularNcfDesde("");
+      setAnularNcfHasta("");
+      await fetchComprobantes();
+      alert(
+        json.message ?? "Secuencias anuladas exitosamente ante DGII."
+      );
+    } catch (err) {
+      alert("Error de conexión al anular.");
+    } finally {
+      setAnulandoId(null);
+    }
+  }, [
+    pendingAnular,
+    anularNcfDesde,
+    anularNcfHasta,
+    fetchComprobantes,
+  ]);
+
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
     const id = pendingDelete.id ?? pendingDelete._id;
@@ -168,12 +263,17 @@ export default function ComprobantesList() {
 
   useEffect(() => {
     const onEscape = (e) => {
-      if (e.key === "Escape" && pendingDelete && !deletingId)
-        setPendingDelete(null);
+      if (e.key !== "Escape") return;
+      if (pendingDelete && !deletingId) setPendingDelete(null);
+      if (pendingAnular && !anulandoId) {
+        setPendingAnular(null);
+        setAnularNcfDesde("");
+        setAnularNcfHasta("");
+      }
     };
     document.addEventListener("keydown", onEscape);
     return () => document.removeEventListener("keydown", onEscape);
-  }, [pendingDelete, deletingId]);
+  }, [pendingDelete, deletingId, pendingAnular, anulandoId]);
 
   const filtered = useMemo(() => {
     let list = comprobantes;
@@ -267,6 +367,81 @@ export default function ComprobantesList() {
                 onClick={handleConfirmDelete}
                 disabled={!!deletingId}>
                 {deletingId ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingAnular && (
+        <div
+          className={styles.modalOverlay}
+          onClick={closeAnularModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-anular-title"
+          aria-describedby="modal-anular-desc">
+          <div
+            className={styles.modalContent}
+            onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalIconAnular}>
+              <FaBan size={28} aria-hidden />
+            </div>
+            <h2 id="modal-anular-title" className={styles.modalTitle}>
+              Anular secuencias no usadas
+            </h2>
+            <p id="modal-anular-desc" className={styles.modalMessage}>
+              Anula NCF ante la DGII para que el sistema no intente usarlos. Útil
+              cuando hay números que no utilizarás (ej. comprobantes vencidos).
+            </p>
+            {pendingAnular.titulo && (
+              <p className={styles.modalDetail}>
+                <strong>{pendingAnular.titulo}</strong>
+                {pendingAnular.tipo_comprobante && (
+                  <> — Tipo {pendingAnular.tipo_comprobante}</>
+                )}
+              </p>
+            )}
+            <div className={styles.modalForm}>
+              <label htmlFor="anular-ncf-desde" className={styles.modalLabel}>
+                NCF Desde
+              </label>
+              <input
+                id="anular-ncf-desde"
+                type="text"
+                className={styles.modalInput}
+                value={anularNcfDesde}
+                onChange={(e) => setAnularNcfDesde(e.target.value)}
+                placeholder="E310000000044"
+                disabled={!!anulandoId}
+              />
+              <label htmlFor="anular-ncf-hasta" className={styles.modalLabel}>
+                NCF Hasta
+              </label>
+              <input
+                id="anular-ncf-hasta"
+                type="text"
+                className={styles.modalInput}
+                value={anularNcfHasta}
+                onChange={(e) => setAnularNcfHasta(e.target.value)}
+                placeholder="E310000000050"
+                disabled={!!anulandoId}
+              />
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancel}
+                onClick={closeAnularModal}
+                disabled={!!anulandoId}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.modalConfirmAnular}
+                onClick={handleAnular}
+                disabled={!!anulandoId}>
+                {anulandoId ? "Anulando..." : "Anular"}
               </button>
             </div>
           </div>
@@ -406,6 +581,17 @@ export default function ComprobantesList() {
                           <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
                       </Link>
+                      {disponibles > 0 && (
+                        <button
+                          type="button"
+                          className={`${styles.actionBtn} ${styles.actionBtnAnular}`}
+                          title="Anular secuencias"
+                          aria-label="Anular secuencias no usadas"
+                          onClick={() => openAnularModal(c)}
+                          disabled={anulandoId === (c.id ?? c._id)}>
+                          <FaBan size={16} aria-hidden />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className={`${styles.actionBtn} ${styles.actionBtnDanger}`}

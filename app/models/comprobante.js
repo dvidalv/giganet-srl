@@ -281,11 +281,11 @@ comprobanteSchema.pre('save', async function () {
 });
 
 // Middleware pre-update para actualizaciones
+// Usar async evita problemas con la firma de next en findOneAndUpdate con updatePipeline
 comprobanteSchema.pre(
   ['findOneAndUpdate', 'updateOne', 'updateMany'],
-  function (next) {
+  async function () {
     this.set({ fechaActualizacion: Date.now() });
-    next();
   },
 );
 

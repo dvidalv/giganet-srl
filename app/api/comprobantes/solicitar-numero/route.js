@@ -117,7 +117,14 @@ export async function POST(request) {
       rnc: rncRaw,
       tipo_comprobante,
       estado: { $in: ["activo", "alerta"] },
-      numeros_disponibles: { $gt: 0 },
+      // Condición atómica: solo coincidir si aún hay números disponibles.
+      // Evita condición de carrera cuando varias peticiones solicitan al mismo tiempo.
+      $expr: {
+        $lt: [
+          "$numeros_utilizados",
+          { $add: [{ $subtract: ["$numero_final", "$numero_inicial"] }, 1] },
+        ],
+      },
     };
 
     if (!["32", "34"].includes(tipo_comprobante)) {
@@ -129,9 +136,50 @@ export async function POST(request) {
 
     console.log("Query para buscar rango:", JSON.stringify(query, null, 2));
 
-    const rango = await Comprobante.findOne(query)
-      .sort({ fechaCreacion: 1 })
-      .exec();
+    // Para preview: solo leer, no modificar. findOne es suficiente.
+    const rango = solo_preview
+      ? await Comprobante.findOne(query).sort({ fechaCreacion: 1 }).exec()
+      : await Comprobante.findOneAndUpdate(
+          query,
+          [
+            { $set: { numeros_utilizados: { $add: ["$numeros_utilizados", 1] } } },
+            {
+              $set: {
+                numeros_disponibles: {
+                  $subtract: ["$cantidad_numeros", "$numeros_utilizados"],
+                },
+              },
+            },
+            {
+              $set: {
+                estado: {
+                  $cond: [
+                    { $lte: ["$numeros_disponibles", 0] },
+                    "agotado",
+                    {
+                      $cond: [
+                        {
+                          $lte: [
+                            "$numeros_disponibles",
+                            { $ifNull: ["$alerta_minima_restante", 5] },
+                          ],
+                        },
+                        "alerta",
+                        "$estado",
+                      ],
+                    },
+                  ],
+                },
+                fechaActualizacion: new Date(),
+              },
+            },
+          ],
+          {
+            new: true,
+            sort: { fechaCreacion: 1 },
+            updatePipeline: true,
+          }
+        );
 
     console.log("Rango encontrado:", rango ? `ID: ${rango._id}` : "null");
 
@@ -183,7 +231,9 @@ export async function POST(request) {
       final: rango.numero_final,
     });
 
-    if (!rango.esValido()) {
+    // Solo validar con esValido en preview; en consumo, findOneAndUpdate ya garantizó
+    // que el rango era elegible antes de incrementar.
+    if (solo_preview && !rango.esValido()) {
       console.log(
         "ERROR: El rango no es válido (método esValido() retornó false)",
       );
@@ -197,7 +247,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✓ Rango es válido");
+    console.log("✓ Rango válido");
 
     const formatFechaVencimiento = (fecha) => {
       if (!fecha) return null;
@@ -263,10 +313,7 @@ export async function POST(request) {
       return NextResponse.json(previewBody);
     }
 
-    console.log("Consumiendo número del rango...");
-    await rango.consumirNumero();
-    console.log("✓ Número consumido exitosamente");
-
+    // Número ya consumido de forma atómica en findOneAndUpdate
     const numeroConsumido = rango.numero_inicial + rango.numeros_utilizados - 1;
     const numeroFormateado = rango.formatearNumeroECF(numeroConsumido);
 

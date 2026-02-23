@@ -346,7 +346,7 @@ comprobanteSchema.statics.marcarNumerosComoAnulados = async function (
     rnc: rncLimpio,
     tipo_comprobante: String(tipoDocumento),
     numero_inicial: { $lte: secuenciaHasta },
-    numero_final: { $gte: secuenciaDesde },
+    numero_final: { $gte: secuenciaDesde }, 
   };
   const rangos = await this.find(query);
   for (const rango of rangos) {

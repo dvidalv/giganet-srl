@@ -138,6 +138,10 @@
 }
 
 @media (max-width: 500px) {
+    .logoContainer a img {
+        width: 100px;
+        height: 50px;
+    }
     .header {
         flex-direction: row;
         padding: 1rem;
@@ -147,7 +151,7 @@
 
     .navList {
         /* flex-direction: column; */
-        gap: 0.5rem;
+        gap: 0;
         width: 100%;
         text-align: center;
 

@@ -37,8 +37,28 @@
         "main"
             
     }
+    .mainContent {
+        margin-top: 0 ;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        /* align-items: center; */
+    }
 
     .content {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 500px) {
+    .dashboardLayout {
+        margin-top: 0 ;
+    }
+    .mainContent {
+
+    }
+    .content {
+     
         padding: 1rem;
     }
 }

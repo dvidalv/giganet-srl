@@ -101,6 +101,10 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+    .logoContainer a img {
+        width: 80px;
+        height: 40px;
+    }
     .header {
         padding: 1rem 2rem;
     }
@@ -115,6 +119,10 @@
 }
 
 @media (max-width: 768px) {
+    .logoContainer a img {
+        width: 100px;
+        height: 40px;
+    }
     .header {
         padding: 1rem 1.5rem;
         height: auto;
@@ -142,6 +150,7 @@
         width: 100px;
         height: 50px;
     }
+
     .header {
         flex-direction: row;
         padding: 1rem;

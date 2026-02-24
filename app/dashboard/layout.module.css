@@ -15,7 +15,7 @@
     grid-area: main;
     display: flex;
     flex-direction: column;
-    /* margin-top: var(--headerHeight); */
+    margin-top: calc(var(--headerHeight) + 1rem);
     min-height: 100%;
 }
 
@@ -24,7 +24,7 @@
     overflow-y: auto;
     min-height: calc(100vh - var(--headerHeight) - var(--footerHeight));
 
-    margin-top: var(--headerHeight);
+    /* margin-top: var(--headerHeight); */
 }
 
 /* Mobile: sidebar debajo del contenido, encima del footer */
@@ -33,8 +33,9 @@
         grid-template-columns: 1fr;
         grid-template-rows: 1fr auto;
         grid-template-areas:
-            "main"
-            "sidebar";
+        "sidebar"
+        "main"
+            
     }
 
     .content {

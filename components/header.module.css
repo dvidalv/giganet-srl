@@ -28,6 +28,8 @@
 
 .nav {
     display: flex;
+    flex-direction: row;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -135,22 +137,24 @@
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 500px) {
     .header {
-        flex-direction: column;
+        flex-direction: row;
         padding: 1rem;
         gap: 1rem;
+
     }
 
     .navList {
-        flex-direction: column;
+        /* flex-direction: column; */
         gap: 0.5rem;
         width: 100%;
         text-align: center;
+
     }
 
     .navItem {
-        width: 100%;
+        /* width: 100%; */
     }
 
     .navLink {

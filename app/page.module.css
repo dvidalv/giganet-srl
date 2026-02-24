@@ -118,6 +118,9 @@
 }
 
 @media (max-width: 768px) {
+  .heroContainer {
+    margin-top: var(--headerHeightMobile) ;
+  }
   .heroTitle {
     font-size: 28px;
     margin-bottom: 20px;

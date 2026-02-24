@@ -2,7 +2,14 @@
   --background: #ffffff;
   --foreground: #171717;
   --headerHeight: 120px;
+  --headerHeightMobile: 80px;
+  --headerHeightMobile: 80px;
+  --headerHeightTablet: 100px;
+  --headerHeightDesktop: 120px;
   --footerHeight: 470px;
+  --footerHeightMobile: 470px;
+  --footerHeightTablet: 470px;
+  --footerHeightDesktop: 470px;
   --color-primary: #ff6b35;
   --font-primary: Arial, Helvetica, sans-serif;
 }

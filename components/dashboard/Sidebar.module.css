@@ -150,7 +150,7 @@
     height: auto;
     width: 100%;
     min-height: auto;
-    margin-top: var(--headerHeight);
+    margin-top: var(--headerHeightMobile) ;
   }
 
   .sidebarContent {
@@ -223,6 +223,9 @@
 }
 
 @media (max-width: 500px) {
+  .sidebarContent{
+   
+  }
   .navList {
     gap: 0.25rem;
   }

@@ -100,7 +100,7 @@ export default async function Home() {
               con la excelencia, ofreciendo soluciones innovadoras y eficientes que se 
               adaptan perfectamente a tus necesidades específicas.
             </p>
-            <Link href="/register" className={styles.ctaButton}>
+            <Link href="/contact" className={styles.ctaButton}>
               SOLICITA UNA CONSULTA
             </Link>
           </div>

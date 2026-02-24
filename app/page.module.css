@@ -93,6 +93,9 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+  .heroContainer {
+    margin-top: var(--headerHeightTablet) ;
+  }
   .heroContent {
     grid-template-columns: 1fr;
     gap: 30px;

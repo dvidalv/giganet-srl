@@ -1,28 +1,55 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 
+// Rutas que existen en la aplicación (listado único)
+const EXISTING_ROUTES = [
+  "/",
+  "/login",
+  "/register",
+  "/contacto",
+  "/forgot-password",
+  "/reset-password",
+  "/dashboard",
+]
+
+// Rutas públicas (no requieren autenticación)
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/contacto", "/forgot-password", "/reset-password"]
+
+function routeExists(pathname) {
+  return EXISTING_ROUTES.some(
+    (route) => route === "/" ? pathname === "/" : pathname === route || pathname.startsWith(route + "/")
+  )
+}
+
+function isPublicRoute(pathname) {
+  return PUBLIC_ROUTES.some(
+    (route) => route === "/" ? pathname === "/" : pathname === route || pathname.startsWith(route + "/")
+  )
+}
+
 export default auth((req) => {
   const { pathname } = req.nextUrl
   const isAuthenticated = !!req.auth
 
-  // Rutas que requieren autenticación
-  const protectedRoutes = ["/dashboard", "/estudios"]
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-
-  // Rutas públicas (login y register)
-  const publicRoutes = ["/login", "/register"]
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
-
-  // Si intenta acceder a una ruta protegida sin estar autenticado
-  if (isProtectedRoute && !isAuthenticated) {
+  // Si la ruta NO existe → redirigir a login (o dashboard si ya está autenticado)
+  if (!routeExists(pathname)) {
+    if (isAuthenticated) {
+      return NextResponse.redirect(new URL("/dashboard", req.url))
+    }
     const loginUrl = new URL("/login", req.url)
-    // Guardar la URL original para redirigir después del login
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Si está autenticado e intenta acceder a login/register, redirigir al dashboard
-  if (isPublicRoute && isAuthenticated) {
+  // Si intenta acceder a una ruta protegida sin estar autenticado → redirigir a login
+  if (!isPublicRoute(pathname) && !isAuthenticated) {
+    const loginUrl = new URL("/login", req.url)
+    loginUrl.searchParams.set("callbackUrl", pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Si está autenticado e intenta acceder a login/register → redirigir al dashboard
+  if ((pathname.startsWith("/login") || pathname.startsWith("/register")) && isAuthenticated) {
     return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 

@@ -1,6 +1,7 @@
 .wrapper {
-  margin: 0;
+  margin: 0 auto;
   min-width: 0;
+  max-width: 640px;
 }
 
 .card {

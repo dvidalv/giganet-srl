@@ -227,9 +227,7 @@
 }
 
 @media (max-width: 500px) {
-  .sidebarContent{
-   
-  }
+
   .navList {
     gap: 0.25rem;
   }

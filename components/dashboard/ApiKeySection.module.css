@@ -1,5 +1,6 @@
 .wrapper {
   margin: 0;
+  min-width: 0;
 }
 
 .card {
@@ -9,6 +10,7 @@
   border: 1px solid #e2e8f0;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  min-width: 0;
 }
 
 .status {
@@ -83,6 +85,7 @@
   border-radius: 8px;
   font-size: 0.875rem;
   color: #92400e;
+  overflow-wrap: break-word;
 }
 
 .instructions h3 {
@@ -100,12 +103,14 @@
   border-radius: 8px;
   font-size: 0.8125rem;
   overflow-x: auto;
+  min-width: 0;
 }
 
 .instructions p {
   font-size: 0.875rem;
   color: #475569;
   margin: 0 0 0.5rem 0;
+  overflow-wrap: break-word;
 }
 
 .loading {
@@ -122,6 +127,7 @@
   border-radius: 8px;
   font-size: 0.875rem;
   margin-bottom: 1rem;
+  overflow-wrap: break-word;
 }
 
 .copyBtn {
@@ -137,4 +143,78 @@
 
 .copyBtn:hover {
   background: #cbd5e1;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .status {
+    font-size: 0.8125rem;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .btn {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .keyBlock {
+    margin-top: 1rem;
+    padding: 0.875rem;
+    font-size: 0.75rem;
+  }
+
+  .keyBlockLabel {
+    font-size: 0.6875rem;
+  }
+
+  .keyBlock code {
+    display: block;
+    line-height: 1.5;
+    margin: 0.25rem 0;
+  }
+
+  .copyBtn {
+    margin-top: 0.75rem;
+    width: 100%;
+    padding: 0.625rem 1rem;
+  }
+
+  .warning {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  .instructions h3 {
+    font-size: 0.9375rem;
+  }
+
+  .instructions p {
+    font-size: 0.8125rem;
+  }
+
+  .instructions pre {
+    padding: 0.75rem;
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .error {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  .loading {
+    padding: 1.5rem;
+    font-size: 0.875rem;
+  }
 }

@@ -13,7 +13,7 @@ export default async function Header() {
         <header className={styles.header}>
             <div className={styles.logoContainer}>
                 <Link href="/">
-                    <Image src={logo} alt="Logo Giganet" width={140} height={70} className={styles.logo} priority loading="eager" />
+                    <Image src={logo} alt="Logo Giganet" width={120} height={60} className={styles.logo} priority loading="eager" />
                 </Link>
             </div>
             <HeaderNav isLoggedIn={isLoggedIn} />

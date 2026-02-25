@@ -19,13 +19,13 @@
 .logoContainer {
     display: flex;
     align-items: center;
-    min-width: 160px;
+    min-width: 120px;
     height: 100%;
 }
 
 .logo {
     width: 100%;
-    max-width: 140px;
+    max-width: 120px;
     height: auto;
     object-fit: contain;
 }
@@ -130,12 +130,12 @@
     .header {
         padding: 1rem 1.5rem;
         /* height: auto; */
-        min-height: 80px;
+        min-height: --headerHeightMobile;
     }
 
     .navList {
         gap: 1rem;
-        flex-wrap: wrap;
+        /* flex-wrap: wrap; */
         justify-content: center;
     }
 
@@ -147,16 +147,12 @@
 }
 
 @media (max-width: 500px) {
-    /* .logoContainer a img {
-        width: 100px;
-        height: 50px;
-    } */
 
     .header {
         flex-direction: row;
         padding: 1rem;
         gap: 1rem;
-
+        min-height: var(--headerHeightMobile);
     }
 
     .navList {

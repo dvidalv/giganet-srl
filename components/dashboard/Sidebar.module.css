@@ -146,11 +146,11 @@
   .sidebar {
     position: relative;
     left: auto;
-    top: auto;
+    top:auto;
     height: auto;
     width: 100%;
-    min-height: auto;
-    margin-top: var(--headerHeightMobile) ;
+    min-height: var(--headerHeightMobile);
+    margin-top: 110px;
   }
 
   .sidebarContent {

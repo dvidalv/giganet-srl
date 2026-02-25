@@ -19,12 +19,18 @@
 .logoContainer {
     display: flex;
     align-items: center;
+    min-width: 160px;
+    height: 100%;
 }
 
-.logoContainer a {
-    display: flex;
-    align-items: center;
+.logo {
+    width: 100%;
+    max-width: 140px;
+    height: auto;
+    object-fit: contain;
 }
+
+
 
 .nav {
     display: flex;
@@ -101,10 +107,10 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
-    .logoContainer a img {
+    /* .logoContainer a img {
         width: 80px;
         height: 40px;
-    }
+    } */
     .header {
         padding: 1rem 2rem;
     }
@@ -119,13 +125,13 @@
 }
 
 @media (max-width: 768px) {
-    .logoContainer a img {
+    /* .logoContainer a img {
         width: 100px;
         height: 40px;
-    }
+    } */
     .header {
         padding: 1rem 1.5rem;
-        height: auto;
+        /* height: auto; */
         min-height: 80px;
     }
 
@@ -139,17 +145,14 @@
         font-size: 0.9rem;
     }
 
-    .logoContainer a img {
-        width: 150px;
-        height: auto;
-    }
+
 }
 
 @media (max-width: 500px) {
-    .logoContainer a img {
+    /* .logoContainer a img {
         width: 100px;
         height: 50px;
-    }
+    } */
 
     .header {
         flex-direction: row;

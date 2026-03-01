@@ -9,7 +9,9 @@ const FILEMAKER_PUBLICACIONESLAYOUT =
   process.env.FILEMAKER_PUBLICACIONESLAYOUT || "";
 
 // Configuración para TheFactoryHKA e-CF API
-let THEFACTORY_BASE_URL = "https://demoemision.thefactoryhka.com.do/api";
+let THEFACTORY_BASE_URL =
+  process.env.THEFACTORY_BASE_URL ||
+  "https://demoemision.thefactoryhka.com.do/api";
 let THEFACTORY_AUTH_URL = `${THEFACTORY_BASE_URL}/Autenticacion`;
 let THEFACTORY_ENVIAR_URL = `${THEFACTORY_BASE_URL}/Enviar`;
 let THEFACTORY_ESTATUS_URL = `${THEFACTORY_BASE_URL}/EstatusDocumento`;

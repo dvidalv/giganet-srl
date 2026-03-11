@@ -5,17 +5,27 @@ import twilio from "twilio";
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
+  process.env.TWILIO_AUTH_TOKEN,
 );
 
-async function enviar() {
+async function enviarAvisoComprobantes(
+  nombreCliente,
+  cantidadRestante,
+  telefonoCliente,
+) {
   const message = await client.messages.create({
-    from: "whatsapp:+14155238886",
-    to: "whatsapp:+16825602093",
-    body: "Hola David, este es un mensaje de prueba desde Node 🚀"
+    from: "whatsapp:+15558586932",
+    to: `whatsapp:${telefonoCliente}`,
+    contentSid: "HX9d7b1da0372bfdb95a75d3071b352a52",
+    contentVariables: JSON.stringify({
+      1: nombreCliente,
+      2: String(cantidadRestante),
+    }),
   });
 
-  console.log(message.sid);
+  console.log(`Mensaje enviado a ${telefonoCliente}: ${message.sid}`);
+  return message.sid;
 }
 
-enviar();
+// Prueba
+enviarAvisoComprobantes("David Ricardo", 50, "+18295200087");

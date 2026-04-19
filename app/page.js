@@ -9,7 +9,7 @@ export default async function Home() {
       logo: "/images/lpcr-logo.png",
       name: "Laboratorio de Patología Contreras Robledo",
       description: "Giganet desarrolló desde cero una aplicación integral para la facturación, gestión de las ARS y generación de reportes de estudios, adaptada a las necesidades de todo el laboratorio.",
-      website: "#"
+      website: "https://www.contrerasrobledo.com/"
     },
     {
       logo: "/images/agrecon-logo.png",
@@ -24,10 +24,10 @@ export default async function Home() {
       website: "#"
     },
     {
-      logo: "/images/biopap-logo.png",
-      name: "BIOPAP",
-      description: "Giganet desarrolló desde cero una aplicación integral para la facturación, gestión de las ARS y generación de reportes de estudios, adaptada a las necesidades de todo el laboratorio.",
-      website: "#"
+      logo: "/images/la-epoca.png",
+      name: "Tienda La Época",
+      description: "Desarrollo completo de un sistema de gestión para Tienda La Época, incluyendo ventas, inventario y facturación. Se integró facturación electrónica DGII, permitiendo automatizar procesos y mejorar la eficiencia operativa del negocio.",
+      website: "https://tiendalaepoca.com/"
     }
   ];
 

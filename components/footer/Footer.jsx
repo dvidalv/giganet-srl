@@ -74,10 +74,10 @@ function Footer() {
 						<IoCallOutline className="contact_icon" />
 						<div>
 							<p className="contact_label">Teléfonos</p>
-							<div className="phone_links">
-								<a href="tel:829-661-2747" className="contact_text">829-661-2747</a>
-								<a href="tel:682-560-2093" className="contact_text">682-560-2093</a>
-							</div>
+						<div className="phone_links">
+							<a href="https://wa.me/18298890579" target="_blank" rel="noopener noreferrer" className="contact_text">829-889-0579 <IoLogoWhatsapp /></a>
+							<a href="https://wa.me/16825602093" target="_blank" rel="noopener noreferrer" className="contact_text">682-560-2093 <IoLogoWhatsapp /></a>
+						</div>
 						</div>
 					</div>
 

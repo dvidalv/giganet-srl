@@ -46,6 +46,6 @@ export async function POST(request) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const result = await descargarArchivoLogic(body);
+  const result = await descargarArchivoLogic(body, { userId });
   return NextResponse.json(result.data, { status: result.status });
 }

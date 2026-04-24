@@ -66,8 +66,13 @@ import {
   THEFACTORY_USUARIO,
   THEFACTORY_CLAVE,
 } from "@/utils/constants";
+import { decryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
 
-// Cache del token de TheFactoryHKA por RNC (cada emisor tiene su propio token)
+const THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK =
+  String(process.env.THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK || "").toLowerCase() ===
+  "true";
+
+// Cache del token de TheFactoryHKA por usuario + RNC (cada emisor/usuario tiene su token)
 const tokenCacheByRnc = {};
 
 // Función para limpiar cache del token (útil para debugging)
@@ -76,17 +81,60 @@ const limpiarCacheToken = () => {
   Object.keys(tokenCacheByRnc).forEach((key) => delete tokenCacheByRnc[key]);
 };
 
+async function getTheFactoryCredentialsByUser(userId) {
+  if (!userId) return null;
+
+  const user = await User.findById(userId)
+    .select("empresa.theFactoryUsuario +empresa.theFactoryClaveEnc")
+    .lean();
+  if (!user) return null;
+
+  const usuario = user.empresa?.theFactoryUsuario?.trim();
+  const claveEnc = user.empresa?.theFactoryClaveEnc?.trim();
+  if (!usuario || !claveEnc) {
+    throw new Error(
+      "CREDENCIALES_THEFACTORY_FALTANTES: Debe configurar usuario y clave de The Factory en los datos de empresa."
+    );
+  }
+
+  try {
+    const clave = decryptTheFactoryPassword(claveEnc);
+    return { usuario, clave };
+  } catch (error) {
+    throw new Error(
+      `CREDENCIALES_THEFACTORY_INVALIDAS: No se pudieron descifrar las credenciales de The Factory (${error.message}).`
+    );
+  }
+}
+
 // Función para obtener token de autenticación de TheFactoryHKA
 // @param {string} rnc - RNC del emisor (viene en la data de cada petición)
-const obtenerTokenTheFactory = async (rnc) => {
+const obtenerTokenTheFactory = async (rnc, options = {}) => {
+  const { userId } = options;
   if (!rnc) {
     throw new Error("RNC es requerido para obtener el token de TheFactoryHKA");
   }
   try {
-    let tokenCache = tokenCacheByRnc[rnc];
+    let credentials = null;
+    if (userId) {
+      credentials = await getTheFactoryCredentialsByUser(userId);
+    }
+    if (!credentials && THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK) {
+      if (THEFACTORY_USUARIO && THEFACTORY_CLAVE) {
+        credentials = { usuario: THEFACTORY_USUARIO, clave: THEFACTORY_CLAVE };
+      }
+    }
+    if (!credentials) {
+      throw new Error(
+        "CREDENCIALES_THEFACTORY_NO_DISPONIBLES: No hay credenciales de The Factory configuradas para este usuario."
+      );
+    }
+
+    const cacheKey = `${userId || "env"}:${rnc}`;
+    let tokenCache = tokenCacheByRnc[cacheKey];
     if (!tokenCache) {
       tokenCache = { token: null, fechaExpiracion: null };
-      tokenCacheByRnc[rnc] = tokenCache;
+      tokenCacheByRnc[cacheKey] = tokenCache;
     }
 
     // Verificar si tenemos un token válido en cache para este RNC
@@ -110,8 +158,8 @@ const obtenerTokenTheFactory = async (rnc) => {
     // Realizar petición de autenticación
     // Nota: La API de TheFactoryHKA requiere los campos con mayúsculas iniciales
     const authRequest = {
-      Usuario: THEFACTORY_USUARIO,
-      Clave: THEFACTORY_CLAVE,
+      Usuario: credentials.usuario,
+      Clave: credentials.clave,
       RNC: rnc,
     };
 
@@ -706,7 +754,7 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
 // Función para consultar el estatus de un documento en TheFactoryHKA
 // @param {string} ncf - Número de comprobante fiscal
 // @param {string} rnc - RNC del emisor (de la data de la petición)
-const consultarEstatusInmediato = async (ncf, rnc) => {
+const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
   if (!rnc) {
     console.warn(
       "⚠️ consultarEstatusInmediato: RNC no proporcionado, no se puede consultar estatus"
@@ -723,7 +771,7 @@ const consultarEstatusInmediato = async (ncf, rnc) => {
     );
     console.log(`📄 NCF a consultar: ${ncf}`);
 
-    const token = await obtenerTokenTheFactory(rnc);
+    const token = await obtenerTokenTheFactory(rnc, options);
     console.log(`🔐 Token obtenido: ${token.substring(0, 30)}...`);
 
     const payload = {
@@ -2575,7 +2623,7 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
  * @param {Object} body - Body de la petición (emisor, comprador, factura, items, etc.)
  * @returns {Promise<{ status: number, data: Object }>}
  */
-export async function enviarFacturaElectronicaLogic(body) {
+export async function enviarFacturaElectronicaLogic(body, options = {}) {
   try {
     console.log("Datos recibidos:", JSON.stringify(body, null, 2));
 
@@ -2596,7 +2644,7 @@ export async function enviarFacturaElectronicaLogic(body) {
     }
 
     // Obtener token de autenticación
-    const token = await obtenerTokenTheFactory(rnc);
+    const token = await obtenerTokenTheFactory(rnc, options);
 
     // Transformar el JSON simplificado al formato completo
     const facturaCompleta = transformarFacturaParaTheFactory(body, token, rnc);
@@ -2651,7 +2699,11 @@ export async function enviarFacturaElectronicaLogic(body) {
     }
 
     const ncfGenerado = body.factura.ncf;
-    const estatusConsulta = await consultarEstatusInmediato(ncfGenerado, rnc);
+    const estatusConsulta = await consultarEstatusInmediato(
+      ncfGenerado,
+      rnc,
+      options
+    );
     const urlQR = generarUrlQR(response.data, body);
 
     // Generar QR (imagen base64) con los datos de la factura aprobada
@@ -2709,6 +2761,20 @@ export async function enviarFacturaElectronicaLogic(body) {
     };
   } catch (error) {
     console.error("Error al enviar factura electrónica:", error);
+
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("CREDENCIALES_THEFACTORY_")
+    ) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "Credenciales de The Factory no configuradas o inválidas",
+          details: error.message,
+        },
+      };
+    }
 
     if (
       error.message.includes("Error de autenticación") ||
@@ -2849,7 +2915,9 @@ export async function enviarFacturaElectronicaLogic(body) {
 
 // Controlador Express (req, res) - mantiene compatibilidad con runWithNext
 const enviarFacturaElectronica = async (req, res) => {
-  const result = await enviarFacturaElectronicaLogic(req.body);
+  const result = await enviarFacturaElectronicaLogic(req.body, {
+    userId: req.user?._id?.toString?.() || req.user?.id || null,
+  });
   return res.status(result.status).json(result.data);
 };
 
@@ -2859,7 +2927,7 @@ const enviarFacturaElectronica = async (req, res) => {
  * @param {{ ncf: string, rnc: string, reintentar?: boolean }} body
  * @returns {Promise<{ status: number, data: object }>}
  */
-export async function consultarEstatusDocumentoLogic(body) {
+export async function consultarEstatusDocumentoLogic(body, options = {}) {
   try {
     const { ncf, rnc, reintentar } = body ?? {};
 
@@ -2894,7 +2962,7 @@ export async function consultarEstatusDocumentoLogic(body) {
     }
 
     // Consultar estatus en TheFactoryHKA
-    const estatusConsulta = await consultarEstatusInmediato(ncf, rnc);
+    const estatusConsulta = await consultarEstatusInmediato(ncf, rnc, options);
 
     if (estatusConsulta.consultaExitosa) {
       // Interpretar el estado devuelto por TheFactoryHKA
@@ -2984,7 +3052,9 @@ export async function consultarEstatusDocumentoLogic(body) {
 
 // 🔍 Endpoint independiente para consultar estatus de documento (modo Express)
 const consultarEstatusDocumento = async (req, res) => {
-  const result = await consultarEstatusDocumentoLogic(req.body);
+  const result = await consultarEstatusDocumentoLogic(req.body, {
+    userId: req.user?._id?.toString?.() || req.user?.id || null,
+  });
   return res.status(result.status).json(result.data);
 };
 
@@ -3260,7 +3330,7 @@ export async function anularComprobantesLogic(body, options = {}) {
 
     // Obtener token de autenticación
     console.log("🔑 Obteniendo token de autenticación...");
-    const token = await obtenerTokenTheFactory(rnc);
+    const token = await obtenerTokenTheFactory(rnc, options);
 
     // Construir payload completo para TheFactoryHKA
     const payloadAnulacion = {
@@ -3414,7 +3484,9 @@ export async function anularComprobantesLogic(body, options = {}) {
 
 // Función para anular comprobantes fiscales (wrapper Express)
 const anularComprobantes = async (req, res) => {
-  const result = await anularComprobantesLogic(req.body);
+  const result = await anularComprobantesLogic(req.body, {
+    userId: req.user?._id?.toString?.() || req.user?.id || null,
+  });
   return res.status(result.status).json(result.data);
 };
 
@@ -3424,7 +3496,7 @@ const anularComprobantes = async (req, res) => {
  * @param {{ rnc: string, documento: string, extension: "xml"|"pdf" }} body
  * @returns {Promise<{ status: number, data: object }>}
  */
-export async function descargarArchivoLogic(body) {
+export async function descargarArchivoLogic(body, options = {}) {
   try {
     const { rnc, documento, extension } = body ?? {};
 
@@ -3471,7 +3543,7 @@ export async function descargarArchivoLogic(body) {
       };
     }
 
-    const token = await obtenerTokenTheFactory(rnc);
+    const token = await obtenerTokenTheFactory(rnc, options);
     const descargaRequest = {
       token,
       rnc,
@@ -3566,7 +3638,9 @@ export async function descargarArchivoLogic(body) {
  * @access Privado (requiere autenticación)
  */
 const descargarArchivo = async (req, res) => {
-  const result = await descargarArchivoLogic(req.body);
+  const result = await descargarArchivoLogic(req.body, {
+    userId: req.user?._id?.toString?.() || req.user?.id || null,
+  });
   return res.status(result.status).json(result.data);
 };
 

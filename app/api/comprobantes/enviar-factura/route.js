@@ -31,7 +31,9 @@ async function getUserIdByApiKey(apiKey) {
  */
 export async function POST(request) {
   const session = await auth();
-  if (!session?.user?.id) {
+  let resolvedUserId = session?.user?.id ?? null;
+
+  if (!resolvedUserId) {
     const apiKey = getApiKeyFromRequest(request);
     if (!apiKey) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -40,6 +42,7 @@ export async function POST(request) {
     if (!userId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+    resolvedUserId = userId;
   }
 
   let body;
@@ -49,6 +52,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const result = await enviarFacturaElectronicaLogic(body);
+  const result = await enviarFacturaElectronicaLogic(body, {
+    userId: resolvedUserId,
+  });
   return NextResponse.json(result.data, { status: result.status });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import User from "@/app/models/user";
+import { encryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -11,7 +12,23 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
+  theFactoryUsuario: "",
+  theFactoryClaveConfigured: false,
 };
+
+function sanitizeEmpresa(empresa = {}, hasClaveEnc = false) {
+  const safe = { ...EMPRESA_DEFAULTS, ...(empresa || {}) };
+  delete safe.theFactoryClaveEnc;
+  safe.theFactoryClaveConfigured = !!hasClaveEnc;
+  return safe;
+}
+
+async function hasTheFactoryClaveStored(userId) {
+  const row = await User.findById(userId)
+    .select("+empresa.theFactoryClaveEnc")
+    .lean();
+  return !!(row?.empresa?.theFactoryClaveEnc?.trim());
+}
 
 /** GET /api/users/me/empresa - Obtener datos de empresa del usuario actual */
 export async function GET() {
@@ -21,16 +38,15 @@ export async function GET() {
   }
 
   try {
-    const user = await User.findById(session.user.id)
-      .select("empresa")
-      .lean();
+    const user = await User.findById(session.user.id).select("empresa").lean();
     if (!user) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
         { status: 404 },
       );
     }
-    const empresa = { ...EMPRESA_DEFAULTS, ...(user.empresa || {}) };
+    const hasClave = await hasTheFactoryClaveStored(session.user.id);
+    const empresa = sanitizeEmpresa(user.empresa || {}, hasClave);
     return NextResponse.json({ empresa });
   } catch (err) {
     console.error("GET /api/users/me/empresa:", err);
@@ -64,6 +80,8 @@ export async function PATCH(request) {
     ciudad,
     telefono,
     email,
+    theFactoryUsuario,
+    theFactoryClave,
   } = body;
 
   const updates = {};
@@ -84,6 +102,29 @@ export async function PATCH(request) {
     }
     updates["empresa.email"] = val;
   }
+  if (theFactoryUsuario !== undefined) {
+    updates["empresa.theFactoryUsuario"] = String(theFactoryUsuario)
+      .trim()
+      .slice(0, 100);
+  }
+  if (theFactoryClave !== undefined) {
+    const val = String(theFactoryClave).trim();
+    if (val) {
+      try {
+        updates["empresa.theFactoryClaveEnc"] = encryptTheFactoryPassword(val);
+      } catch (error) {
+        console.error("PATCH /api/users/me/empresa encryption error:", error);
+        return NextResponse.json(
+          { error: "No se pudo proteger la clave de The Factory" },
+          { status: 500 },
+        );
+      }
+      updates["empresa.theFactoryCredsUpdatedAt"] = new Date();
+    } else {
+      updates["empresa.theFactoryClaveEnc"] = "";
+      updates["empresa.theFactoryCredsUpdatedAt"] = null;
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json(
@@ -96,7 +137,12 @@ export async function PATCH(request) {
     const user = await User.findByIdAndUpdate(
       session.user.id,
       { $set: updates },
-      { new: true, runValidators: true, select: "empresa", lean: true },
+      {
+        new: true,
+        runValidators: true,
+        select: "empresa",
+        lean: true,
+      },
     );
     if (!user) {
       return NextResponse.json(
@@ -104,7 +150,8 @@ export async function PATCH(request) {
         { status: 404 },
       );
     }
-    const empresa = { ...EMPRESA_DEFAULTS, ...(user.empresa || {}) };
+    const hasClave = await hasTheFactoryClaveStored(session.user.id);
+    const empresa = sanitizeEmpresa(user.empresa || {}, hasClave);
     return NextResponse.json({ empresa });
   } catch (err) {
     if (err.name === "ValidationError") {

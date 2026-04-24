@@ -90,6 +90,21 @@ const userSchema = new Schema(
         default: "",
         match: [/^$|^\S+@\S+\.\S+$/, "Por favor ingrese un email válido"],
       },
+      theFactoryUsuario: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: [100, "El usuario de The Factory no puede exceder 100 caracteres"],
+      },
+      theFactoryClaveEnc: {
+        type: String,
+        default: "",
+        select: false,
+      },
+      theFactoryCredsUpdatedAt: {
+        type: Date,
+        default: null,
+      },
     },
     verificationToken: {
       type: String,

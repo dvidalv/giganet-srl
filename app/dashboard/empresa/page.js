@@ -12,6 +12,8 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
+  theFactoryUsuario: "",
+  theFactoryClaveConfigured: false,
 };
 
 const IconBuilding = () => (
@@ -60,6 +62,15 @@ const IconCheck = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
   </svg>
 );
+const IconKey = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.028-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.169.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
+    />
+  </svg>
+);
 const IconBuildingHeader = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -78,6 +89,8 @@ export default function MiEmpresa() {
   const [telefonoDisplay, setTelefonoDisplay] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [theFactoryClaveDraft, setTheFactoryClaveDraft] = useState("");
+  const [clearingTfClave, setClearingTfClave] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -105,6 +118,7 @@ export default function MiEmpresa() {
       }
       const data = await res.json();
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      setTheFactoryClaveDraft("");
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
     } finally {
@@ -167,6 +181,37 @@ export default function MiEmpresa() {
     setLogoPreview("");
   };
 
+  const handleClearTheFactoryClave = async () => {
+    if (
+      !window.confirm(
+        "¿Eliminar la clave de The Factory guardada? No podrá emitir comprobantes hasta que configure una clave de nuevo.",
+      )
+    ) {
+      return;
+    }
+    setMessage(null);
+    setClearingTfClave(true);
+    try {
+      const res = await fetch("/api/users/me/empresa", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theFactoryClave: "" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "Error al eliminar la clave" });
+        return;
+      }
+      setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      setTheFactoryClaveDraft("");
+      setMessage({ type: "success", text: "Clave de The Factory eliminada" });
+    } catch (err) {
+      setMessage({ type: "error", text: "Error de conexión" });
+    } finally {
+      setClearingTfClave(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
@@ -195,7 +240,11 @@ export default function MiEmpresa() {
         ciudad: empresa.ciudad || "",
         telefono: (empresa.telefono || "").replace(/\D/g, "").slice(0, 10),
         email: empresa.email || "",
+        theFactoryUsuario: (empresa.theFactoryUsuario || "").trim().slice(0, 100),
       };
+      if (theFactoryClaveDraft.trim()) {
+        payload.theFactoryClave = theFactoryClaveDraft;
+      }
       const res = await fetch("/api/users/me/empresa", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -208,6 +257,7 @@ export default function MiEmpresa() {
         return;
       }
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      setTheFactoryClaveDraft("");
       setMessage({ type: "success", text: "Datos actualizados correctamente" });
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -350,6 +400,78 @@ export default function MiEmpresa() {
                   <p className={styles.fieldError}>{errors.rnc}</p>
                 )}
               </div>
+            </div>
+
+            <div className={styles.sectionDivider} />
+
+            <div className={`${styles.fieldWrapper} ${styles.fieldWrapperFull}`}>
+              <h2 className={styles.subsectionTitle}>The Factory HKA (e-CF)</h2>
+              <p className={styles.subsectionDesc}>
+                Credenciales para autenticar emisiones y consultas ante The Factory. La clave se
+                guarda cifrada; no se muestra de nuevo después de guardarla.
+              </p>
+              <div className={styles.badgeRow}>
+                {empresa.theFactoryClaveConfigured ? (
+                  <span className={styles.badgeConfigured}>Clave configurada</span>
+                ) : (
+                  <span className={styles.badgeMissing}>Sin clave guardada</span>
+                )}
+                {empresa.theFactoryClaveConfigured && (
+                  <button
+                    type="button"
+                    className={styles.clearClaveButton}
+                    onClick={handleClearTheFactoryClave}
+                    disabled={clearingTfClave || saving}
+                  >
+                    {clearingTfClave ? "Eliminando..." : "Eliminar clave guardada"}
+                  </button>
+                )}
+              </div>
+              <div className={styles.grid}>
+                <div className={styles.fieldWrapper}>
+                  <label className={styles.label}>Usuario The Factory</label>
+                  <div className={styles.inputWrap}>
+                    <span className={styles.inputIcon}>
+                      <IconDocument />
+                    </span>
+                    <input
+                      type="text"
+                      value={empresa.theFactoryUsuario}
+                      onChange={(e) => handleChange("theFactoryUsuario", e.target.value)}
+                      placeholder="Usuario de autenticación en The Factory"
+                      className={styles.input}
+                      maxLength={100}
+                      autoComplete="username"
+                    />
+                  </div>
+                </div>
+                <div className={styles.fieldWrapper}>
+                  <label className={styles.label}>Clave The Factory</label>
+                  <div className={styles.inputWrap}>
+                    <span className={styles.inputIcon}>
+                      <IconKey />
+                    </span>
+                    <input
+                      type="password"
+                      value={theFactoryClaveDraft}
+                      onChange={(e) => setTheFactoryClaveDraft(e.target.value)}
+                      placeholder={
+                        empresa.theFactoryClaveConfigured
+                          ? "Dejar vacío para no cambiar la clave"
+                          : "Ingrese la clave de The Factory"
+                      }
+                      className={styles.input}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className={styles.hintText}>
+                Requiere la variable de entorno{" "}
+                <code style={{ fontSize: "0.7rem" }}>THEFACTORY_CREDENTIALS_ENCRYPTION_KEY</code>{" "}
+                en el servidor (32 bytes). Si cambia esa clave, deberá volver a guardar la clave de
+                The Factory aquí.
+              </p>
             </div>
 
             <div className={styles.fieldWrapper}>

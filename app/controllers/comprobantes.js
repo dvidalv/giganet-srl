@@ -271,11 +271,20 @@ const esFechaVencimientoObligatoria = (tipoDocumento) => {
   return esObligatorio;
 };
 
-// URLs DGII para QR: desarrollo (TesteCF) vs producción (ecf)
+/**
+ * URLs del portal DGII para el QR (mismo patrón que el navegador).
+ * E32 (FC): fc.dgii.gov.do/{ambiente}/ConsultaTimbreFC — ej. testecf:
+ * https://fc.dgii.gov.do/testecf/ConsultaTimbreFC?RncEmisor=…&ENCF=…&MontoTotal=…&CodigoSeguridad=…
+ * E31+: ecf.dgii.gov.do/{ambiente}/ConsultaTimbre
+ */
 const URLS_DGII_QR = {
   desarrollo: {
-    ConsultaTimbreFC: "https://fc.dgii.gov.do/TesteCF/ConsultaTimbreFC",
-    ConsultaTimbre: "https://ecf.dgii.gov.do/TesteCF/ConsultaTimbre",
+    ConsultaTimbreFC: "https://fc.dgii.gov.do/testecf/ConsultaTimbreFC",
+    ConsultaTimbre: "https://ecf.dgii.gov.do/testecf/ConsultaTimbre",
+  },
+  certificacion: {
+    ConsultaTimbreFC: "https://fc.dgii.gov.do/certecf/ConsultaTimbreFC",
+    ConsultaTimbre: "https://ecf.dgii.gov.do/certecf/ConsultaTimbre",
   },
   produccion: {
     ConsultaTimbreFC: "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC",
@@ -283,24 +292,71 @@ const URLS_DGII_QR = {
   },
 };
 
+/**
+ * @param {unknown} ambienteBody
+ * @param {unknown} [envFallback]
+ * @returns {"desarrollo" | "certificacion" | "produccion"}
+ */
+function resolveAmbienteQr(ambienteBody, envFallback = process.env.DGII_AMBIENTE) {
+  const raw = String(ambienteBody ?? envFallback ?? "").trim().toLowerCase();
+  if (
+    raw === "desarrollo" ||
+    raw === "demo" ||
+    raw === "test" ||
+    raw === "testecf" ||
+    raw === "precertificacion"
+  ) {
+    return "desarrollo";
+  }
+  if (raw === "certificacion" || raw === "certecf" || raw === "cert") {
+    return "certificacion";
+  }
+  return "produccion";
+}
+
+/** RNC solo dígitos (9 u 11) para URLs de consulta timbre DGII. */
+function rncDigitsParaQr(rnc) {
+  return String(rnc ?? "").replace(/\D/g, "");
+}
+
+/** Query string como en el portal DGII (PascalCase). RNC sin guiones. */
+function paramsConsultaTimbreFcQr(rnc, ncf, montoTotal, codigo) {
+  const sp = new URLSearchParams();
+  sp.set("RncEmisor", rncDigitsParaQr(rnc));
+  sp.set("ENCF", String(ncf ?? "").trim());
+  sp.set("MontoTotal", montoTotal.toFixed(2));
+  sp.set("CodigoSeguridad", String(codigo ?? "").trim());
+  return sp;
+}
+
+function paramsConsultaTimbreQr(rnc, rncComprador, ncf, fechaEmision, montoTotal, fechaFirma, codigo) {
+  const sp = new URLSearchParams();
+  sp.set("RncEmisor", rncDigitsParaQr(rnc));
+  sp.set("RncComprador", rncDigitsParaQr(rncComprador));
+  sp.set("ENCF", String(ncf ?? "").trim());
+  sp.set("FechaEmision", fechaEmision);
+  sp.set("MontoTotal", montoTotal.toFixed(2));
+  sp.set("FechaFirma", String(fechaFirma ?? "").trim());
+  sp.set("CodigoSeguridad", String(codigo ?? "").trim());
+  return sp;
+}
+
 // Función para generar URL del QR Code para la DGII según el tipo de comprobante
 const generarUrlQR = (responseData, facturaOriginal) => {
   try {
-    const montoTotal = parseFloat(facturaOriginal.factura.total || 0);
-    const tipoComprobante = facturaOriginal.factura.tipo;
-    const ambiente =
-      String(
-        facturaOriginal.ambiente || process.env.DGII_AMBIENTE || ""
-      ).toLowerCase() === "desarrollo"
-        ? "desarrollo"
-        : "produccion";
+    const fact = facturaOriginal.factura || {};
+    const montoTotalConItbis = parseFloat(fact.total || 0);
+    const subParsed = parseFloat(String(fact.subtotalSinItbis ?? ""));
+    const montoSubSinItbis = Number.isFinite(subParsed) ? subParsed : montoTotalConItbis;
+    const tipoComprobante = fact.tipo;
+    const ambiente = resolveAmbienteQr(facturaOriginal.ambiente);
     const urlsDGII = URLS_DGII_QR[ambiente];
 
     // 🔍 DEBUG: Verificar datos recibidos
     console.log("🔍 DEBUG generarUrlQR - Datos recibidos:");
     console.log("responseData:", JSON.stringify(responseData, null, 2));
     console.log("facturaOriginal:", JSON.stringify(facturaOriginal, null, 2));
-    console.log("montoTotal calculado:", montoTotal);
+    console.log("montoTotal (con ITBIS):", montoTotalConItbis, "subtotalSinItbis (FC):", montoSubSinItbis);
     console.log("tipoComprobante:", tipoComprobante);
     console.log("ambiente DGII:", ambiente);
 
@@ -323,35 +379,35 @@ const generarUrlQR = (responseData, facturaOriginal) => {
     // Determinar endpoint y parámetros según el tipo de comprobante
     let baseUrl, params;
 
-    // TIPO 32 (Consumo Final): usar endpoint ConsultaTimbreFC (parámetros básicos)
-    if (tipoComprobante === "32") {
+    // TIPO 32 (Consumo Final): ConsultaTimbreFC + query PascalCase (mismo formato que el portal DGII).
+    if (String(tipoComprobante) === "32") {
       baseUrl = urlsDGII.ConsultaTimbreFC;
-      params = new URLSearchParams({
-        RncEmisor: facturaOriginal.emisor.rnc,
-        ENCF: facturaOriginal.factura.ncf,
-        MontoTotal: montoTotal.toFixed(2),
-        CodigoSeguridad: responseData.codigoSeguridad,
-      });
+      params = paramsConsultaTimbreFcQr(
+        facturaOriginal.emisor.rnc,
+        facturaOriginal.factura.ncf,
+        montoSubSinItbis,
+        responseData.codigoSeguridad,
+      );
 
       console.log(
         `📋 Usando endpoint ConsultaTimbreFC (${ambiente}): ${baseUrl}`
       );
     } else {
-      // TIPOS 31, 33, 34, etc.: usar endpoint ConsultaTimbre (parámetros completos)
-      // Estos tipos SIEMPRE requieren RncComprador, FechaEmision y FechaFirma
+      // TIPOS 31, 33, 34, etc.: ConsultaTimbre + query PascalCase (mismo criterio que el portal).
       baseUrl = urlsDGII.ConsultaTimbre;
 
-      params = new URLSearchParams({
-        RncEmisor: facturaOriginal.emisor.rnc,
-        RncComprador: facturaOriginal.comprador?.rnc || "",
-        ENCF: facturaOriginal.factura.ncf,
-        FechaEmision: responseData.fechaEmision
-          ? formatearFechaUrl(responseData.fechaEmision)
-          : formatearFechaUrl(facturaOriginal.factura.fecha),
-        MontoTotal: montoTotal.toFixed(2),
-        FechaFirma: responseData.fechaFirma || responseData.fechaEmision || "",
-        CodigoSeguridad: responseData.codigoSeguridad,
-      });
+      const fechaEm = responseData.fechaEmision
+        ? formatearFechaUrl(responseData.fechaEmision)
+        : formatearFechaUrl(facturaOriginal.factura.fecha);
+      params = paramsConsultaTimbreQr(
+        facturaOriginal.emisor.rnc,
+        facturaOriginal.comprador?.rnc || "",
+        facturaOriginal.factura.ncf,
+        fechaEm,
+        montoTotalConItbis,
+        responseData.fechaFirma || responseData.fechaEmision || "",
+        responseData.codigoSeguridad,
+      );
 
       console.log(
         `📋 Usando endpoint ConsultaTimbre (tipo ${tipoComprobante}, ${ambiente}): ${baseUrl}`
@@ -375,7 +431,7 @@ const generarUrlQR = (responseData, facturaOriginal) => {
  * Lógica para generar código QR según especificaciones DGII (sin Express).
  * Devuelve { status, data } para uso directo con NextResponse.
  * @param {Object} body - { url?, rnc?, rncComprador?, ncf?, codigo?, fecha?, fechaFirma?, monto?, tipo?, formato?, tamaño?, ambiente? }
- * @param {string} body.ambiente - "produccion" (default) | "desarrollo"
+ * @param {string} body.ambiente - "produccion" (default) | "desarrollo" | "demo" | "certificacion" | "certecf"
  * @returns {Promise<{ status: number, data: object }>}
  */
 export async function generarCodigoQRLogic(body) {
@@ -394,17 +450,8 @@ export async function generarCodigoQRLogic(body) {
       tamaño = 300,
       ambiente: ambienteBody,
     } = body ?? {};
-    const ambiente =
-      String(
-        ambienteBody || process.env.DGII_AMBIENTE || ""
-      ).toLowerCase() === "desarrollo"
-        ? "desarrollo"
-        : "produccion";
-
-    const urlsDGII =
-      ambiente === "desarrollo"
-        ? URLS_DGII_QR.desarrollo
-        : URLS_DGII_QR.produccion;
+    const ambiente = resolveAmbienteQr(ambienteBody);
+    const urlsDGII = URLS_DGII_QR[ambiente];
 
     let urlParaQR;
 
@@ -428,7 +475,7 @@ export async function generarCodigoQRLogic(body) {
           .padStart(2, "0")}-${date.getFullYear()}`;
       };
 
-      if (tipo === "32") {
+      if (String(tipo) === "32") {
         if (!codigo) {
           return {
             status: httpStatus.BAD_REQUEST,
@@ -442,12 +489,7 @@ export async function generarCodigoQRLogic(body) {
           };
         }
         baseUrl = urlsDGII.ConsultaTimbreFC;
-        params = new URLSearchParams({
-          RncEmisor: rnc,
-          ENCF: ncf,
-          MontoTotal: montoTotal.toFixed(2),
-          CodigoSeguridad: codigo,
-        });
+        params = paramsConsultaTimbreFcQr(rnc, ncf, montoTotal, codigo);
       } else {
         if (!codigo || !fecha) {
           return {
@@ -463,15 +505,15 @@ export async function generarCodigoQRLogic(body) {
           };
         }
         baseUrl = urlsDGII.ConsultaTimbre;
-        params = new URLSearchParams({
-          RncEmisor: rnc,
-          RncComprador: rncComprador || "",
-          ENCF: ncf,
-          FechaEmision: formatearFechaUrl(fecha),
-          MontoTotal: montoTotal.toFixed(2),
-          FechaFirma: fechaFirma || fecha,
-          CodigoSeguridad: codigo,
-        });
+        params = paramsConsultaTimbreQr(
+          rnc,
+          rncComprador || "",
+          ncf,
+          formatearFechaUrl(fecha),
+          montoTotal,
+          fechaFirma || fecha,
+          codigo,
+        );
       }
 
       urlParaQR = `${baseUrl}?${params.toString()}`;
@@ -513,7 +555,7 @@ export async function generarCodigoQRLogic(body) {
           qrCode: qrData,
           formato,
           tamaño,
-          ambiente: ambiente === "desarrollo" ? "desarrollo" : "produccion",
+          ambiente,
           versionCalculada: "auto",
           parametrosUsados: url ? "URL completa" : "Parámetros individuales",
           especificaciones: {
@@ -2745,12 +2787,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       fechaFirma: response.data.fechaFirma || response.data.fechaEmision,
       monto: body.factura?.total,
       tipo: body.factura?.tipo,
-      ambiente:
-        String(
-          body.ambiente || process.env.DGII_AMBIENTE || ""
-        ).toLowerCase() === "desarrollo"
-          ? "desarrollo"
-          : "produccion",
+      ambiente: resolveAmbienteQr(body.ambiente),
       formato: "png",
       tamaño: 300,
     };

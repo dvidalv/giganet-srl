@@ -24,7 +24,7 @@ async function getUserIdByApiKey(apiKey) {
  *
  * Genera el código QR de la factura electrónica según especificaciones DGII.
  * Body: { url? } O { rnc, ncf, codigo, monto, tipo?, rncComprador?, fecha?, fechaFirma?, formato?, tamaño?, ambiente? }
- * ambiente: "produccion" (default) | "desarrollo" - URLs DGII a usar (TesteCF para desarrollo).
+ * ambiente: "produccion" (default) | "desarrollo" | "demo" | "certificacion" | "certecf" — URLs DGII (testecf / certecf / ecf según manual).
  *
  * Autorización: SOLO API Key (Authorization: Bearer <api_key> o X-API-Key).
  * Pensado para ser llamado desde FileMaker / backend, no desde el frontend.

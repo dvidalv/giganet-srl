@@ -15,10 +15,14 @@ export async function POST(request) {
       );
     }
 
-    // Buscar usuario por email
-    const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Buscar usuario (collation: igualdad sin distinguir mayúsculas por si hay registros legacy)
+    const user = await User.findOne(
+      { email: normalizedEmail },
+      null,
+      { collation: { locale: "en", strength: 2 } },
+    );
 
     // Por seguridad, siempre retornar el mismo mensaje
     // sin revelar si el usuario existe o no
@@ -39,7 +43,11 @@ export async function POST(request) {
     const h = await headers();
     const host = h.get("host");
     const proto = h.get("x-forwarded-proto") ?? "http";
-    const baseUrl = `${proto}://${host}`;
+    const baseUrl =
+      (process.env.APP_URL || process.env.NEXTAUTH_URL || "").replace(
+        /\/$/,
+        "",
+      ) || `${proto}://${host}`;
     const resetUrl = `${baseUrl}/reset-password?token=${resetPasswordToken}`;
 
     try {

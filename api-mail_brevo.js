@@ -52,11 +52,26 @@ const sendEmail = async (emailData) => {
       body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
+    const raw = await response.text();
+    let result;
+    try {
+      result = raw ? JSON.parse(raw) : {};
+    } catch {
+      console.error(
+        "Error de Brevo API (respuesta no JSON):",
+        response.status,
+        raw?.slice?.(0, 500),
+      );
+      throw new Error(`Brevo HTTP ${response.status}`);
+    }
 
     if (!response.ok) {
       console.error("Error de Brevo API:", result);
-      throw new Error(result.message || "Error al enviar email");
+      const msg =
+        (typeof result?.message === "string" && result.message) ||
+        (Array.isArray(result?.message) && result.message.join("; ")) ||
+        (raw && raw.length < 400 ? raw : JSON.stringify(result));
+      throw new Error(msg || `Error al enviar email (HTTP ${response.status})`);
     }
 
     console.log("Email enviado exitosamente:", result);

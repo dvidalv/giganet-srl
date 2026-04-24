@@ -125,11 +125,11 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
           <div className={styles.viewContent}>
             <div className={styles.viewRow}>
               <span className={styles.viewLabel}>Nombre</span>
-              <span>{user?.name ?? "—"}</span>
+              <span className={styles.viewValue}>{user?.name ?? "—"}</span>
             </div>
             <div className={styles.viewRow}>
               <span className={styles.viewLabel}>Email</span>
-              <span>{user?.email ?? "—"}</span>
+              <span className={styles.viewValue}>{user?.email ?? "—"}</span>
             </div>
             <div className={styles.viewRow}>
               <span className={styles.viewLabel}>Rol</span>
@@ -139,7 +139,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
             </div>
             <div className={styles.viewRow}>
               <span className={styles.viewLabel}>Estado</span>
-              <span>
+              <span className={styles.viewValue}>
                 {!user?.isVerified && (
                   <Tag variant="pending">Pendiente verificación</Tag>
                 )}
@@ -153,7 +153,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
             {user?.createdAt && (
               <div className={styles.viewRow}>
                 <span className={styles.viewLabel}>Fecha de registro</span>
-                <span>
+                <span className={styles.viewValue}>
                   {new Date(user.createdAt).toLocaleDateString("es-ES")}
                 </span>
               </div>

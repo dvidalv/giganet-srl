@@ -11,6 +11,7 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
+  theFactoryAmbiente: "production",
 };
 
 async function requireAdmin() {
@@ -74,6 +75,7 @@ export async function PATCH(request, { params }) {
     ciudad,
     telefono,
     email,
+    theFactoryAmbiente,
   } = body;
 
   const updates = {};
@@ -93,6 +95,17 @@ export async function PATCH(request, { params }) {
       );
     }
     updates["empresa.email"] = val;
+  }
+
+  if (theFactoryAmbiente !== undefined) {
+    const v = String(theFactoryAmbiente).trim().toLowerCase();
+    if (v !== "production" && v !== "demo") {
+      return NextResponse.json(
+        { error: "theFactoryAmbiente debe ser production o demo" },
+        { status: 400 },
+      );
+    }
+    updates["empresa.theFactoryAmbiente"] = v;
   }
 
   if (Object.keys(updates).length === 0) {

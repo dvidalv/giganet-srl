@@ -105,6 +105,12 @@ const userSchema = new Schema(
         type: Date,
         default: null,
       },
+      /** Ambiente de API The Factory HKA para esta cuenta (afecta URL base al emitir/consultar). */
+      theFactoryAmbiente: {
+        type: String,
+        enum: ["production", "demo"],
+        default: "production",
+      },
     },
     verificationToken: {
       type: String,

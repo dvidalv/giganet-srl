@@ -14,6 +14,7 @@ const EMPRESA_DEFAULTS = {
   email: "",
   theFactoryUsuario: "",
   theFactoryClaveConfigured: false,
+  theFactoryAmbiente: "production",
 };
 
 function sanitizeEmpresa(empresa = {}, hasClaveEnc = false) {

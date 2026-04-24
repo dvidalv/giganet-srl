@@ -1,20 +1,22 @@
 import axios from "axios";
 import httpStatus from "http-status";
-import { THEFACTORY_EMAIL_URL } from "@/utils/constants";
 import { obtenerTokenTheFactory as obtenerTokenSistema } from "@/app/controllers/comprobantes";
+import { resolveTheFactoryUrlsForUser } from "@/utils/theFactoryUrls";
 
 /**
  * Obtiene un token de autenticación válido de TheFactoryHKA
  * Reutiliza la función existente del sistema principal
  * @param {string} rnc - RNC del emisor (de la data de la petición)
+ * @param {string|null} userId - Usuario dueño (mismo ambiente The Factory que el resto de e-CF)
  * @returns {Promise<string>} Token de autenticación válido
  */
-const obtenerTokenTheFactory = async (rnc) => {
+/** Token The Factory según ambiente de la empresa (`userId`). */
+const obtenerTokenTheFactory = async (rnc, userId) => {
   try {
     console.log(
       "🔐 Obteniendo token para email (reutilizando sistema principal)..."
     );
-    return await obtenerTokenSistema(rnc);
+    return await obtenerTokenSistema(rnc, { userId });
   } catch (error) {
     console.error("❌ Error al obtener token para email:", error.message);
     throw error;
@@ -31,7 +33,7 @@ const obtenerTokenTheFactory = async (rnc) => {
  */
 const enviarEmailTheFactory = async (emailData) => {
   try {
-    const { documento, correos, rnc } = emailData;
+    const { documento, correos, rnc, userId } = emailData;
 
     // Validaciones
     if (!documento) {
@@ -59,8 +61,11 @@ const enviarEmailTheFactory = async (emailData) => {
       correos: correos.length,
     });
 
-    // Obtener token de autenticación
-    const token = await obtenerTokenTheFactory(rnc);
+    const urls = await resolveTheFactoryUrlsForUser(userId);
+    const token = await obtenerTokenSistema(rnc, {
+      userId,
+      theFactoryUrls: urls,
+    });
 
     // Construir payload según la API de The Factory HKA
     const payload = {
@@ -71,13 +76,12 @@ const enviarEmailTheFactory = async (emailData) => {
     };
 
     console.log("📤 Enviando solicitud de email a The Factory HKA...", {
-      url: THEFACTORY_EMAIL_URL,
+      url: urls.emailUrl,
       documento,
       destinatarios: correos.length,
     });
 
-    // Enviar solicitud
-    const response = await axios.post(THEFACTORY_EMAIL_URL, payload, {
+    const response = await axios.post(urls.emailUrl, payload, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -167,9 +171,11 @@ const enviarEmailTheFactory = async (emailData) => {
  * Retorna { status, data } para uso en API routes Next.js.
  *
  * @param {{ documento: string, correos: string[], rnc: string }} body
+ * @param {{ userId?: string|null }} [options]
  * @returns {Promise<{ status: number, data: object }>}
  */
-export async function enviarEmailDocumentoLogic(body) {
+export async function enviarEmailDocumentoLogic(body, options = {}) {
+  const { userId } = options;
   try {
     const { documento, correos, rnc } = body ?? {};
 
@@ -225,7 +231,12 @@ export async function enviarEmailDocumentoLogic(body) {
       rnc,
     });
 
-    const resultado = await enviarEmailTheFactory({ documento, correos, rnc });
+    const resultado = await enviarEmailTheFactory({
+      documento,
+      correos,
+      rnc,
+      userId,
+    });
 
     if (resultado.success) {
       return {
@@ -309,11 +320,11 @@ const enviarEmailDocumento = async (req, res) => {
       rnc,
     });
 
-    // Enviar email
     const resultado = await enviarEmailTheFactory({
       documento,
       correos,
       rnc,
+      userId: req.user?._id?.toString?.() || req.user?.id || null,
     });
 
     if (resultado.success) {

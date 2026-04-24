@@ -15,6 +15,7 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
+  theFactoryAmbiente: "production",
 };
 
 const IconBuilding = () => (
@@ -208,6 +209,7 @@ export default function EmpresaAdminForm({ userId }) {
         ciudad: empresa.ciudad || "",
         telefono: (empresa.telefono || "").replace(/\D/g, "").slice(0, 10),
         email: empresa.email || "",
+        theFactoryAmbiente: empresa.theFactoryAmbiente || "production",
       };
       const res = await fetch(`/api/users/${userId}/empresa`, {
         method: "PATCH",
@@ -378,6 +380,26 @@ export default function EmpresaAdminForm({ userId }) {
                 {errors.rnc && (
                   <p className={styles.fieldError}>{errors.rnc}</p>
                 )}
+              </div>
+            </div>
+
+            <div className={styles.fieldWrapper}>
+              <label className={styles.label}>Ambiente The Factory (e-CF)</label>
+              <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
+                Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
+                <code>THEFACTORY_BASE_URL_DEMO</code>. Las credenciales deben coincidir con el
+                ambiente elegido.
+              </p>
+              <div className={styles.inputWrap}>
+                <span className={styles.inputIcon}><IconDocument /></span>
+                <select
+                  className={styles.input}
+                  value={empresa.theFactoryAmbiente || "production"}
+                  onChange={(e) => handleChange("theFactoryAmbiente", e.target.value)}
+                >
+                  <option value="production">Producción</option>
+                  <option value="demo">Pruebas (demo)</option>
+                </select>
               </div>
             </div>
 

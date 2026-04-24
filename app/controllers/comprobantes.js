@@ -57,15 +57,8 @@ function formatFechaVencimiento(fecha) {
   return `${dia}-${mes}-${año}`;
 }
 import { sendEmail } from "@/api-mail_brevo";
-import {
-  THEFACTORY_AUTH_URL,
-  THEFACTORY_ENVIAR_URL,
-  THEFACTORY_ESTATUS_URL,
-  THEFACTORY_ANULACION_URL,
-  THEFACTORY_DESCARGA_URL,
-  THEFACTORY_USUARIO,
-  THEFACTORY_CLAVE,
-} from "@/utils/constants";
+import { THEFACTORY_USUARIO, THEFACTORY_CLAVE } from "@/utils/constants";
+import { resolveTheFactoryUrlsForUser } from "@/utils/theFactoryUrls";
 import { decryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
 
 const THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK =
@@ -111,12 +104,15 @@ async function getTheFactoryCredentialsByUser(userId) {
 // Función para obtener token de autenticación de TheFactoryHKA
 // @param {string} rnc - RNC del emisor (viene en la data de cada petición)
 const obtenerTokenTheFactory = async (rnc, options = {}) => {
-  const { userId } = options;
+  const { userId, theFactoryUrls: urlsPrebuilt } = options;
   if (!rnc) {
     throw new Error("RNC es requerido para obtener el token de TheFactoryHKA");
   }
   try {
     const rncNorm = String(rnc).replace(/\D/g, "").trim();
+    const urls =
+      urlsPrebuilt || (await resolveTheFactoryUrlsForUser(userId));
+
     if (userId && rncNorm) {
       const owner = await User.findById(userId).select("empresa.rnc").lean();
       const profileRnc = String(owner?.empresa?.rnc || "")
@@ -144,7 +140,7 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       );
     }
 
-    const cacheKey = `${userId || "env"}:${rnc}`;
+    const cacheKey = `${userId || "env"}:${rncNorm}:${urls.ambienteKey}`;
     let tokenCache = tokenCacheByRnc[cacheKey];
     if (!tokenCache) {
       tokenCache = { token: null, fechaExpiracion: null };
@@ -177,7 +173,7 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       RNC: rnc,
     };
 
-    const response = await axios.post(THEFACTORY_AUTH_URL, authRequest, {
+    const response = await axios.post(urls.authUrl, authRequest, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -192,10 +188,10 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       const msgLower = String(baseMsg).toLowerCase();
       const hints =
         msgLower.includes("incorrect") || msgLower.includes("autentic")
-          ? " Revise en el portal de The Factory que usuario y contraseña sean correctos; en Mi Empresa vuelva a guardar la clave si cambió. Verifique que THEFACTORY_BASE_URL en Vercel sea el mismo ambiente (demo vs producción) que sus credenciales, y que el RNC enviado en la petición sea el del emisor registrado en The Factory y coincida con Mi Empresa."
+          ? " Revise en el portal de The Factory que usuario y contraseña sean correctos; en Mi Empresa vuelva a guardar la clave si cambió. Verifique que el ambiente The Factory (demo vs producción) configurado para la empresa coincida con sus credenciales y con THEFACTORY_BASE_URL / THEFACTORY_BASE_URL_DEMO en el servidor, y que el RNC enviado sea el del emisor registrado en The Factory y coincida con Mi Empresa."
           : "";
       console.error(
-        `[TheFactory] Autenticación fallida. URL=${THEFACTORY_AUTH_URL} codigo=${response.data.codigo} mensaje=${baseMsg}`
+        `[TheFactory] Autenticación fallida. URL=${urls.authUrl} codigo=${response.data.codigo} mensaje=${baseMsg}`
       );
       throw new Error(`Error de autenticación: ${baseMsg}${hints}`);
     }
@@ -794,7 +790,13 @@ const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
     );
     console.log(`📄 NCF a consultar: ${ncf}`);
 
-    const token = await obtenerTokenTheFactory(rnc, options);
+    const urls =
+      options.theFactoryUrls ||
+      (await resolveTheFactoryUrlsForUser(options.userId));
+    const token = await obtenerTokenTheFactory(rnc, {
+      ...options,
+      theFactoryUrls: urls,
+    });
     console.log(`🔐 Token obtenido: ${token.substring(0, 30)}...`);
 
     const payload = {
@@ -805,10 +807,10 @@ const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
 
     console.log("📤 Payload enviado a TheFactoryHKA:");
     console.log(JSON.stringify(payload, null, 2));
-    console.log(`🌐 URL de consulta: ${THEFACTORY_ESTATUS_URL}`);
+    console.log(`🌐 URL de consulta: ${urls.estatusUrl}`);
     console.log(`🏢 RNC usado para consulta: ${rnc}`);
 
-    const response = await axios.post(THEFACTORY_ESTATUS_URL, payload, {
+    const response = await axios.post(urls.estatusUrl, payload, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -2666,8 +2668,11 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       };
     }
 
-    // Obtener token de autenticación
-    const token = await obtenerTokenTheFactory(rnc, options);
+    const urls = await resolveTheFactoryUrlsForUser(options.userId);
+    const token = await obtenerTokenTheFactory(rnc, {
+      ...options,
+      theFactoryUrls: urls,
+    });
 
     // Transformar el JSON simplificado al formato completo
     const facturaCompleta = transformarFacturaParaTheFactory(body, token, rnc);
@@ -2678,7 +2683,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     );
 
     // Enviar a TheFactoryHKA (Token y DocumentoElectronico en la raíz del body)
-    const response = await axios.post(THEFACTORY_ENVIAR_URL, facturaCompleta, {
+    const response = await axios.post(urls.enviarUrl, facturaCompleta, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -2725,7 +2730,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     const estatusConsulta = await consultarEstatusInmediato(
       ncfGenerado,
       rnc,
-      options
+      { ...options, theFactoryUrls: urls }
     );
     const urlQR = generarUrlQR(response.data, body);
 
@@ -3351,9 +3356,12 @@ export async function anularComprobantesLogic(body, options = {}) {
       };
     });
 
-    // Obtener token de autenticación
+    const urls = await resolveTheFactoryUrlsForUser(options.userId);
     console.log("🔑 Obteniendo token de autenticación...");
-    const token = await obtenerTokenTheFactory(rnc, options);
+    const token = await obtenerTokenTheFactory(rnc, {
+      ...options,
+      theFactoryUrls: urls,
+    });
 
     // Construir payload completo para TheFactoryHKA
     const payloadAnulacion = {
@@ -3373,17 +3381,12 @@ export async function anularComprobantesLogic(body, options = {}) {
       JSON.stringify(payloadAnulacion, null, 2)
     );
 
-    // Enviar a TheFactoryHKA
-    const response = await axios.post(
-      THEFACTORY_ANULACION_URL,
-      payloadAnulacion,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 30000, // 30 segundos de timeout
-      }
-    );
+    const response = await axios.post(urls.anulacionUrl, payloadAnulacion, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      timeout: 30000, // 30 segundos de timeout
+    });
 
     console.log(
       "📥 Respuesta de TheFactoryHKA:",
@@ -3566,7 +3569,11 @@ export async function descargarArchivoLogic(body, options = {}) {
       };
     }
 
-    const token = await obtenerTokenTheFactory(rnc, options);
+    const urls = await resolveTheFactoryUrlsForUser(options.userId);
+    const token = await obtenerTokenTheFactory(rnc, {
+      ...options,
+      theFactoryUrls: urls,
+    });
     const descargaRequest = {
       token,
       rnc,
@@ -3574,14 +3581,10 @@ export async function descargarArchivoLogic(body, options = {}) {
       extension: ext,
     };
 
-    const response = await axios.post(
-      THEFACTORY_DESCARGA_URL,
-      descargaRequest,
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 30000,
-      }
-    );
+    const response = await axios.post(urls.descargaUrl, descargaRequest, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 30000,
+    });
 
     if (
       (response.data.codigo === 0 || response.data.codigo === 130) &&

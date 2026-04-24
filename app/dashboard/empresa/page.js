@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import styles from "./page.module.css";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";
 
@@ -14,6 +15,7 @@ const EMPRESA_DEFAULTS = {
   email: "",
   theFactoryUsuario: "",
   theFactoryClaveConfigured: false,
+  theFactoryAmbiente: "production",
 };
 
 const IconBuilding = () => (
@@ -409,6 +411,19 @@ export default function MiEmpresa() {
               <p className={styles.subsectionDesc}>
                 Credenciales para autenticar emisiones y consultas ante The Factory. La clave se
                 guarda cifrada; no se muestra de nuevo después de guardarla.
+              </p>
+              <p className={styles.hintText}>
+                Ambiente de API para e-CF:{" "}
+                <strong>
+                  {empresa.theFactoryAmbiente === "demo"
+                    ? "Pruebas (demo)"
+                    : "Producción"}
+                </strong>
+                . Solo un administrador puede cambiarlo en{" "}
+                <Link href="/dashboard/empresas" style={{ color: "inherit", textDecoration: "underline" }}>
+                  Gestión de empresas
+                </Link>
+                .
               </p>
               <div className={styles.badgeRow}>
                 {empresa.theFactoryClaveConfigured ? (

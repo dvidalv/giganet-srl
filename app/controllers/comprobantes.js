@@ -2675,7 +2675,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     });
 
     // Transformar el JSON simplificado al formato completo
-    const facturaCompleta = transformarFacturaParaTheFactory(body, token, rnc);
+    const facturaCompleta = transformarFacturaParaTheFactory(body, token);
 
     console.log(
       "Factura transformada:",

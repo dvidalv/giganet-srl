@@ -84,13 +84,14 @@ const limpiarCacheToken = () => {
 async function getTheFactoryCredentialsByUser(userId) {
   if (!userId) return null;
 
-  const user = await User.findById(userId)
-    .select("empresa.theFactoryUsuario +empresa.theFactoryClaveEnc")
-    .lean();
-  if (!user) return null;
+  const [userRow, encRow] = await Promise.all([
+    User.findById(userId).select("empresa.theFactoryUsuario").lean(),
+    User.findById(userId).select("+empresa.theFactoryClaveEnc").lean(),
+  ]);
+  if (!userRow && !encRow) return null;
 
-  const usuario = user.empresa?.theFactoryUsuario?.trim();
-  const claveEnc = user.empresa?.theFactoryClaveEnc?.trim();
+  const usuario = userRow?.empresa?.theFactoryUsuario?.trim();
+  const claveEnc = encRow?.empresa?.theFactoryClaveEnc?.trim();
   if (!usuario || !claveEnc) {
     throw new Error(
       "CREDENCIALES_THEFACTORY_FALTANTES: Debe configurar usuario y clave de The Factory en los datos de empresa."
@@ -102,7 +103,7 @@ async function getTheFactoryCredentialsByUser(userId) {
     return { usuario, clave };
   } catch (error) {
     throw new Error(
-      `CREDENCIALES_THEFACTORY_INVALIDAS: No se pudieron descifrar las credenciales de The Factory (${error.message}).`
+      `CREDENCIALES_THEFACTORY_INVALIDAS: No se pudieron descifrar las credenciales de The Factory (${error.message}). En Vercel, THEFACTORY_CREDENTIALS_ENCRYPTION_KEY debe ser exactamente la misma clave con la que se cifró la contraseña al guardarla.`
     );
   }
 }
@@ -115,6 +116,19 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
     throw new Error("RNC es requerido para obtener el token de TheFactoryHKA");
   }
   try {
+    const rncNorm = String(rnc).replace(/\D/g, "").trim();
+    if (userId && rncNorm) {
+      const owner = await User.findById(userId).select("empresa.rnc").lean();
+      const profileRnc = String(owner?.empresa?.rnc || "")
+        .replace(/\D/g, "")
+        .trim();
+      if (profileRnc && rncNorm !== profileRnc) {
+        console.warn(
+          `[TheFactory] RNC en la petición (${rncNorm}) no coincide con el RNC de Mi Empresa (${profileRnc}). The Factory suele exigir el RNC del emisor asociado a la cuenta.`
+        );
+      }
+    }
+
     let credentials = null;
     if (userId) {
       credentials = await getTheFactoryCredentialsByUser(userId);
@@ -174,7 +188,16 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
 
     // Verificar que la autenticación fue exitosa
     if (response.data.codigo !== 0) {
-      throw new Error(`Error de autenticación: ${response.data.mensaje}`);
+      const baseMsg = response.data.mensaje || "Error desconocido";
+      const msgLower = String(baseMsg).toLowerCase();
+      const hints =
+        msgLower.includes("incorrect") || msgLower.includes("autentic")
+          ? " Revise en el portal de The Factory que usuario y contraseña sean correctos; en Mi Empresa vuelva a guardar la clave si cambió. Verifique que THEFACTORY_BASE_URL en Vercel sea el mismo ambiente (demo vs producción) que sus credenciales, y que el RNC enviado en la petición sea el del emisor registrado en The Factory y coincida con Mi Empresa."
+          : "";
+      console.error(
+        `[TheFactory] Autenticación fallida. URL=${THEFACTORY_AUTH_URL} codigo=${response.data.codigo} mensaje=${baseMsg}`
+      );
+      throw new Error(`Error de autenticación: ${baseMsg}${hints}`);
     }
 
     // Actualizar cache para este RNC

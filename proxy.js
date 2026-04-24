@@ -31,6 +31,13 @@ export default auth((req) => {
   const { pathname } = req.nextUrl
   const isAuthenticated = !!req.auth
 
+  // API comprobantes: solo API Key en el route handler; no aplicar reglas de páginas ni login.
+  if (pathname.startsWith("/api/comprobantes")) {
+    // stderr: en algunos IDEs los console.log del proxy se mezclan o no destacan; error es más visible.
+    console.error("[giganet/proxy → API]", req.method, pathname)
+    return NextResponse.next()
+  }
+
   // Si la ruta NO existe → redirigir a login (o dashboard si ya está autenticado)
   if (!routeExists(pathname)) {
     if (isAuthenticated) {
@@ -59,6 +66,7 @@ export default auth((req) => {
 // Configurar qué rutas deben ejecutar el proxy
 export const config = {
   matcher: [
+    "/api/comprobantes/:path*",
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)

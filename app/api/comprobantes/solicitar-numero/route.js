@@ -203,7 +203,8 @@ export async function POST(request) {
     logSn(reqId,"Rango encontrado:", rango ? `ID: ${rango._id}` : "null");
 
     if (!rango) {
-      logSn(reqId,"ERROR: No se encontró ningún rango válido");
+      logSn(reqId, "ERROR: No se encontró ningún rango válido");
+      errSn(reqId, "404 Secuencia no encontrada — sin rango atómico para RNC/tipo (ver diagnóstico siguiente)");
       // Consultar si existen rangos agotados o vencidos para dar mensaje útil a FileMaker
       const queryDiagnostico = {
         usuario: new mongoose.default.Types.ObjectId(userId),
@@ -235,6 +236,15 @@ export async function POST(request) {
         mensaje,
       });
       logSn(reqId, `FIN 404 secuencia no disponible (${Date.now() - t0}ms)`);
+      // Línea única en stderr: la UI del cliente no escribe en esta terminal; esto sí.
+      console.error(
+        "[GIGANET solicitar-numero] 404 Secuencia no encontrada | RNC",
+        rncRaw,
+        "| tipo",
+        tipo_comprobante,
+        "|",
+        mensaje,
+      );
       return NextResponse.json(
         {
           error: "Secuencia no encontrada o no autorizada",

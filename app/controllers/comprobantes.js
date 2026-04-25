@@ -1748,28 +1748,49 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   }
 
   // 🔧 VERIFICAR Y CORREGIR MONTO TOTAL
-  // Calcular el total real basado en la suma de items
-  const montoTotalCalculado = (
-    parseFloat(montoExentoCalculado) + parseFloat(montoGravadoCalculado)
-  ).toFixed(2);
+  // Suma de líneas (exento + gravado): precios en ítem suelen ser la base gravada SIN ITBIS (p. ej. La Época).
+  const gravNum = parseFloat(montoGravadoCalculado);
+  const exNum = parseFloat(montoExentoCalculado);
+  const basesSumNum = exNum + gravNum;
+  const montoTotalCalculado = basesSumNum.toFixed(2);
   const montoTotalDeclarado = parseFloat(montoTotal).toFixed(2);
+  const declaradoNum = parseFloat(montoTotalDeclarado);
+  /** Total esperado si el gravado de línea no incluye ITBIS (tasa 18% en Totales). */
+  const totalConItbisEsperado =
+    Math.round((exNum + gravNum * 1.18) * 100) / 100;
 
-  // Si hay una diferencia significativa, usar el total calculado de items como fuente de verdad
+  /**
+   * DGII: IndicadorMontoGravado 1 = montos gravados en línea incluyen ITBIS; 0 = no incluyen.
+   * Si `factura.total` cuadra con bases+ITBIS pero no con solo bases, los ítems vienen sin ITBIS → "0".
+   * Forzar "1" cuando total cuadra con suma de bases (ítems ya con ITBIS incluido).
+   */
+  const indicadorMontoGravado =
+    gravNum <= 0.0001
+      ? "0"
+      : Math.abs(declaradoNum - totalConItbisEsperado) <= 0.02
+        ? "0"
+        : Math.abs(declaradoNum - basesSumNum) <= 0.02
+          ? "1"
+          : declaradoNum > basesSumNum + 0.01
+            ? "0"
+            : "1";
+
   let montoTotalCorregido = montoTotal;
-  if (
-    Math.abs(
-      parseFloat(montoTotalCalculado) - parseFloat(montoTotalDeclarado)
-    ) > 0.01
-  ) {
-    console.log(`⚠️ INCONSISTENCIA EN MONTO TOTAL:`);
-    console.log(`   - Total declarado por FileMaker: ${montoTotalDeclarado}`);
-    console.log(`   - Total calculado de items: ${montoTotalCalculado}`);
+  const diffBases = Math.abs(basesSumNum - declaradoNum);
+  const diffConItbis = Math.abs(totalConItbisEsperado - declaradoNum);
+  if (diffBases > 0.01 && diffConItbis <= 0.02) {
+    // Total declarado es el a pagar (incluye ITBIS); no reemplazar por suma de bases — evita error DGII 3205 en Totales.MontoTotal.
     console.log(
-      `   - Diferencia: ${(
-        parseFloat(montoTotalDeclarado) - parseFloat(montoTotalCalculado)
-      ).toFixed(2)}`
+      `✅ Total declarado (${montoTotalDeclarado}) coincide con bases+ITBIS (${totalConItbisEsperado.toFixed(2)}); se conserva para Encabezado/Totales.`
     );
-    console.log(`   - Usando total calculado de items para DGII`);
+  } else if (diffBases > 0.01) {
+    console.log(`⚠️ INCONSISTENCIA EN MONTO TOTAL:`);
+    console.log(`   - Total declarado: ${montoTotalDeclarado}`);
+    console.log(`   - Total calculado de items (bases): ${montoTotalCalculado}`);
+    console.log(
+      `   - Diferencia: ${(declaradoNum - basesSumNum).toFixed(2)}`
+    );
+    console.log(`   - Usando total calculado de items (bases) para DGII`);
 
     montoTotalCorregido = montoTotalCalculado;
   }
@@ -2217,8 +2238,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             // Tipos 31, 32: Facturas de Crédito Fiscal y Consumo - incluyen indicadorEnvioDiferido
             return {
               ...baseIdDoc,
-              IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorMontoGravado: indicadorMontoGravado,
               IndicadorEnvioDiferido: "1",
               TipoIngresos: "01",
               TipoPago: "1",
@@ -2235,8 +2255,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               TipoDocumento: facturaAdaptada.tipo,
               NCF: facturaAdaptada.ncf,
               FechaVencimientoSecuencia: fechaVencimientoFormateada, // ✅ OBLIGATORIO para tipo 33
-              IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorMontoGravado: indicadorMontoGravado,
               TipoIngresos: "03", // ESPECÍFICO para Nota de Débito (OBLIGATORIO)
               TipoPago: "1",
               TablaFormasPago: [
@@ -2252,8 +2271,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               TipoDocumento: facturaAdaptada.tipo,
               NCF: facturaAdaptada.ncf,
               // NO incluir FechaVencimientoSecuencia para tipo 34
-              IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorMontoGravado: indicadorMontoGravado,
               IndicadorNotaCredito: "0", // OBLIGATORIO para tipo 34
               TipoIngresos: "01",
               TipoPago: "1",
@@ -2262,8 +2280,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             // Tipo 41: Compras - incluyen indicadorMontoGravado pero NO indicadorEnvioDiferido
             return {
               ...baseIdDoc,
-              IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorMontoGravado: indicadorMontoGravado,
               TipoPago: "1",
               TablaFormasPago: [
                 {
@@ -2281,8 +2298,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             // Tipo 45: Gubernamental - incluye indicadorMontoGravado y tipoIngresos pero NO tablaFormasPago
             return {
               ...baseIdDoc,
-              IndicadorMontoGravado:
-                parseFloat(montoGravadoCalculado) > 0 ? "1" : "0",
+              IndicadorMontoGravado: indicadorMontoGravado,
               TipoIngresos: "01",
               TipoPago: "1",
             };

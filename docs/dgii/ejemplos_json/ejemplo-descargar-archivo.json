@@ -1,0 +1,75 @@
+{
+  "endpoint": "POST /comprobantes/descargar-archivo",
+  "descripcion": "Descarga archivo XML o PDF de un documento electrónico desde TheFactoryHKA",
+  "autenticacion": "Bearer Token requerido en header",
+  "headers": {
+    "Authorization": "Bearer YOUR_JWT_TOKEN_HERE",
+    "Content-Type": "application/json"
+  },
+  "request_body": {
+    "rnc": "130960088",
+    "documento": "E310000000033",
+    "extension": "xml"
+  },
+  "parametros": {
+    "rnc": {
+      "tipo": "string",
+      "requerido": true,
+      "descripcion": "RNC del emisor del documento"
+    },
+    "documento": {
+      "tipo": "string",
+      "requerido": true,
+      "descripcion": "Número del documento electrónico (e-NCF)"
+    },
+    "extension": {
+      "tipo": "string",
+      "requerido": true,
+      "descripcion": "Extensión del archivo a descargar",
+      "valores_permitidos": ["xml", "pdf"]
+    }
+  },
+  "respuesta_exitosa": {
+    "status": "success",
+    "message": "Archivo descargado exitosamente",
+    "data": {
+      "archivo": "PEVDRiB4bWxuczp4c2k9Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvWE1MU2NoZW1hLWluc3RhbmNlIiB4c2k6bm9OYW1lc3BhY2VTY2hlbWFMb2NhdGlvbj0ic2NoZW1hLnhzZCI+...",
+      "extension": "xml",
+      "documento": "E310000000033",
+      "rnc": "130960088",
+      "procesado": true,
+      "codigo": 130,
+      "mensaje": "Descarga exitosa"
+    }
+  },
+  "respuesta_error": {
+    "status": "error",
+    "message": "Error al descargar archivo: Documento no encontrado",
+    "details": {
+      "codigo": 404,
+      "mensaje": "Documento no encontrado",
+      "procesado": false
+    }
+  },
+  "codigos_respuesta": {
+    "130": "Descarga exitosa",
+    "404": "Documento no encontrado",
+    "401": "Token inválido o expirado",
+    "400": "Parámetros incorrectos"
+  },
+  "ejemplo_curl": "curl -X POST https://tu-servidor.com/comprobantes/descargar-archivo \\\n  -H \"Authorization: Bearer YOUR_JWT_TOKEN\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"rnc\":\"130960088\",\"documento\":\"E310000000033\",\"extension\":\"xml\"}'",
+  "ejemplo_uso_archivo_base64": {
+    "descripcion": "El campo 'archivo' contiene el contenido del archivo codificado en Base64",
+    "decodificar_en_javascript": "const fileBuffer = Buffer.from(data.archivo, 'base64');\nconst fileContent = fileBuffer.toString('utf-8'); // Para XML\n// O guardar como archivo:\nfs.writeFileSync('documento.xml', fileBuffer);",
+    "decodificar_en_python": "import base64\nfile_content = base64.b64decode(archivo_base64)\nwith open('documento.xml', 'wb') as f:\n    f.write(file_content)"
+  },
+  "notas": [
+    "El endpoint requiere autenticación mediante JWT token",
+    "El archivo se devuelve codificado en Base64 en el campo 'archivo'",
+    "Las extensiones permitidas son 'xml' o 'pdf'",
+    "El RNC debe ser el del emisor del documento",
+    "El documento debe ser el número completo del e-NCF (ej: E310000000033)",
+    "El token de TheFactoryHKA se obtiene automáticamente",
+    "Timeout de 30 segundos para la descarga"
+  ]
+}

@@ -1,0 +1,643 @@
+{
+  "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IjEzMDk2MDA1NCIsImVtYWlsIjoiMTMwOTYwMDU0X2ludCIsIm5iZiI6MTY0MjQ0NTI2NiwiZXhwIjoxNjQyNDkzNjg2LCJpYXQiOjE2NDI0NDUyNjZ9.ddEZlsWN8E0x2xDwcXSSH0-QC4Z9G_sDLlULmEsbPyE",
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "44",
+        "NCF": "E440000000037",
+        "FechaVencimientoSecuencia": "31-12-2021",
+        "TipoIngresos": "01",
+        "TipoPago": "1",
+        "TablaFormasPago": [
+          {
+            "Forma": "2",
+            "Monto": "248292.00"
+          }
+        ],
+        "TipoCuentaPago": "CT",
+        "NumeroCuentaPago": "0301678890090",
+        "BancoPago": "BANCO XDRFT"
+      },
+      "Emisor": {
+        "RNC": "130960054",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "NombreComercial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "Direccion": "AVE. ISABEL AGUIAR NO. 269, ZONA INDUSTRIAL DE HERRERA",
+        "Municipio": "010101",
+        "Provincia": "010000",
+        "TablaTelefono": [
+          "809-472-7676",
+          "809-491-1918"
+        ],
+        "Correo": "DOCUMENTOSELECTRONICOSDE0612345678969789+9000000000000000000000000000001@123.COM",
+        "WebSite": "www.facturaelectronica.com",
+        "CodigoVendedor": "AA0000000100000000010000000002000000000300000000050000000006",
+        "NumeroFacturaInterna": "123456789016",
+        "NumeroPedidoInterno": "123456789016",
+        "ZonaVenta": "NORT",
+        "FechaEmision": "17-01-2022"
+      },
+      "Comprador": {
+        "RNC": "131880681",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 03",
+        "Contacto": "MARCOS LATIPLOL",
+        "Correo": "MARCOSLATIPLOL@KKKK.COM",
+        "Direccion": "CALLE JACINTO DE LA CONCHA FELIZ ESQUINA 27 DE FEBRERO,FRENTE A DOMINO",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "FechaEntrega": "10-10-2020",
+        "FechaOrden": "10-11-2018",
+        "NumeroOrden": "4500352238",
+        "CodigoInterno": "10633440"
+      },
+      "Totales": {
+        "MontoExento": "248292.00",
+        "MontoTotal": "248292.00",
+        "ValorPagar": "248292.00"
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "2",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "3",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "4",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO 12",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "5",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO kl",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "6",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO hj",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "7",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "8",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO nhy",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "9",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO 908",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "10",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO 23",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "11",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "12",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "13",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO hju",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "14",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO zxc",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "15",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "16",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "17",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "18",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "19",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "20",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "21",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "22",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "23",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "24",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "25",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "26",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "27",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "28",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "29",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "30",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "31",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "32",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "33",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "34",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "35",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "36",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "37",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "38",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "39",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "40",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "41",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "42",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "43",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "44",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "45",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "46",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "47",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "48",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "49",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "50",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWS juk",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "51",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "52",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO hny",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "53",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "54",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "55",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "56",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      },
+      {
+        "NumeroLinea": "57",
+        "IndicadorFacturacion": "4",
+        "Nombre": "COMBUSTIBLE AWSO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "22.00",
+        "UnidadMedida": "15",
+        "PrecioUnitario": "220.00",
+        "Monto": "4840.00"
+      }
+    ],
+    "DescuentosORecargos": [
+      {
+        "NumeroLinea": "1",
+        "TipoAjuste": "D",
+        "Descripcion": "DESCUENTO ADMINISTRATIVO",
+        "TipoValor": "%",
+        "Valor": "10.00",
+        "Monto": "27588.00",
+        "IndicadorFacturacion": "4"
+      }
+    ]
+  }
+}

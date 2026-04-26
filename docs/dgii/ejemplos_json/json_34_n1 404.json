@@ -1,0 +1,78 @@
+{
+  "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IjEzMDk2MDA1NCIsImVtYWlsIjoiMTMwOTYwMDU0X2ludCIsIm5iZiI6MTY0MjQ0NTI2NiwiZXhwIjoxNjQyNDkzNjg2LCJpYXQiOjE2NDI0NDUyNjZ9.ddEZlsWN8E0x2xDwcXSSH0-QC4Z9G_sDLlULmEsbPyE",
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "34",
+        "NCF": "E340000000034",
+        "IndicadorMontoGravado": "0",
+        "IndicadorNotaCredito": "0",
+        "TipoIngresos": "01",
+        "TipoPago": "1"
+      },
+      "Emisor": {
+        "RNC": "130960054",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "NombreComercial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "Direccion": "AVE. ISABEL AGUIAR NO. 269, ZONA INDUSTRIAL DE HERRERA",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "TablaTelefono": [
+          "809-472-7676",
+          "809-491-1918"
+        ],
+        "Correo": "DOCUMENTOSELECTRONICOSDE0612345678969789+9000000000000000000000000000001@123.COM",
+        "WebSite": "www.facturaelectronica.com",
+        "CodigoVendedor": "AA0000000100000000010000000002000000000300000000050000000006",
+        "NumeroFacturaInterna": "123456789016",
+        "NumeroPedidoInterno": "123456789016",
+        "ZonaVenta": "NORTE",
+        "FechaEmision": "17-01-2022"
+      },
+      "Comprador": {
+        "RNC": "131880681",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 03",
+        "Contacto": "MARCOS LATIPLOL",
+        "Correo": "MARCOSLATIPLOL@KKKK.COM",
+        "Direccion": "CALLE JACINTO DE LA CONCHA FELIZ ESQUINA 27 DE FEBRERO,FRENTE A DOMINO",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "FechaEntrega": "10-10-2020",
+        "FechaOrden": "10-11-2018",
+        "NumeroOrden": "4500352238",
+        "CodigoInterno": "10633440"
+      },
+      "InformacionesAdicionales": {
+        "NumeroContenedor": "8019289",
+        "NumeroReferencia": "1447"
+      },
+      "Totales": {
+        "MontoGravadoTotal": "0.00",
+        "MontoGravadoI1": "0.00",
+        "ITBIS1": "18",
+        "TotalITBIS": "0.00",
+        "TotalITBIS1": "0.00",
+        "MontoTotal": "0.00"
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "IndicadorFacturacion": "1",
+        "Nombre": "TOP BOWL 1",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "15",
+        "UnidadMedida": "31",
+        "PrecioUnitario": "0.00",
+        "Monto": "0.00"
+      }
+    ],
+    "InformacionReferencia": {
+      "NCFModificado": "E31000000107",
+      "RNCOtroContribuyente": "130960054",
+      "FechaNCFModificado": "05-11-2021",
+      "CodigoModificacion": "3",
+      "RazonModificacion": "THE FACTORY HKA DO"
+    }
+  }
+}

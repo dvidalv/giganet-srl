@@ -1,0 +1,73 @@
+{
+  "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IjEzMDk2MDA1NCIsImVtYWlsIjoiMTMwOTYwMDU0X2ludCIsIm5iZiI6MTY0MjQ0NTI2NiwiZXhwIjoxNjQyNDkzNjg2LCJpYXQiOjE2NDI0NDUyNjZ9.ddEZlsWN8E0x2xDwcXSSH0-QC4Z9G_sDLlULmEsbPyE",
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "45",
+        "NCF": "E450000000038",
+        "FechaVencimientoSecuencia": "31-12-2021",
+        "IndicadorMontoGravado": "0",
+        "TipoIngresos": "01",
+        "TipoPago": "1"
+      },
+      "Emisor": {
+        "RNC": "130960054",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "NombreComercial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "Direccion": "AVE. ISABEL AGUIAR NO. 269, ZONA INDUSTRIAL DE HERRERA",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "TablaTelefono": [
+          "809-472-7676",
+          "809-491-1918"
+        ],
+        "Correo": "DOCUMENTOSELECTRONICOSDE0612345678969789+9000000000000000000000000000001@123.COM",
+        "WebSite": "www.facturaelectronica.com",
+        "CodigoVendedor": "AA0000000100000000010000000002000000000300000000050000000006",
+        "NumeroFacturaInterna": "123456789016",
+        "NumeroPedidoInterno": "123456789016",
+        "ZonaVenta": "NORT",
+        "FechaEmision": "17-01-2022"
+      },
+      "Comprador": {
+        "RNC": "131880657",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 04",
+        "Contacto": "MARCOS LATIPLOL",
+        "Correo": "MARCOSLATIPLOL@KKKK.COM",
+        "Direccion": "CALLE JACINTO DE LA CONCHA FELIZ ESQUINA 27 DE FEBRERO,FRENTE A DOMINO",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "FechaEntrega": "10-10-2020",
+        "FechaOrden": "10-11-2018",
+        "NumeroOrden": "4500352238",
+        "CodigoInterno": "10633440"
+      },
+      "InformacionesAdicionales": {
+        "NumeroContenedor": "8019289",
+        "NumeroReferencia": "1447"
+      },
+      "Totales": {
+        "MontoGravadoTotal": "30000",
+        "MontoGravadoI1": "30000",
+        "ITBIS1": "18",
+        "TotalITBIS": "5400",
+        "TotalITBIS1": "5400",
+        "MontoTotal": "35400",
+        "ValorPagar": "35400"
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "IndicadorFacturacion": "1",
+        "Nombre": "SERVICIO PUBLICIDAD",
+        "IndicadorBienoServicio": "2",
+        "Descripcion": "prestación de servicios relacionados con la creación, ejecución y distribución de campañas publicitarias.",
+        "Cantidad": "1.00",
+        "UnidadMedida": "43",
+        "PrecioUnitario": "30000",
+        "Monto": "30000"
+      }
+    ]
+  }
+}

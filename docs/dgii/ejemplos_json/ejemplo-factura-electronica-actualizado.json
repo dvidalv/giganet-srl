@@ -1,0 +1,41 @@
+{
+  "comprador": {
+    "correo": "voluntariadojesusconlosninos@hotmail.com",
+    "nombre": "Voluntariado Jesus Con Los Ninos",
+    "rnc": "402064272"
+  },
+  "emisor": {
+    "correo": "informacion@contrerasrobledo.com.do",
+    "direccion": "Av. Juan Pablo Duarte No. 176\rSantiago, Rep. Dom.",
+    "razonSocial": "LABORATORIO DE PATOLOGIA CONTRERAS ROBLEDO",
+    "rnc": "130085765",
+    "telefono": ["809-580-1428"]
+  },
+  "factura": {
+    "fecha": "05-02-2025",
+    "id": "379549",
+    "ncf": "E310000000051",
+    "fechaVencNCF": "31-12-2025",
+    "tipo": "31",
+    "total": "66500.00"
+  },
+  "items": [
+    {
+      "nombre": "Servicios Misceláneos",
+      "precio": "66500.00"
+    }
+  ]
+}
+
+
+/* 
+📝 NOTAS:
+- El campo "fechaVencNCF" ahora es requerido desde FileMaker
+- Puede enviarse en formato DD-MM-YYYY o YYYY-MM-DD
+- Si no se envía, se calculará dinámicamente:
+  * En enero-noviembre: 31-12-{año actual}
+  * En diciembre: 31-12-{año siguiente}
+- El sistema validará y convertirá automáticamente al formato requerido por TheFactoryHKA
+- ✅ Fecha siempre válida y actualizada (no hardcoded)
+- ✅ Compatible con cambios de año automáticamente
+*/

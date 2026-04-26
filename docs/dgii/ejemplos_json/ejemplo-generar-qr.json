@@ -1,0 +1,102 @@
+{
+  "ejemplos": {
+    "generarQRBasico": {
+      "endpoint": "POST /comprobantes/generar-qr",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer your-token-here"
+      },
+      "body": {
+        "url": "https://dgii.gov.do/ecf/consulta/?rnc=130085765&ncf=E310000000051&codigo=GNGhsV&fecha=05-02-2025"
+      },
+      "descripcion": "Generar QR básico con configuración por defecto (PNG, 300px)"
+    },
+
+    "generarQRPersonalizado": {
+      "endpoint": "POST /comprobantes/generar-qr",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer your-token-here"
+      },
+      "body": {
+        "url": "https://dgii.gov.do/ecf/validacion/?rnc=130085765&ncf=E310000000051&codigo=GNGhsV&fecha=05-02-2025&monto=350000.00",
+        "formato": "svg",
+        "tamaño": 400
+      },
+      "descripcion": "Generar QR en formato SVG con tamaño personalizado"
+    },
+
+    "generarQRParaImpresion": {
+      "endpoint": "POST /comprobantes/generar-qr",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer your-token-here"
+      },
+      "body": {
+        "url": "https://dgii.gov.do/ecf/consulta/?rnc=130085765&ncf=E310000000051&codigo=ABC123&fecha=05-02-2025",
+        "formato": "png",
+        "tamaño": 200
+      },
+      "descripcion": "QR optimizado para impresión en facturas (200px)"
+    }
+  },
+
+  "respuestaExitosa": {
+    "status": "success",
+    "message": "Código QR generado exitosamente",
+    "data": {
+      "url": "https://dgii.gov.do/ecf/consulta/?rnc=130085765&ncf=E310000000051&codigo=GNGhsV&fecha=05-02-2025",
+      "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAYAAAB5fY51...",
+      "formato": "png",
+      "tamaño": 300,
+      "version": 8,
+      "especificaciones": {
+        "errorCorrection": "M",
+        "cumpleNormativaDGII": true,
+        "versionRecomendada": 8
+      },
+      "timestamp": "2025-08-11T05:30:00.000Z"
+    }
+  },
+
+  "respuestaError": {
+    "status": "error",
+    "message": "La URL es requerida para generar el código QR",
+    "details": "Debe proporcionar la URL del comprobante electrónico",
+    "timestamp": "2025-08-11T05:30:00.000Z"
+  }
+}
+
+
+/* 
+📱 ESPECIFICACIONES DGII IMPLEMENTADAS:
+────────────────────────────────────────
+
+✅ Versión 8: Recomendada por la DGII
+✅ Error Correction Level M: Nivel medio de corrección
+✅ Colores estándar: Negro sobre blanco
+✅ Formato flexible: PNG (para impresión) o SVG (vectorial)
+✅ Tamaño personalizable: Desde 100px hasta 1000px
+
+🔧 PARA FILEMAKER:
+────────────────────
+
+1. Enviar POST con la URL obtenida del endpoint /enviar-electronica
+2. Recibir el QR como data:image/png;base64
+3. Mostrar/imprimir el QR en la factura
+
+📋 PARÁMETROS:
+─────────────
+
+- url (obligatorio): URL del comprobante de la DGII
+- formato (opcional): "png" (defecto) o "svg"  
+- tamaño (opcional): Pixels del QR (defecto: 300px)
+
+✅ CUMPLE NORMATIVA DGII:
+────────────────────────
+
+- Versión 8 según documentación técnica
+- Nivel de corrección de errores apropiado
+- Formato compatible con representaciones impresas
+- Caracteres especiales manejados correctamente en URLs
+*/

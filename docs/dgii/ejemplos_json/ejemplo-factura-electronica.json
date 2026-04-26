@@ -1,0 +1,36 @@
+{
+  "_comentario": "Este es un ejemplo de JSON para enviar al endpoint /comprobantes/enviar-electronica",
+  "_nota": "El token de autenticación se obtiene automáticamente de TheFactoryHKA",
+  "comprador": {
+    "correo": "cliente@email.com",
+    "nombre": "Romelia Nuñez Ventura",
+    "rnc": "01800322305",
+    "direccion": "Calle Principal #123, Santo Domingo"
+  },
+  "emisor": {
+    "correo": "informacion@contrerasrobledo.com.do",
+    "direccion": "Av. Juan Pablo Duarte No. 76",
+    "razonSocial": "LABORATORIO DE PATOLOGIA CONTRERAS ROBLEDO",
+    "rnc": "130085765",
+    "telefono": ["809-580-1428"]
+  },
+  "factura": {
+    "fecha": "01-07-2025",
+    "id": "399515",
+    "ncf": "E310000000031",
+    "tipo": "31",
+    "total": "19000.00"
+  },
+  "items": [
+    {
+      "nombre": "Hígado",
+      "precio": "5000.00",
+      "descripcion": "Análisis de hígado completo"
+    },
+    {
+      "nombre": "Inmunohistoquimica",
+      "precio": "14000.00",
+      "descripcion": "Estudio inmunohistoquímico especializado"
+    }
+  ]
+}

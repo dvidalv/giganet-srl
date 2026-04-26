@@ -1,0 +1,112 @@
+{
+  "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IjEzMDk2MDA1NCIsImVtYWlsIjoiMTMwOTYwMDU0X2ludCIsIm5iZiI6MTY0MjQ0NTI2NiwiZXhwIjoxNjQyNDkzNjg2LCJpYXQiOjE2NDI0NDUyNjZ9.ddEZlsWN8E0x2xDwcXSSH0-QC4Z9G_sDLlULmEsbPyE",
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "46",
+        "NCF": "E460000000039",
+        "FechaVencimientoSecuencia": "31-12-2021",
+        "TipoIngresos": "01",
+        "TipoPago": "2",
+        "FechaLimitePago": "31-12-2021",
+        "TerminoPago": "1 mes",
+        "TablaFormasPago": [
+          {
+            "Forma": "2",
+            "Monto": "1800000.00"
+          }
+        ]
+      },
+      "Emisor": {
+        "RNC": "130960054",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "NombreComercial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "Direccion": "AVE. ISABEL AGUIAR NO. 269, ZONA INDUSTRIAL DE HERRERA",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "TablaTelefono": [
+          "809-472-7676",
+          "809-491-1918"
+        ],
+        "Correo": "DOCUMENTOSELECTRONICOSDE0612345678969789+9000000000000000000000000000001@123.COM",
+        "WebSite": "www.facturaelectronica.com",
+        "CodigoVendedor": "AA0000000100000000010000000002000000000300000000050000000006",
+        "NumeroFacturaInterna": "123456789016",
+        "NumeroPedidoInterno": "123456789016",
+        "FechaEmision": "17-01-2022"
+      },
+      "Comprador": {
+        "RNC": "131880681",
+        "RazonSocial": "ZONA FRANCA LOI",
+        "Contacto": "MARCOS LLUBERES",
+        "Correo": "MARCOSLLUBERES@KKKK.COM",
+        "Direccion": "ZONA HAINA",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "FechaEntrega": "07-04-2021",
+        "ContactoEntrega": "JACINTO MANON",
+        "DireccionEntrega": "ZONA HAINA",
+        "TelefonoAdicional": "809-555-5050",
+        "FechaOrden": "10-03-2021",
+        "NumeroOrden": "4500352230",
+        "CodigoInterno": "4500352230"
+      },
+      "InformacionesAdicionales": {
+        "FechaEmbarque": "10-04-2021",
+        "NumeroEmbarque": "10010-1207-000254",
+        "NumeroContenedor": "ERTY227958722",
+        "NumeroReferencia": "1448",
+        "PesoBruto": "25000.00",
+        "PesoNeto": "24878.00",
+        "UnidadPesoBruto": "21",
+        "UnidadPesoNeto": "21",
+        "CantidadBulto": "250.00",
+        "UnidadBulto": "25",
+        "VolumenBulto": "45",
+        "UnidadVolumen": "27",
+        "NombrePuertoEmbarque": "ZONA HAINA",
+        "CondicionesEntrega": "FOB",
+        "TotalFob": "1800.00",
+        "Seguro": "250.00",
+        "Flete": "22.00",
+        "TotalCif": "2000.00",
+        "RegimenAduanero": "EXPORTACION NACIONAL",
+        "NombrePuertoSalida": "DOSDQ",
+        "NombrePuertoDesembarque": "PTO RICO"
+      },
+      "Transporte": {
+        "NumeroAlbaran": "56789UJILLL",
+        "Via": "02",
+        "PaisOrigen": "REPUBLICA DOMINICANA",
+        "DireccionDestino": "CALLE GUALLUBI NO. 09",
+        "PaisDestino": "PUERTO RICO"
+      },
+      "Totales": {
+        "MontoGravadoTotal": "1800000.00",
+        "MontoGravadoI3": "1800000.00",
+        "ITBIS3": "0",
+        "TotalITBIS": "0.00",
+        "TotalITBIS3": "0.00",
+        "MontoTotal": "1800000.00"
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "TablaCodigos": [
+          {
+            "Tipo": "INTERNA",
+            "Codigo": "123456"
+          }
+        ],
+        "IndicadorFacturacion": "3",
+        "Nombre": "AGUACATE CRIOLLO",
+        "IndicadorBienoServicio": "1",
+        "Cantidad": "100.00",
+        "UnidadMedida": "43",
+        "PrecioUnitario": "18000.00",
+        "Monto": "1800000.00"
+      }
+    ]
+  }
+}

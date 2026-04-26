@@ -1,0 +1,76 @@
+{
+  "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IjEzMDk2MDA1NCIsImVtYWlsIjoiMTMwOTYwMDU0X2ludCIsIm5iZiI6MTY0MjQ0NTI2NiwiZXhwIjoxNjQyNDkzNjg2LCJpYXQiOjE2NDI0NDUyNjZ9.ddEZlsWN8E0x2xDwcXSSH0-QC4Z9G_sDLlULmEsbPyE",
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "47",
+        "NCF": "E470000000040",
+        "FechaVencimientoSecuencia": "31-12-2021",
+        "NumeroCuentaPago": "BB00058745214789635111111111",
+        "BancoPago": "BB0111111111111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "Emisor": {
+        "RNC": "130960054",
+        "RazonSocial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "NombreComercial": "DOCUMENTOS ELECTRONICOS DE 02",
+        "Direccion": "AVE. ISABEL AGUIAR NO. 269, ZONA INDUSTRIAL DE HERRERA",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "TablaTelefono": [
+          "809-472-7676",
+          "809-491-1918"
+        ],
+        "Correo": "DOCUMENTOSELECTRONICOSDE0612345678969789+9000000000000000000000000000001@123.COM",
+        "WebSite": "www.facturaelectronica.com",
+        "NumeroFacturaInterna": "123456789016",
+        "NumeroPedidoInterno": "123456789016",
+        "FechaEmision": "17-01-2022"
+      },
+      "Comprador": {
+        "IdentificacionExtranjero": "533445888",
+        "RazonSocial": "ALEJA FERMIN SANTOS"
+      },
+      "Totales": {
+        "MontoExento": "180000.00",
+        "MontoTotal": "180000.00",
+        "TotalISRRetencion": "48600.00"
+      },
+      "OtraMoneda": {
+        "TipoMoneda": "USD",
+        "TipoCambio": "60.0000",
+        "MontoExentoOtraMoneda": "3000.00",
+        "MontoTotal": "3000.00"
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "IndicadorFacturacion": "4",
+        "Retencion": {
+          "IndicadorAgente": "1",
+          "MontoISR": "48600.00"
+        },
+        "Nombre": "LICENCIA WYI",
+        "IndicadorBienoServicio": "2",
+        "Cantidad": "1.00",
+        "UnidadMedida": "43",
+        "PrecioUnitario": "180000.00",
+        "OtraMonedaDetalle": {
+          "Precio": "3000.00",
+          "Monto": "3000"
+        },
+        "Monto": "180000.00"
+      }
+    ],
+    "Subtotales": [
+      {
+        "Numero": "1",
+        "Descripcion": "N/A",
+        "Orden": "1",
+        "Exento": "180000.00",
+        "Monto": "180000.00",
+        "Lineas": "1"
+      }
+    ]
+  }
+}

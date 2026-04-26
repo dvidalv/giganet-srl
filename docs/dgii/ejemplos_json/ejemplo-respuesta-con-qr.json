@@ -1,0 +1,95 @@
+{
+  "status": "success",
+  "message": "Factura electrónica enviada exitosamente",
+  "data": {
+    "facturaOriginal": {
+      "comprador": {
+        "correo": "voluntariadojesusconlosninos@hotmail.com",
+        "nombre": "Voluntariado Jesus Con Los Ninos",
+        "rnc": "402064272"
+      },
+      "emisor": {
+        "correo": "informacion@contrerasrobledo.com.do",
+        "direccion": "Av. Juan Pablo Duarte No. 176\rSantiago, Rep. Dom.",
+        "razonSocial": "Clínica Universitaria Unión Médica Torre A",
+        "rnc": "130085765",
+        "telefono": ["809-580-1429"]
+      },
+      "factura": {
+        "fecha": "05-02-2025",
+        "id": "379549",
+        "ncf": "E310000000051",
+        "fechaVencNCF": "31-12-2025",
+        "tipo": "31",
+        "total": "66500.00"
+      },
+      "items": [
+        {
+          "nombre": "Servicios Misceláneos",
+          "precio": "66500.00"
+        }
+      ]
+    },
+    "respuestaTheFactory": {
+      "codigo": 0,
+      "codigoSeguridad": "GNGhsV",
+      "fechaEmision": "05-02-2025",
+      "fechaFirma": "11-08-2025 00:25:46",
+      "mensaje": "Documento procesado correctamente",
+      "procesado": true,
+      "xmlBase64": "PEVDRiB4bWxuczp4c2k9Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvWE1MU2NoZW1hLWluc3RhbmNlIi..."
+    },
+    "ncfGenerado": "E310000000051",
+    "codigoSeguridad": "GNGhsV",
+    "fechaFirma": "11-08-2025 00:25:46",
+    "xmlBase64": "PEVDRiB4bWxuczp4c2k9Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvWE1MU2NoZW1hLWluc3RhbmNlIi...",
+    "urlQR": "https://dgii.gov.do/ecf/validacion/?rnc=130085765&ncf=E310000000051&codigo=GNGhsV&fecha=05-02-2025&monto=66500.00",
+    "estatusInicial": {
+      "consultaExitosa": true,
+      "datosEstatus": {
+        "codigo": 95,
+        "codigoSeguridad": "GNGhsV",
+        "fechaEmision": "05-02-2025 00:00:00",
+        "fechaFirma": "11-08-2025 00:25:46",
+        "mensaje": "Documento pendiente por ser enviado a DGII",
+        "observaciones": [
+          {
+            "codigo": 0,
+            "mensaje": ""
+          }
+        ],
+        "procesado": true
+      },
+      "timestamp": "2025-08-11T04:25:47.100Z"
+    }
+  }
+}
+
+
+/* 
+📱 INFORMACIÓN DEL QR CODE:
+─────────────────────────────
+
+✅ Campo nuevo: "urlQR"
+📍 URL generada: "https://dgii.gov.do/ecf/validacion/?rnc=130085765&ncf=E310000000051&codigo=GNGhsV&fecha=05-02-2025&monto=66500.00"
+
+🔧 Para FileMaker:
+1. Tomar el campo "urlQR" de la respuesta
+2. Usar una librería de QR para generar la imagen
+3. Mostrar el QR en la factura impresa
+
+📋 Parámetros del QR (Validación Extendida - Monto ≥ RD$250,000):
+- rnc: RNC del emisor (130085765)
+- ncf: NCF del documento (E310000000051)
+- codigo: Código de seguridad de TheFactoryHKA (GNGhsV)
+- fecha: Fecha de emisión (05-02-2025)
+- monto: Monto total de la factura (66500.00)
+
+💡 NOTA: Como el monto es RD$66,500 (< RD$250,000), normalmente usaría endpoint 'consulta',
+pero en este ejemplo se muestra 'validacion' para ilustrar el formato completo.
+
+✅ Al escanear el QR:
+- Llevará al portal de la DGII
+- Mostrará información verificada del comprobante
+- Permitirá validar autenticidad
+*/

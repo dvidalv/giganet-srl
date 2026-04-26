@@ -24,7 +24,13 @@ import User from "@/app/models/user";
 import { hashApiKey } from "@/utils/apiKey";
 import axios from "axios";
 import QRCode from "qrcode";
-
+import {
+  generateDGIIQRUrl,
+  generateDGIIQRUrlFromEnvioResponse,
+  normalizeExternalDgiiQrUrl,
+  normalizeFechaEmisionDdMmYyyy,
+  resolveAmbienteQr,
+} from "@/lib/dgiiConsultaTimbreUrl";
 
 
 const TIPOS_COMPROBANTE = ["31", "32", "33", "34", "41", "43", "44", "45"];
@@ -271,156 +277,15 @@ const esFechaVencimientoObligatoria = (tipoDocumento) => {
   return esObligatorio;
 };
 
-/**
- * URLs del portal DGII para el QR (mismo patrón que el navegador).
- * E32 (FC): fc.dgii.gov.do/{ambiente}/ConsultaTimbreFC — ej. testecf:
- * https://fc.dgii.gov.do/testecf/ConsultaTimbreFC?RncEmisor=…&ENCF=…&MontoTotal=…&CodigoSeguridad=…
- * E31+: ecf.dgii.gov.do/{ambiente}/ConsultaTimbre
- */
-const URLS_DGII_QR = {
-  desarrollo: {
-    ConsultaTimbreFC: "https://fc.dgii.gov.do/testecf/ConsultaTimbreFC",
-    ConsultaTimbre: "https://ecf.dgii.gov.do/testecf/ConsultaTimbre",
-  },
-  certificacion: {
-    ConsultaTimbreFC: "https://fc.dgii.gov.do/certecf/ConsultaTimbreFC",
-    ConsultaTimbre: "https://ecf.dgii.gov.do/certecf/ConsultaTimbre",
-  },
-  produccion: {
-    ConsultaTimbreFC: "https://fc.dgii.gov.do/ecf/ConsultaTimbreFC",
-    ConsultaTimbre: "https://ecf.dgii.gov.do/ecf/ConsultaTimbre",
-  },
-};
-
-/**
- * @param {unknown} ambienteBody
- * @param {unknown} [envFallback]
- * @returns {"desarrollo" | "certificacion" | "produccion"}
- */
-function resolveAmbienteQr(ambienteBody, envFallback = process.env.DGII_AMBIENTE) {
-  const raw = String(ambienteBody ?? envFallback ?? "").trim().toLowerCase();
-  if (
-    raw === "desarrollo" ||
-    raw === "demo" ||
-    raw === "test" ||
-    raw === "testecf" ||
-    raw === "precertificacion"
-  ) {
-    return "desarrollo";
-  }
-  if (raw === "certificacion" || raw === "certecf" || raw === "cert") {
-    return "certificacion";
-  }
-  return "produccion";
-}
-
-/** RNC solo dígitos (9 u 11) para URLs de consulta timbre DGII. */
-function rncDigitsParaQr(rnc) {
-  return String(rnc ?? "").replace(/\D/g, "");
-}
-
-/** Query string como en el portal DGII (PascalCase). RNC sin guiones. */
-function paramsConsultaTimbreFcQr(rnc, ncf, montoTotal, codigo) {
-  const sp = new URLSearchParams();
-  sp.set("RncEmisor", rncDigitsParaQr(rnc));
-  sp.set("ENCF", String(ncf ?? "").trim());
-  sp.set("MontoTotal", montoTotal.toFixed(2));
-  sp.set("CodigoSeguridad", String(codigo ?? "").trim());
-  return sp;
-}
-
-function paramsConsultaTimbreQr(rnc, rncComprador, ncf, fechaEmision, montoTotal, fechaFirma, codigo) {
-  const sp = new URLSearchParams();
-  sp.set("RncEmisor", rncDigitsParaQr(rnc));
-  sp.set("RncComprador", rncDigitsParaQr(rncComprador));
-  sp.set("ENCF", String(ncf ?? "").trim());
-  sp.set("FechaEmision", fechaEmision);
-  sp.set("MontoTotal", montoTotal.toFixed(2));
-  sp.set("FechaFirma", String(fechaFirma ?? "").trim());
-  sp.set("CodigoSeguridad", String(codigo ?? "").trim());
-  return sp;
-}
-
-// Función para generar URL del QR Code para la DGII según el tipo de comprobante
 const generarUrlQR = (responseData, facturaOriginal) => {
   try {
-    const fact = facturaOriginal.factura || {};
-    const montoTotalConItbis = parseFloat(fact.total || 0);
-    const subParsed = parseFloat(String(fact.subtotalSinItbis ?? ""));
-    const montoSubSinItbis = Number.isFinite(subParsed) ? subParsed : montoTotalConItbis;
-    const tipoComprobante = fact.tipo;
-    const ambiente = resolveAmbienteQr(facturaOriginal.ambiente);
-    const urlsDGII = URLS_DGII_QR[ambiente];
-
-    // 🔍 DEBUG: Verificar datos recibidos
-    console.log("🔍 DEBUG generarUrlQR - Datos recibidos:");
-    console.log("responseData:", JSON.stringify(responseData, null, 2));
-    console.log("facturaOriginal:", JSON.stringify(facturaOriginal, null, 2));
-    console.log("montoTotal (con ITBIS):", montoTotalConItbis, "subtotalSinItbis (FC):", montoSubSinItbis);
-    console.log("tipoComprobante:", tipoComprobante);
-    console.log("ambiente DGII:", ambiente);
-
-    // Formatear fechas al formato DD-MM-YYYY
-    const formatearFechaUrl = (fecha) => {
-      if (!fecha) return "";
-      // Si viene en formato DD-MM-YYYY, mantenerlo
-      if (fecha.match(/^\d{2}-\d{2}-\d{4}$/)) {
-        return fecha;
-      }
-      // Si viene en otro formato, convertirlo
-      const date = new Date(fecha);
-      return `${date.getDate().toString().padStart(2, "0")}-${(
-        date.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}-${date.getFullYear()}`;
-    };
-
-    // Determinar endpoint y parámetros según el tipo de comprobante
-    let baseUrl, params;
-
-    // TIPO 32 (Consumo Final): ConsultaTimbreFC + query PascalCase (mismo formato que el portal DGII).
-    if (String(tipoComprobante) === "32") {
-      baseUrl = urlsDGII.ConsultaTimbreFC;
-      params = paramsConsultaTimbreFcQr(
-        facturaOriginal.emisor.rnc,
-        facturaOriginal.factura.ncf,
-        montoSubSinItbis,
-        responseData.codigoSeguridad,
-      );
-
-      console.log(
-        `📋 Usando endpoint ConsultaTimbreFC (${ambiente}): ${baseUrl}`
-      );
-    } else {
-      // TIPOS 31, 33, 34, etc.: ConsultaTimbre + query PascalCase (mismo criterio que el portal).
-      baseUrl = urlsDGII.ConsultaTimbre;
-
-      const fechaEm = responseData.fechaEmision
-        ? formatearFechaUrl(responseData.fechaEmision)
-        : formatearFechaUrl(facturaOriginal.factura.fecha);
-      params = paramsConsultaTimbreQr(
-        facturaOriginal.emisor.rnc,
-        facturaOriginal.comprador?.rnc || "",
-        facturaOriginal.factura.ncf,
-        fechaEm,
-        montoTotalConItbis,
-        responseData.fechaFirma || responseData.fechaEmision || "",
-        responseData.codigoSeguridad,
-      );
-
-      console.log(
-        `📋 Usando endpoint ConsultaTimbre (tipo ${tipoComprobante}, ${ambiente}): ${baseUrl}`
-      );
+    const r = generateDGIIQRUrlFromEnvioResponse({ responseData, facturaOriginal });
+    if (!r.ok) {
+      console.error("[DGII] generarUrlQR:", r.message);
+      return null;
     }
-
-    const urlCompleta = `${baseUrl}?${params.toString()}`;
-
-    console.log(`📱 URL QR DGII generada: ${urlCompleta}`);
-    console.log(`📊 Endpoint: ${baseUrl}`);
-    console.log(`📊 Parámetros: ${params.toString()}`);
-
-    return urlCompleta;
+    console.log(`📱 URL QR DGII generada: ${r.url}`);
+    return r.url;
   } catch (error) {
     console.error("❌ Error al generar datos del QR:", error);
     return null;
@@ -451,29 +316,27 @@ export async function generarCodigoQRLogic(body) {
       ambiente: ambienteBody,
     } = body ?? {};
     const ambiente = resolveAmbienteQr(ambienteBody);
-    const urlsDGII = URLS_DGII_QR[ambiente];
 
     let urlParaQR;
 
-    // Opción 1: URL completa proporcionada
+    // Opción 1: URL completa proporcionada (re-serializa query para encoding correcto)
     if (url) {
-      urlParaQR = url;
+      const normalized = normalizeExternalDgiiQrUrl(String(url));
+      if (!normalized.ok) {
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: normalized.message,
+            details: "Evite construir la URL a mano; use rnc, ncf, codigo, fecha, monto y tipo.",
+          },
+        };
+      }
+      urlParaQR = normalized.url;
     }
     // Opción 2: Parámetros individuales
     else if (rnc && ncf) {
-      const montoTotal = parseFloat(monto || 0);
-      let baseUrl, params;
-
-      const formatearFechaUrl = (fechaInput) => {
-        if (!fechaInput) return "";
-        if (fechaInput.match(/^\d{2}-\d{2}-\d{4}$/)) return fechaInput;
-        const date = new Date(fechaInput);
-        return `${date.getDate().toString().padStart(2, "0")}-${(
-          date.getMonth() + 1
-        )
-          .toString()
-          .padStart(2, "0")}-${date.getFullYear()}`;
-      };
+      const montoTotal = parseFloat(String(monto ?? "0").replace(/,/g, ".")) || 0;
 
       if (String(tipo) === "32") {
         if (!codigo) {
@@ -488,8 +351,21 @@ export async function generarCodigoQRLogic(body) {
             },
           };
         }
-        baseUrl = urlsDGII.ConsultaTimbreFC;
-        params = paramsConsultaTimbreFcQr(rnc, ncf, montoTotal, codigo);
+        const built = generateDGIIQRUrl({
+          tipo: "32",
+          rncEmisor: rnc,
+          encf: ncf,
+          montoTotal,
+          codigoSeguridad: codigo,
+          ambiente,
+        });
+        if (!built.ok) {
+          return {
+            status: httpStatus.BAD_REQUEST,
+            data: { status: "error", message: built.message },
+          };
+        }
+        urlParaQR = built.url;
       } else {
         if (!codigo || !fecha) {
           return {
@@ -504,19 +380,32 @@ export async function generarCodigoQRLogic(body) {
             },
           };
         }
-        baseUrl = urlsDGII.ConsultaTimbre;
-        params = paramsConsultaTimbreQr(
-          rnc,
-          rncComprador || "",
-          ncf,
-          formatearFechaUrl(fecha),
+        const fechaEmNorm = normalizeFechaEmisionDdMmYyyy(fecha);
+        if (!fechaEmNorm.ok) {
+          return {
+            status: httpStatus.BAD_REQUEST,
+            data: { status: "error", message: fechaEmNorm.message },
+          };
+        }
+        const built = generateDGIIQRUrl({
+          tipo: String(tipo || "31"),
+          rncEmisor: rnc,
+          rncComprador: rncComprador || "",
+          encf: ncf,
+          fechaEmision: fechaEmNorm.value,
           montoTotal,
-          fechaFirma || fecha,
-          codigo,
-        );
+          fechaFirma: fechaFirma || fecha,
+          codigoSeguridad: codigo,
+          ambiente,
+        });
+        if (!built.ok) {
+          return {
+            status: httpStatus.BAD_REQUEST,
+            data: { status: "error", message: built.message },
+          };
+        }
+        urlParaQR = built.url;
       }
-
-      urlParaQR = `${baseUrl}?${params.toString()}`;
     } else {
       return {
         status: httpStatus.BAD_REQUEST,
@@ -1681,6 +1570,40 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     return parseFloat(montoLimpio) || 0;
   };
 
+  /**
+   * Precio unitario (string) tal que Cantidad × PU ≈ monto línea (2 decimales en monto).
+   * @param {number} montoLinea
+   * @param {unknown} cantidadDisplay
+   */
+  const precioUnitarioDesdeMontoYCantidad = (montoLinea, cantidadDisplay) => {
+    const m = Math.round(parseFloat(String(montoLinea)) * 100) / 100;
+    const cantRaw = String(cantidadDisplay ?? "1").trim().replace(/,/g, ".");
+    const cant = parseFloat(cantRaw);
+    if (!Number.isFinite(cant) || cant <= 0) return m.toFixed(2);
+    const ideal = m / cant;
+    for (let d = 2; d <= 10; d += 1) {
+      const pu = Math.round(ideal * 10 ** d) / 10 ** d;
+      const prod = Math.round(cant * pu * 100) / 100;
+      if (Math.abs(prod - m) < 0.005) return pu.toFixed(d);
+    }
+    return ideal.toFixed(8);
+  };
+
+  /**
+   * La Época envía `precio` = **monto base de la línea** (sin ITBIS), no precio unitario.
+   * DGII/TheFactory validan MontoItem ≈ Cantidad × PrecioUnitario (p. ej. observación 2394).
+   * @param {{ precio?: unknown; cantidad?: unknown }} item
+   * @returns {{ PrecioUnitario: string; Monto: string }}
+   */
+  const precioUnitarioYMontoDesdePrecioLinea = (item) => {
+    const montoLinea = Math.round(parsearMonto(item.precio) * 100) / 100;
+    const cantDisp = item.cantidad || "1.00";
+    return {
+      PrecioUnitario: precioUnitarioDesdeMontoYCantidad(montoLinea, cantDisp),
+      Monto: montoLinea.toFixed(2),
+    };
+  };
+
   // 🧮 Calcular montoExento basado en los items (con parsing correcto)
   // Lógica de cálculo de montos según el tipo de comprobante
   let montoExentoCalculado, montoGravadoCalculado;
@@ -2041,6 +1964,8 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       };
     }
 
+    const { PrecioUnitario, Monto } = precioUnitarioYMontoDesdePrecioLinea(item);
+
     // Campos comunes para todos los tipos (PascalCase según ejemplo oficial)
     return {
       ...itemCompleto,
@@ -2049,8 +1974,8 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       Descripcion: item.descripcion || null,
       Cantidad: item.cantidad || "1.00",
       UnidadMedida: item.unidadMedida || "43", // 43 = Unidad
-      PrecioUnitario: parsearMonto(item.precio).toFixed(2),
-      Monto: parsearMonto(item.precio).toFixed(2),
+      PrecioUnitario,
+      Monto,
     };
   });
 
@@ -2186,6 +2111,12 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       ).toFixed(4)}`
     );
   }
+
+  detallesItems.forEach((linea) => {
+    const m = Math.round(parseFloat(String(linea.Monto)) * 100) / 100;
+    linea.Monto = m.toFixed(2);
+    linea.PrecioUnitario = precioUnitarioDesdeMontoYCantidad(m, linea.Cantidad);
+  });
 
   // console.log(`🔍 Verificación detalle vs totales:`, {
   //   tipoComprobante: facturaAdaptada.tipo,

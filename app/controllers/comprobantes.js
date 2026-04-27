@@ -488,6 +488,32 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
   // Convertir a mayúsculas para comparación
   const estado = (estadoOriginal || "").toString().toUpperCase();
   console.log(`🔤 Estado en mayúsculas: "${estado}"`);
+  const mensajeUpper = String(datosCompletos?.mensaje ?? "").toUpperCase();
+  const observaciones = Array.isArray(datosCompletos?.observaciones)
+    ? datosCompletos.observaciones
+    : [];
+  const tieneObservacionRechazo = observaciones.some((o) => {
+    const cod = Number(o?.codigo);
+    const msg = String(o?.mensaje ?? "").toUpperCase();
+    return (
+      (Number.isFinite(cod) && (cod >= 200 || cod === 613 || cod === 634)) ||
+      msg.includes("RECHAZ") ||
+      msg.includes("NO COINCIDE")
+    );
+  });
+
+  // PRIORIDAD 0: si el texto/observaciones dicen rechazo, siempre devolver RECHAZADA
+  if (
+    estado.includes("RECHAZ") ||
+    mensajeUpper.includes("RECHAZ") ||
+    tieneObservacionRechazo
+  ) {
+    console.log("⛔ Rechazo detectado por texto/observaciones");
+    console.log(
+      `🔄 ==================== FIN NORMALIZACIÓN: RECHAZADA ====================\n`
+    );
+    return "RECHAZADA";
+  }
 
   // PRIORIDAD 1: Verificar campo 'procesado' y código numérico primero
   console.log(`🔍 Verificando campo 'procesado': ${datosCompletos.procesado}`);
@@ -511,7 +537,7 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
 
       switch (datosCompletos.codigo) {
         // ⏳ Estados en proceso
-        case 2: // En proceso de validación en TheFactoryHKA
+        case 2: // En proceso de validación en TheFactoryHKA (solo si no hay señales de rechazo)
         case 4: // En proceso de validación en DGII
         case 10: // Pendiente de procesamiento
         case 15: // En validación
@@ -2132,20 +2158,14 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   //   ).toFixed(2),
   // });
 
-  // Formatear fecha (DD-MM-YYYY)
+  // Formatear fecha (DD-MM-YYYY). Delegar ISO YYYY-MM-DD a normalización sin bug de zona horaria.
   const formatearFecha = (fecha) => {
     if (!fecha) return null;
-    // Si viene en formato DD-MM-YYYY, lo mantenemos
-    if (fecha.match(/^\d{2}-\d{2}-\d{4}$/)) {
-      return fecha;
-    }
-    // Si viene en otro formato, lo convertimos
-    const date = new Date(fecha);
-    return `${date.getDate().toString().padStart(2, "0")}-${(
-      date.getMonth() + 1
-    )
-      .toString()
-      .padStart(2, "0")}-${date.getFullYear()}`;
+    const fechaStr = String(fecha).trim();
+    if (/^\d{2}-\d{2}-\d{4}$/.test(fechaStr)) return fechaStr;
+    const n = normalizeFechaEmisionDdMmYyyy(fechaStr);
+    if (n.ok) return n.value;
+    return null;
   };
 
   // Estructura completa para TheFactoryHKA - CORREGIDA según ejemplo oficial

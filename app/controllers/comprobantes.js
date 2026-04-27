@@ -1635,36 +1635,27 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   let montoExentoCalculado, montoGravadoCalculado;
 
   if (facturaAdaptada.tipo === "45") {
-    // Tipo 45 (Gubernamental): Por defecto todos los items son GRAVADOS
-    // Solo si se marca explícitamente como exento, se considera exento
+    /**
+     * Misma regla que DetallesItems (~1963): por defecto **exento**; gravado solo con itbis o gravado explícito.
+     * Antes el default gravado aquí desalineaba Totales (MontoGravadoI1) vs líneas exentas → DGII 1930.
+     */
     montoExentoCalculado = itemsAdaptados
       .reduce((suma, item) => {
         const precio = parsearMonto(item.precio);
-        // Solo si específicamente se marca como exento
-        if (
-          item.itbis === false ||
-          item.exento === true ||
-          item.gravado === false
-        ) {
-          return suma + precio;
+        if (item.itbis === true || item.gravado === true) {
+          return suma;
         }
-        return suma; // Por defecto gravado para tipo 45
+        return suma + precio;
       }, 0)
       .toFixed(2);
 
     montoGravadoCalculado = itemsAdaptados
       .reduce((suma, item) => {
         const precio = parsearMonto(item.precio);
-        // Si específicamente se marca como exento, no lo incluimos en gravado
-        if (
-          item.itbis === false ||
-          item.exento === true ||
-          item.gravado === false
-        ) {
-          return suma;
+        if (item.itbis === true || item.gravado === true) {
+          return suma + precio;
         }
-        // Por defecto gravado para tipo 45
-        return suma + precio;
+        return suma;
       }, 0)
       .toFixed(2);
   } else {
@@ -2455,22 +2446,23 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             //   montoTotalConImpuestos: montoTotalConImpuestos.toFixed(2),
             // });
 
-            // Estructura específica para tipo 45 con cálculos exactos (PascalCase)
-            // NOTA: Solo incluir campos de ITBIS si hay montos gravados
+            // Estructura específica para tipo 45 (PascalCase). DGII exige coherencia MontoGravadoI1 ↔ líneas gravadas.
             const totales45 = {
-              MontoTotal: montoTotalConImpuestos.toFixed(2), // Total (sin impuestos para servicios exentos)
+              MontoTotal: montoTotalConImpuestos.toFixed(2),
               ValorPagar: montoTotalConImpuestos.toFixed(2),
             };
 
-            // Solo incluir campos de impuestos si HAY montos gravados
-            if (montoGravadoFinal > 0) {
+            if (montoGravadoFinal > 0.0001) {
               totales45.MontoGravadoTotal = sumaItemsGravados;
+              totales45.MontoGravadoI1 = sumaItemsGravados;
               totales45.ITBIS1 = "18";
               totales45.TotalITBIS = itbisCalculado.toFixed(2);
               totales45.TotalITBIS1 = itbisCalculado.toFixed(2);
+            } else {
+              totales45.MontoGravadoTotal = "0.00";
+              totales45.MontoGravadoI1 = "0.00";
             }
 
-            // Solo incluir montoExento si hay montos exentos (> 0)
             if (parseFloat(sumaItemsExentos) > 0) {
               totales45.MontoExento = sumaItemsExentos;
             }

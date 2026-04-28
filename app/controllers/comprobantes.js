@@ -1535,6 +1535,25 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     );
   }
 
+  /**
+   * E43 (gastos menores electrónico): TheFactory/DGII — Totales solo exento;
+   * líneas gravadas (IndicadorFacturacion 1) con total que incluye ITBIS → error 1960 MontoExento.
+   */
+  const validarFacturaAntesDeEnviarTheFactory = () => {
+    const t = String(facturaAdaptada?.tipo ?? "").trim();
+    if (t === "43") {
+      const hayGravado = (itemsAdaptados || []).some(
+        (it) => it.itbis === true || it.gravado === true
+      );
+      if (hayGravado) {
+        throw new Error(
+          "E43 (gastos menores electrónico) no admite líneas gravadas con ITBIS. Use E31 (crédito fiscal) o E32 (consumo)."
+        );
+      }
+    }
+  };
+  validarFacturaAntesDeEnviarTheFactory();
+
   // 📅 Formatear y validar fecha de vencimiento del NCF
   // Para tipos 32 y 34, la fecha de vencimiento es OPCIONAL
   let fechaVencimientoFormateada = null;
@@ -1951,7 +1970,10 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     // Determinar si este item específico es gravado o exento
     let itemEsGravado = false;
 
-    if (facturaAdaptada.tipo === "45") {
+    if (facturaAdaptada.tipo === "43") {
+      // E43: documento solo exento (Totales sin gravado/ITBIS) — coherencia con DGII / observación 1960
+      itemEsGravado = false;
+    } else if (facturaAdaptada.tipo === "45") {
       // Tipo 45 (Gubernamental): Servicios médicos son EXENTOS por defecto
       // Solo gravado si se marca explícitamente con itbis=true o gravado=true
       itemEsGravado = item.itbis === true || item.gravado === true;
@@ -1990,7 +2012,8 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       IndicadorBienoServicio: item.indicadorBienoServicio || "1", // 1=Bien, 2=Servicio
       Descripcion: item.descripcion || null,
       Cantidad: item.cantidad || "1.00",
-      UnidadMedida: item.unidadMedida || "43", // 43 = Unidad
+      // Catálogo DGII unidad 43 = «Unidad» (no confundir con tipo de comprobante E43)
+      UnidadMedida: item.unidadMedida || "43",
       PrecioUnitario,
       Monto,
     };
@@ -2134,6 +2157,18 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     linea.Monto = m.toFixed(2);
     linea.PrecioUnitario = precioUnitarioDesdeMontoYCantidad(m, linea.Cantidad);
   });
+
+  if (facturaAdaptada.tipo === "43") {
+    const sumaDetalle = detallesItems.reduce(
+      (s, it) => s + parseFloat(String(it.Monto)),
+      0
+    );
+    if (Math.abs(sumaDetalle - montoTotalConDescuentos) > 0.02) {
+      throw new Error(
+        `E43: la suma de montos de líneas (${sumaDetalle.toFixed(2)}) no coincide con el total del comprobante (${montoTotalConDescuentos.toFixed(2)}). Revise ítems o use E31/E32 si la operación lleva ITBIS.`
+      );
+    }
+  }
 
   // console.log(`🔍 Verificación detalle vs totales:`, {
   //   tipoComprobante: facturaAdaptada.tipo,
@@ -2412,11 +2447,12 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             };
           }
 
-          // Para tipo 43: Gastos Menores - estructura muy simple
+          // Para tipo 43: Gastos menores — ejemplos DGII/TheFactory usan PascalCase en Totales (no camelCase; evita 1960).
           if (facturaAdaptada.tipo === "43") {
+            const mt = montoTotalConDescuentos.toFixed(2);
             return {
-              montoExento: montoTotalConDescuentos.toFixed(2), // Para tipo 43, todo es monto exento
-              montoTotal: montoTotalConDescuentos.toFixed(2),
+              MontoExento: mt,
+              MontoTotal: mt,
             };
           }
 

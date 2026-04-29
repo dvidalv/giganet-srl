@@ -1649,6 +1649,14 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     };
   };
 
+  /** Base por línea neto de `descuentoLineaBase` (La Época POS / otros clientes). */
+  const montoLineaNetoItem = (item) => {
+    const bruto = parsearMonto(item.precio);
+    const desc = parsearMonto(item.descuentoLineaBase ?? item.descuentoLinea ?? 0);
+    const net = Math.round((bruto - desc) * 100) / 100;
+    return net > 0 ? net : 0;
+  };
+
   // 🧮 Calcular montoExento basado en los items (con parsing correcto)
   // Lógica de cálculo de montos según el tipo de comprobante
   let montoExentoCalculado, montoGravadoCalculado;
@@ -1660,7 +1668,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
      */
     montoExentoCalculado = itemsAdaptados
       .reduce((suma, item) => {
-        const precio = parsearMonto(item.precio);
+        const precio = montoLineaNetoItem(item);
         if (item.itbis === true || item.gravado === true) {
           return suma;
         }
@@ -1670,7 +1678,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
     montoGravadoCalculado = itemsAdaptados
       .reduce((suma, item) => {
-        const precio = parsearMonto(item.precio);
+        const precio = montoLineaNetoItem(item);
         if (item.itbis === true || item.gravado === true) {
           return suma + precio;
         }
@@ -1683,7 +1691,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     // Si no tiene esas propiedades, asumimos que es exento (servicios médicos)
     montoExentoCalculado = itemsAdaptados
       .reduce((suma, item) => {
-        const precio = parsearMonto(item.precio);
+        const precio = montoLineaNetoItem(item);
         // Si específicamente se marca como gravado, no lo incluimos en exento
         if (item.itbis === true || item.gravado === true) {
           return suma; // No sumarlo al exento
@@ -1696,7 +1704,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     // Calcular monto gravado (lo que no es exento)
     montoGravadoCalculado = itemsAdaptados
       .reduce((suma, item) => {
-        const precio = parsearMonto(item.precio);
+        const precio = montoLineaNetoItem(item);
         // Solo si específicamente se marca como gravado
         if (item.itbis === true || item.gravado === true) {
           return suma + precio;
@@ -1806,18 +1814,40 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           );
           totalDescuentos += montoDescuento;
 
+          const nlRaw =
+            descuento.NumeroLinea != null
+              ? String(descuento.NumeroLinea).trim()
+              : descuento.numeroLinea != null
+                ? String(descuento.numeroLinea).trim()
+                : "";
+          const tipoValorRaw = String(
+            descuento.TipoValor || descuento.tipoValor || "$"
+          ).trim();
+          const valorPct = parsearMonto(
+            descuento.Valor || descuento.valor || 0
+          );
+
+          /**
+           * Nombres como en DGII / ejemplos JSON (json_44): TheFactory mapea `Monto` e `IndicadorFacturacion`
+           * al XML (MontoDescuentooRecargo, etc.). No usar los nombres largos en JSON — el API no los enlaza.
+           */
           return {
-            numeroLinea: (index + 1).toString(),
-            tipoAjuste: "D", // D = Descuento
-            descripcion:
+            ...(nlRaw !== "" ? { NumeroLinea: nlRaw } : {}),
+            TipoAjuste: "D", // D = Descuento
+            Descripcion:
               descuento.Descripcion ||
               descuento.descripcion ||
               descuento.concepto ||
               "Descuento aplicado",
-            tipoValor: "$",
-            montoDescuentooRecargo: montoDescuento.toFixed(2),
-            indicadorFacturacionDescuentooRecargo:
-              descuento.indicadorFacturacion || "1",
+            TipoValor: tipoValorRaw === "%" ? "%" : "$",
+            ...(tipoValorRaw === "%" && valorPct > 0
+              ? { Valor: valorPct.toFixed(2) }
+              : {}),
+            Monto: montoDescuento.toFixed(2),
+            IndicadorFacturacion:
+              descuento.IndicadorFacturacion ||
+              descuento.indicadorFacturacion ||
+              "1",
           };
         });
       }
@@ -1863,16 +1893,19 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
         descuentosArray = [
           {
-            numeroLinea: "1",
-            tipoAjuste: "D", // D = Descuento
-            descripcion:
+            NumeroLinea: "1",
+            TipoAjuste: "D", // D = Descuento
+            Descripcion:
               descuentosParaProcesar.Descripcion ||
               descuentosParaProcesar.descripcion ||
               descuentosParaProcesar.concepto ||
               "Descuento global",
-            tipoValor: descuentosParaProcesar.porcentaje ? "%" : "$",
-            montoDescuentooRecargo: montoCampo,
-            indicadorFacturacionDescuentooRecargo:
+            TipoValor: descuentosParaProcesar.porcentaje ? "%" : "$",
+            ...(descuentosParaProcesar.porcentaje
+              ? { Valor: valorCampo }
+              : {}),
+            Monto: montoCampo,
+            IndicadorFacturacion:
               descuentosParaProcesar.indicadorFacturacion || "1",
           },
         ];
@@ -2019,16 +2052,52 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     };
   });
 
-  // 🔍 Debug: Verificar suma individual de items vs totales calculados
-  let sumaItemsGravados = detallesItems
-    .filter((item) => item.IndicadorFacturacion === "1")
-    .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
-    .toFixed(2);
+  /** Monto de línea en detalle menos `descuentoLineaBase` del ítem fuente (coherencia con Totales netos). */
+  const montoDetalleNeto = (detItem, idx) => {
+    const bruto = Math.round(parseFloat(String(detItem.Monto)) * 100) / 100;
+    const orig = itemsAdaptados[idx];
+    const dlb = orig
+      ? parsearMonto(orig.descuentoLineaBase ?? orig.descuentoLinea ?? 0)
+      : 0;
+    return Math.round((bruto - dlb) * 100) / 100;
+  };
 
-  let sumaItemsExentos = detallesItems
-    .filter((item) => item.IndicadorFacturacion === "4")
-    .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
-    .toFixed(2);
+  const sumaDetallePorIndicador = (ind) =>
+    detallesItems
+      .reduce((suma, item, idx) => {
+        if (String(item.IndicadorFacturacion) !== ind) return suma;
+        return suma + montoDetalleNeto(item, idx);
+      }, 0)
+      .toFixed(2);
+
+  /** Descuentos por línea e-CF (DGII / TheFactory) desde `descuentoLineaBase` en ítems simplificados. */
+  const descuentosDesdeItemsLinea = [];
+  itemsAdaptados.forEach((item, idx) => {
+    const dlb = parsearMonto(item.descuentoLineaBase ?? item.descuentoLinea ?? 0);
+    if (dlb <= 0.0001) return;
+    const det = detallesItems[idx];
+    if (!det) return;
+    const pctRaw = item.lineDiscountPct ?? item.lineDiscountPorcentaje;
+    const pctNum = pctRaw != null ? Number(pctRaw) : NaN;
+    const usoPct =
+      Number.isFinite(pctNum) && pctNum >= 1 && pctNum <= 100;
+    descuentosDesdeItemsLinea.push({
+      NumeroLinea: String(idx + 1),
+      TipoAjuste: "D",
+      Descripcion: "Descuento por línea POS",
+      TipoValor: usoPct ? "%" : "$",
+      ...(usoPct ? { Valor: pctNum.toFixed(2) } : {}),
+      Monto: dlb.toFixed(2),
+      IndicadorFacturacion: det.IndicadorFacturacion || "1",
+    });
+  });
+
+  const descuentosORecargosMerged = [...descuentosArray, ...descuentosDesdeItemsLinea];
+
+  // 🔍 Debug: Verificar suma individual de items vs totales calculados
+  let sumaItemsGravados = sumaDetallePorIndicador("1");
+
+  let sumaItemsExentos = sumaDetallePorIndicador("4");
 
   // 🔧 Para tipo 45: Ajustar montos de items si hay diferencia con total declarado
   if (facturaAdaptada.tipo === "45") {
@@ -2060,10 +2129,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       });
 
       // Recalcular sumas después del ajuste
-      sumaItemsGravados = detallesItems
-        .filter((item) => item.IndicadorFacturacion === "1")
-        .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
-        .toFixed(2);
+      sumaItemsGravados = sumaDetallePorIndicador("1");
     }
   }
 
@@ -2129,15 +2195,9 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     }
 
     // Recalcular sumas después del ajuste por descuentos
-    sumaItemsGravados = detallesItems
-      .filter((item) => item.IndicadorFacturacion === "1")
-      .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
-      .toFixed(2);
+    sumaItemsGravados = sumaDetallePorIndicador("1");
 
-    sumaItemsExentos = detallesItems
-      .filter((item) => item.IndicadorFacturacion === "4")
-      .reduce((suma, item) => suma + parseFloat(item.Monto), 0)
-      .toFixed(2);
+    sumaItemsExentos = sumaDetallePorIndicador("4");
 
     const sumaItemsDespues = detallesItems.reduce(
       (suma, item) => suma + parseFloat(item.Monto),
@@ -2160,7 +2220,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   if (facturaAdaptada.tipo === "43") {
     const sumaDetalle = detallesItems.reduce(
-      (s, it) => s + parseFloat(String(it.Monto)),
+      (s, it, idx) => s + montoDetalleNeto(it, idx),
       0
     );
     if (Math.abs(sumaDetalle - montoTotalConDescuentos) > 0.02) {
@@ -2524,13 +2584,13 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       },
       DetallesItems: detallesItems,
       // Agregar sección de descuentos/recargos (TheFactory espera array, no objeto con descuentoORecargo)
-      ...(descuentosArray.length > 0 && {
-        descuentosORecargos: descuentosArray,
+      ...(descuentosORecargosMerged.length > 0 && {
+        DescuentosORecargos: descuentosORecargosMerged,
       }),
       // Para tipo 45: Agregar sección vacía si no hay descuentos
       ...(facturaAdaptada.tipo === "45" &&
-        descuentosArray.length === 0 && {
-          descuentosORecargos: [],
+        descuentosORecargosMerged.length === 0 && {
+          DescuentosORecargos: [],
         }),
       // Para tipos 33 y 34: Agregar InformacionReferencia OBLIGATORIA (con validación)
       ...((facturaAdaptada.tipo === "33" || facturaAdaptada.tipo === "34") &&

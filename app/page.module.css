@@ -1,5 +1,9 @@
 .heroContainer {
-  min-height: calc(100vh - var(--headerHeight));
+  margin-top: var(--hero-top-margin);
+  /* 100dvh changes as the iOS URL bar hides/shows and reflows the page mid-scroll (“stuck” scroll).
+     100svh stays stable for the small viewport (bar expanded) so document height does not jump. */
+  min-height: calc(100vh - var(--hero-header-offset));
+  min-height: calc(100svh - var(--hero-header-offset));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,9 +97,6 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
-  .heroContainer {
-    margin-top: var(--headerHeightTablet) ;
-  }
   .heroContent {
     grid-template-columns: 1fr;
     gap: 30px;
@@ -121,9 +122,12 @@
 }
 
 @media (max-width: 768px) {
+  /* flex + align center in a near-full-viewport box confuses iOS touch scrolling */
   .heroContainer {
-    margin-top: var(--headerHeightMobile) ;
+    align-items: flex-start;
+    padding-top: 24px;
   }
+
   .heroTitle {
     font-size: 28px;
     margin-bottom: 20px;
@@ -190,6 +194,8 @@
 .cardContainer {
   perspective: 1000px;
   height: 400px;
+  /* Prefer vertical pan so iOS does not hesitate between scroll and tap on 3D layers */
+  touch-action: pan-y;
 }
 
 .card {

@@ -3,9 +3,11 @@
   --foreground: #171717;
   --headerHeight: 120px;
   --headerHeightMobile: 80px;
-  --headerHeightMobile: 80px;
   --headerHeightTablet: 100px;
   --headerHeightDesktop: 120px;
+  /* Hero: same as fixed header for this breakpoint (min-height + optional top margin) */
+  --hero-header-offset: var(--headerHeightDesktop);
+  --hero-top-margin: 0px;
   --footerHeight: 470px;
   --footerHeightMobile: 470px;
   --footerHeightTablet: 470px;
@@ -21,9 +23,41 @@
   }
 }
 
+@media (max-width: 1024px) {
+  :root {
+    --hero-header-offset: var(--headerHeightTablet);
+    --hero-top-margin: var(--headerHeightTablet);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --hero-header-offset: var(--headerHeightMobile);
+    --hero-top-margin: var(--headerHeightMobile);
+  }
+}
+
 html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 120px; /* Height of header */
+  scroll-padding-top: var(--headerHeightDesktop);
+}
+
+@media (max-width: 1024px) {
+  html {
+    scroll-padding-top: var(--headerHeightTablet);
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: var(--headerHeightMobile);
+  }
+}
+
+/* scroll-behavior: smooth fights iOS momentum scrolling; keep it for pointer/hover UIs only */
+@media (hover: hover) and (pointer: fine) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 html,

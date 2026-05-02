@@ -111,6 +111,7 @@
     } */
     .header {
         padding: 1rem 2rem;
+        height: var(--headerHeightTablet);
     }
 
     .navList {
@@ -129,8 +130,8 @@
     } */
     .header {
         padding: 1rem 1.5rem;
-        /* height: auto; */
-        min-height: --headerHeightMobile;
+        height: var(--headerHeightMobile);
+        min-height: 0;
     }
 
     .navList {
@@ -152,7 +153,8 @@
         flex-direction: row;
         padding: 1rem;
         gap: 1rem;
-        min-height: var(--headerHeightMobile);
+        height: var(--headerHeightMobile);
+        min-height: 0;
     }
 
     .navList {

@@ -1,8 +1,11 @@
 "use client";
 import styles from "./page.module.css";
-import { useActionState, useState, useEffect } from "react";
+import { useActionState, useState, useEffect, useRef } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { enviarFormularioContacto } from "@/actions/enviarFormularioContacto-action";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 export default function Contacto() {
   const [state, action, isPending] = useActionState(
@@ -16,6 +19,7 @@ export default function Contacto() {
 
   // Estado local para el teléfono formateado
   const [telefono, setTelefono] = useState("");
+  const turnstileRef = useRef(null);
 
   // Sincronizar con el valor del estado cuando hay errores o éxito
   useEffect(() => {
@@ -27,8 +31,16 @@ export default function Contacto() {
     }
   }, [state.values?.telefono]);
 
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !isPending && turnstileRef.current) {
+      turnstileRef.current.reset();
+    }
+    wasPending.current = isPending;
+  }, [isPending]);
+
   const handlePhoneChange = (e) => {
-  const formatted = formatPhoneNumberRealtime(e.target.value);
+    const formatted = formatPhoneNumberRealtime(e.target.value);
     setTelefono(formatted);
   };
 
@@ -40,6 +52,18 @@ export default function Contacto() {
           Contáctanos para cualquier consulta o solicitud de servicio
         </p>
         <form className={styles.form} action={action}>
+          {/* Honeypot: no quitar name="website" — debe coincidir con la server action */}
+          <div className={styles.hpField} aria-hidden="true">
+            <label htmlFor="contact-website-hp">Sitio web</label>
+            <input
+              id="contact-website-hp"
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+
           {/* Campo Nombre */}
           <div className={styles.fieldWrapper}>
             <input
@@ -97,7 +121,27 @@ export default function Contacto() {
             )}
           </div>
 
-          <button type="submit" className={styles.submitButton} disabled={isPending}>
+          {TURNSTILE_SITE_KEY ? (
+            <div className={styles.turnstileWrap}>
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={TURNSTILE_SITE_KEY}
+                options={{ language: "es" }}
+              />
+            </div>
+          ) : (
+            <p className={styles.fieldError} role="alert">
+              Falta configurar NEXT_PUBLIC_TURNSTILE_SITE_KEY en el entorno.
+              El formulario no se puede enviar hasta que un administrador añada
+              las claves de Turnstile.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={isPending || !TURNSTILE_SITE_KEY}
+          >
             {isPending ? "Enviando..." : "Enviar Mensaje"}
           </button>
 

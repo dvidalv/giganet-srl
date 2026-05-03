@@ -162,6 +162,7 @@ Todos los procesos implementan:
 
 ### Implementado
 
+- Formulario público `/contacto`: Cloudflare Turnstile, honeypot y rate limit por IP (MongoDB). Variables: [contact-form-env.md](./contact-form-env.md).
 - Validación de inputs en cliente y servidor
 - Hashing de contraseñas (bcrypt/argon2)
 - Tokens seguros con expiración
@@ -170,7 +171,7 @@ Todos los procesos implementan:
 
 ### Recomendaciones Adicionales
 
-- Implementar CAPTCHA en formularios públicos
+- CAPTCHA u otra protección en otros formularios públicos si se añaden
 - Logging y auditoría de eventos de seguridad
 - Monitoreo de intentos fallidos
 - Políticas de contraseñas robustas

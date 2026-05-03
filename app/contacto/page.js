@@ -20,24 +20,23 @@ export default function Contacto() {
   // Estado local para el teléfono formateado
   const [telefono, setTelefono] = useState("");
   const turnstileRef = useRef(null);
-
-  // Sincronizar con el valor del estado cuando hay errores o éxito
-  useEffect(() => {
-    if (state.values?.telefono !== undefined) {
-      // Usar setTimeout para evitar sincronización directa
-      setTimeout(() => {
-        setTelefono(formatPhoneNumber(state.values.telefono));
-      }, 0);
-    }
-  }, [state.values?.telefono]);
-
   const wasPending = useRef(false);
+
+  // Al terminar un envío: reset Turnstile; vaciar teléfono si hubo éxito; si hubo error, sincronizar desde state.values.
+  // No basta con depender de state.values.telefono: antes del primer envío suele ser "" y tras éxito sigue "", así que el efecto no dispararía.
   useEffect(() => {
-    if (wasPending.current && !isPending && turnstileRef.current) {
-      turnstileRef.current.reset();
+    if (wasPending.current && !isPending) {
+      if (turnstileRef.current) {
+        turnstileRef.current.reset();
+      }
+      if (state.success) {
+        setTelefono("");
+      } else if (state.values?.telefono !== undefined) {
+        setTelefono(formatPhoneNumber(state.values.telefono));
+      }
     }
     wasPending.current = isPending;
-  }, [isPending]);
+  }, [isPending, state.success, state.values?.telefono]);
 
   const handlePhoneChange = (e) => {
     const formatted = formatPhoneNumberRealtime(e.target.value);

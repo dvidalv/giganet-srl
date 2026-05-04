@@ -731,13 +731,43 @@
     color: #e5e7eb;
   }
 
+  /* Preguntas y textos de ayuda: más contraste sobre tarjetas oscuras */
+  .fieldLabel {
+    color: #f8fafc;
+    font-weight: 600;
+  }
+
+  .introText {
+    color: #cbd5e1;
+  }
+
+  .sectionTitleMuted {
+    color: #cbd5e1;
+  }
+
+  .btnGhost {
+    color: #e2e8f0;
+  }
+
   .input,
   .textarea,
   .chip,
   .npsBtn {
-    background: #0f172a;
-    border-color: #334155;
-    color: #e2e8f0;
+    background: #020617;
+    border-color: #475569;
+    color: #f8fafc;
+  }
+
+  .input::placeholder,
+  .textarea::placeholder {
+    color: #cbd5e1;
+    opacity: 1;
+  }
+
+  .input:focus,
+  .textarea:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.28);
   }
 
   .chip:hover {
@@ -771,11 +801,29 @@
   }
 
   .npsSubtitle {
-    color: #94a3b8;
+    color: #cbd5e1;
+  }
+
+  .fieldError {
+    color: #fca5a5;
+  }
+
+  .errorBanner {
+    background: rgba(127, 29, 29, 0.35);
+    border-color: #b91c1c;
+    color: #fecaca;
   }
 
   .btnGhost:hover {
     background: #1f2937;
     color: #e5e7eb;
+  }
+
+  .emojiLabel {
+    color: #cbd5e1;
+  }
+
+  .emojiBtnActive .emojiLabel {
+    color: #93c5fd;
   }
 }

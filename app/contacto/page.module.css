@@ -2,7 +2,7 @@
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   box-sizing: border-box;
@@ -10,6 +10,8 @@
     max(3rem, env(safe-area-inset-bottom, 0px));
   padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
   padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .formContainer {
@@ -230,6 +232,11 @@
 }
 
 @media (max-width: 600px) {
+  .contacto {
+    padding-top: max(1.75rem, calc(var(--hero-header-offset) + 1.5rem));
+    padding-bottom: max(4.5rem, calc(env(safe-area-inset-bottom, 0px) + 3.5rem));
+  }
+
   .formContainer {
     padding: 40px 30px;
   }

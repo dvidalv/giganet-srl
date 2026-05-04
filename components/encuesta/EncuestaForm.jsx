@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { responderEncuesta } from "@/actions/responderEncuesta-action";
@@ -94,6 +94,13 @@ export default function EncuestaForm({ token, empresaLabel }) {
   const [loQueMasGusta, setLoQueMasGusta] = useState("");
   const [loQueMejorar, setLoQueMejorar] = useState("");
   const [comentarios, setComentarios] = useState("");
+
+  useEffect(() => {
+    if (!done) return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [done]);
 
   const setMetric = (key, val) => {
     if (key === "facilidadIntegracion") setFacilidadIntegracion(val);
@@ -196,21 +203,21 @@ export default function EncuestaForm({ token, empresaLabel }) {
 
   if (done) {
     return (
-      <div className={styles.page}>
-        <div className={styles.shell}>
-          <div className={styles.successScreen}>
-            <div className={styles.successIcon}>
-              <FaCheck aria-hidden />
-            </div>
-            <h2 className={styles.successTitle}>¡Gracias por tu tiempo!</h2>
-            <p className={styles.successText}>
-              Hemos recibido tu opinión correctamente. Tus comentarios nos ayudan
-              a seguir mejorando Giganet.
-            </p>
-            <Link href="/" className={styles.btnOutline}>
-              Volver al inicio
-            </Link>
+      <div className={styles.pageDone}>
+        <div className={styles.successCard}>
+          <div className={styles.successIconWrap}>
+            <FaCheck className={styles.successCheck} aria-hidden />
           </div>
+          <h2 className={styles.successTitle}>
+            ¡Gracias por tu tiempo! <span aria-hidden>🙌</span>
+          </h2>
+          <p className={styles.successText}>
+            Hemos recibido tu opinión correctamente. Tus comentarios son vitales
+            para seguir ofreciendo un servicio de excelencia.
+          </p>
+          <Link href="/" className={styles.successBtnHome}>
+            Volver al inicio
+          </Link>
         </div>
       </div>
     );

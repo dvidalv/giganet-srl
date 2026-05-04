@@ -10,10 +10,19 @@ const EXISTING_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/dashboard",
+  "/encuesta",
 ]
 
 // Rutas públicas (no requieren autenticación)
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/contacto", "/forgot-password", "/reset-password"]
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/register",
+  "/contacto",
+  "/forgot-password",
+  "/reset-password",
+  "/encuesta",
+]
 
 function routeExists(pathname) {
   return EXISTING_ROUTES.some(

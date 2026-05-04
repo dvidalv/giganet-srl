@@ -563,12 +563,14 @@
     Inter,
     sans-serif;
   width: 100%;
+  margin-top: calc(-1 * max(2rem, calc(var(--headerHeight, 100px) + 1.5rem)));
   min-height: 100vh;
+  min-height: 100dvh;
   background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(2rem, calc(var(--headerHeight, 100px) + 1.25rem)) 1.25rem 3rem;
+  padding: max(2rem, calc(var(--headerHeight, 100px) + 1rem)) 1.25rem 2rem;
   box-sizing: border-box;
 }
 

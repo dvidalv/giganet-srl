@@ -3,7 +3,8 @@
     grid-template-columns: 260px 1fr;
     grid-template-rows: minmax(0, 1fr);
     grid-template-areas: "sidebar main";
-    min-height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+    flex: 1 1 auto;
+    min-height: 0;
     background: #f9fafb;
 }
 

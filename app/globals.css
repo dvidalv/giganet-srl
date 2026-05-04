@@ -8,10 +8,17 @@
   /* Hero: same as fixed header for this breakpoint (min-height + optional top margin) */
   --hero-header-offset: var(--headerHeightDesktop);
   --hero-top-margin: 0px;
+  /* Reserva aprox. en layout del dashboard (el footer real usa solo la altura de su contenido) */
   --footerHeight: 470px;
   --footerHeightMobile: 470px;
   --footerHeightTablet: 470px;
   --footerHeightDesktop: 470px;
+  /* Franja inferior © — misma altura en todas las rutas (dashboard, público, etc.) */
+  --footer-copyright-min-height: 52px;
+  --footer-copyright-padding-y: 13px;
+  --footer-copyright-font-size: 0.8125rem;
+  /* Espacio entre las columnas del footer y la barra © (misma distancia en todas las páginas) */
+  --footer-gap-above-copyright: 60px;
   --color-primary: #ff6b35;
   --font-primary: Arial, Helvetica, sans-serif;
 }
@@ -60,6 +67,10 @@ html {
   }
 }
 
+html {
+  min-height: 100dvh;
+}
+
 html,
 body {
   max-width: 100vw;
@@ -67,6 +78,9 @@ body {
 }
 
 body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;

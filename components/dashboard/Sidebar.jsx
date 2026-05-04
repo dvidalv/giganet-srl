@@ -9,6 +9,7 @@ import { IoPeopleCircle } from "react-icons/io5";
 import { FcDataConfiguration } from "react-icons/fc";
 import { IoKeySharp } from "react-icons/io5";
 import { IoBarChartSharp } from "react-icons/io5";
+import { MdOutlinePoll } from "react-icons/md";
 
 export default function Sidebar({ user }) {
   const { name, email, role } = user;
@@ -20,6 +21,7 @@ export default function Sidebar({ user }) {
       ? [
           { label: "Usuarios", href: "/dashboard/usuarios", icon: <IoPeopleCircle /> },
           { label: "Empresas", href: "/dashboard/empresas", icon: <BsBuildings /> },
+          { label: "Encuestas", href: "/dashboard/encuestas", icon: <MdOutlinePoll /> },
         ]
       : []),
     ...(role === "admin"
@@ -45,7 +47,9 @@ export default function Sidebar({ user }) {
         <nav className={styles.nav}>
           <ul className={styles.navList}>
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
               return (
                 <li key={item.label}>
                   <Link

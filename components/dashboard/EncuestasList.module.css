@@ -1,0 +1,94 @@
+.wrapper {
+  width: 100%;
+}
+
+.loading,
+.error,
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--textSecondary, #6b7280);
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--cardBg, #fff);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--textSecondary, #6b7280);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table a {
+  color: #0d9488;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.table a:hover {
+  text-decoration: underline;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.chipPending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.chipResponded {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.chipExpired {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tableWrap {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #1a1a1a;
+  }
+
+  .table th,
+  .table td {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .table th {
+    background: rgba(255, 255, 255, 0.04);
+  }
+}

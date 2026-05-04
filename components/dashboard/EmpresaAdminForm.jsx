@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";
+import { crearEncuesta } from "@/actions/crearEncuesta-action";
 import styles from "@/app/dashboard/empresa/page.module.css";
+import adminStyles from "./EmpresaAdminForm.module.css";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -92,6 +94,7 @@ export default function EmpresaAdminForm({ userId }) {
   const [telefonoDisplay, setTelefonoDisplay] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [surveySending, setSurveySending] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -120,7 +123,7 @@ export default function EmpresaAdminForm({ userId }) {
       const data = await res.json();
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
     } catch (err) {
-      setMessage({ type: "error", text: "Error de conexión" });
+      setMessage({ type: "error", text: "Error de conexi?n" });
     } finally {
       setLoading(false);
     }
@@ -169,7 +172,7 @@ export default function EmpresaAdminForm({ userId }) {
     } catch (err) {
       URL.revokeObjectURL(objectUrl);
       setLogoPreview(empresa.logo || "");
-      setMessage({ type: "error", text: "Error de conexión al subir" });
+      setMessage({ type: "error", text: "Error de conexi?n al subir" });
     } finally {
       setUploadingLogo(false);
       e.target.value = "";
@@ -181,6 +184,38 @@ export default function EmpresaAdminForm({ userId }) {
     setLogoPreview("");
   };
 
+  const handleSendSurvey = async () => {
+    if (!userId) return;
+    setSurveySending(true);
+    setMessage(null);
+    try {
+      const res = await crearEncuesta(userId);
+      if (!res.ok) {
+        setMessage({ type: "error", text: res.error || "No se pudo enviar la encuesta." });
+        return;
+      }
+      let copied = false;
+      try {
+        if (res.surveyUrl && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(res.surveyUrl);
+          copied = true;
+        }
+      } catch {
+        /* ignore */
+      }
+      setMessage({
+        type: "success",
+        text: copied
+          ? `${res.message} El enlace se copi? al portapapeles.`
+          : `${res.message} Enlace: ${res.surveyUrl}`,
+      });
+    } catch {
+      setMessage({ type: "error", text: "Error al enviar la encuesta." });
+    } finally {
+      setSurveySending(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
@@ -188,7 +223,7 @@ export default function EmpresaAdminForm({ userId }) {
 
     const newErrors = {};
     if (empresa.email && !/^\S+@\S+\.\S+$/.test(empresa.email)) {
-      newErrors.email = "Email inválido";
+      newErrors.email = "Email inv?lido";
     }
     if (empresa.rnc && empresa.rnc.length > 10) {
       newErrors.rnc = "El RNC no puede exceder 10 caracteres";
@@ -225,7 +260,7 @@ export default function EmpresaAdminForm({ userId }) {
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
       setMessage({ type: "success", text: "Empresa actualizada correctamente" });
     } catch (err) {
-      setMessage({ type: "error", text: "Error de conexión" });
+      setMessage({ type: "error", text: "Error de conexi?n" });
     } finally {
       setSaving(false);
     }
@@ -240,7 +275,28 @@ export default function EmpresaAdminForm({ userId }) {
   }
 
   return (
-    <div className={styles.wrapper}>
+    <>
+      <div
+        className={adminStyles.surveyFixedBar}
+        role="region"
+        aria-label="Enviar encuesta de satisfacción"
+      >
+        <button
+          type="button"
+          className={adminStyles.surveyFixedBtn}
+          onClick={handleSendSurvey}
+          disabled={surveySending}
+        >
+          {surveySending
+            ? "Enviando encuesta…"
+            : "Enviar encuesta de satisfacción"}
+        </button>
+        <p className={adminStyles.surveyFixedHint}>
+          Correo con enlace único (requiere RNC y email de empresa o del usuario).
+        </p>
+      </div>
+
+      <div className={styles.wrapper}>
       <Link
         href="/dashboard/empresas"
         style={{
@@ -264,7 +320,7 @@ export default function EmpresaAdminForm({ userId }) {
           </div>
           <div className={styles.headerText}>
             <h1>Editar empresa</h1>
-            <p>Revisa y actualiza la información de la empresa si tiene errores.</p>
+            <p>Revisa y actualiza la informaci?n de la empresa si tiene errores.</p>
           </div>
         </header>
 
@@ -287,14 +343,14 @@ export default function EmpresaAdminForm({ userId }) {
               </div>
 
               <div className={styles.fieldWrapper}>
-                <label className={styles.label}>Razón social</label>
+                <label className={styles.label}>Raz?n social</label>
                 <div className={styles.inputWrap}>
                   <span className={styles.inputIcon}><IconDocument /></span>
                   <input
                     type="text"
                     value={empresa.razonSocial}
                     onChange={(e) => handleChange("razonSocial", e.target.value)}
-                    placeholder="Razón social"
+                    placeholder="Raz?n social"
                     className={styles.input}
                     maxLength={100}
                   />
@@ -303,14 +359,14 @@ export default function EmpresaAdminForm({ userId }) {
             </div>
 
             <div className={styles.fieldWrapper}>
-              <label className={styles.label}>Dirección</label>
+              <label className={styles.label}>Direcci?n</label>
               <div className={styles.inputWrap}>
                 <span className={styles.inputIcon}><IconMapPin /></span>
                 <input
                   type="text"
                   value={empresa.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
-                  placeholder="Calle, ciudad, provincia, código postal"
+                  placeholder="Calle, ciudad, provincia, c?digo postal"
                   className={styles.input}
                 />
               </div>
@@ -318,7 +374,7 @@ export default function EmpresaAdminForm({ userId }) {
 
             <div className={styles.grid}>
               <div className={styles.fieldWrapper}>
-                <label className={styles.label}>Teléfono</label>
+                <label className={styles.label}>Tel?fono</label>
                 <div className={styles.inputWrap}>
                   <span className={styles.inputIcon}><IconPhone /></span>
                   <input
@@ -386,7 +442,7 @@ export default function EmpresaAdminForm({ userId }) {
             <div className={styles.fieldWrapper}>
               <label className={styles.label}>Ambiente The Factory (e-CF)</label>
               <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
-                Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
+                Producci?n usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
                 <code>THEFACTORY_BASE_URL_DEMO</code>. Las credenciales deben coincidir con el
                 ambiente elegido.
               </p>
@@ -397,7 +453,7 @@ export default function EmpresaAdminForm({ userId }) {
                   value={empresa.theFactoryAmbiente || "production"}
                   onChange={(e) => handleChange("theFactoryAmbiente", e.target.value)}
                 >
-                  <option value="production">Producción</option>
+                  <option value="production">Producci?n</option>
                   <option value="demo">Pruebas (demo)</option>
                 </select>
               </div>
@@ -464,7 +520,7 @@ export default function EmpresaAdminForm({ userId }) {
                   )}
                 </div>
                 <p className={styles.logoHint}>
-                  JPEG, PNG, GIF o WebP. Máx. 5 MB. O pega la URL del logo abajo.
+                  JPEG, PNG, GIF o WebP. M?x. 5 MB. O pega la URL del logo abajo.
                 </p>
                 <div className={styles.inputWrap}>
                   <span className={styles.inputIcon}><IconLink /></span>
@@ -505,5 +561,6 @@ export default function EmpresaAdminForm({ userId }) {
         </form>
       </div>
     </div>
+    </>
   );
 }

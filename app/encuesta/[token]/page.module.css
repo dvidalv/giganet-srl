@@ -12,6 +12,7 @@
 
 @media (max-width: 639px) {
   .encuesta {
+    padding-top: max(0.75rem, calc(var(--hero-header-offset) + 0.5rem));
     padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
     padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
   }

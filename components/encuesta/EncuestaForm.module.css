@@ -13,8 +13,9 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: max(2.5rem, calc(var(--hero-header-offset) + 1.75rem)) 1rem 4rem;
-  padding-bottom: max(2.5rem, env(safe-area-inset-bottom, 0px));
+  /* El offset del header fijo lo aplica solo el padre .encuesta; duplicar aquí empujaba todo el formulario muy abajo en móvil. */
+  padding: 0 1rem 4rem;
+  padding-bottom: max(4rem, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -564,14 +565,15 @@
     Inter,
     sans-serif;
   width: 100%;
-  margin-top: calc(-1 * max(2rem, calc(var(--hero-header-offset) + 1.5rem)));
+  --encuesta-pad-top: max(2rem, calc(var(--hero-header-offset) + 1.5rem));
+  margin-top: calc(-1 * var(--encuesta-pad-top));
   min-height: 100vh;
   min-height: 100dvh;
   background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(2rem, calc(var(--hero-header-offset) + 1rem)) 1.25rem 2rem;
+  padding: max(1.25rem, calc(var(--hero-header-offset) + 0.5rem)) 1.25rem 2rem;
   padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
@@ -681,7 +683,7 @@
 
 @media (max-width: 639px) {
   .page {
-    padding: max(1.5rem, calc(var(--hero-header-offset) + 1rem)) 0 2.5rem;
+    padding: 0 0 max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 4rem));
     padding-left: max(0, env(safe-area-inset-left, 0px));
     padding-right: max(0, env(safe-area-inset-right, 0px));
   }
@@ -786,6 +788,8 @@
   .input,
   .textarea {
     font-size: 1rem;
+    scroll-margin-top: calc(var(--hero-header-offset) + 5.25rem);
+    scroll-margin-bottom: 6rem;
   }
 
   .footerRow {
@@ -802,6 +806,8 @@
   }
 
   .pageDone {
+    --encuesta-pad-top: max(0.75rem, calc(var(--hero-header-offset) + 0.5rem));
+    padding-top: max(0.75rem, calc(var(--hero-header-offset) + 0.5rem));
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
   }

@@ -96,11 +96,21 @@ export default function EncuestaForm({ token, empresaLabel }) {
   const [comentarios, setComentarios] = useState("");
 
   useEffect(() => {
-    if (!done) return;
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [done]);
+    const scrollTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    scrollTop();
+    const raf = requestAnimationFrame(scrollTop);
+    const t0 = setTimeout(scrollTop, 0);
+    const t1 = setTimeout(scrollTop, 160);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t0);
+      clearTimeout(t1);
+    };
+  }, [step, done]);
 
   const setMetric = (key, val) => {
     if (key === "facilidadIntegracion") setFacilidadIntegracion(val);

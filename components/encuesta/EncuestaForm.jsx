@@ -428,8 +428,8 @@ export default function EncuestaForm({ token, empresaLabel }) {
                       <button
                         key={i}
                         type="button"
-                        className={`${styles.npsBtn} ${
-                          nps === i ? styles.npsBtnActive : ""
+                        className={`${styles.npsBtn}${
+                          nps === i ? ` ${styles.npsBtnActive}` : ""
                         }`}
                         onClick={() => setNps(i)}
                       >

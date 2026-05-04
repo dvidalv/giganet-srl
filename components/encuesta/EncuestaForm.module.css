@@ -9,9 +9,10 @@
   color: #111827;
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 3rem 1rem;
+  /* Espacio bajo cabecera global del sitio + margen cómodo */
+  padding: max(2.5rem, calc(var(--headerHeight, 100px) + 1.75rem)) 1rem 4rem;
   box-sizing: border-box;
 }
 
@@ -420,16 +421,18 @@
   }
 }
 
-.npsBtn:hover {
+.npsBtn:hover:not(.npsBtnActive) {
   border-color: #3b82f6;
   color: #2563eb;
   transform: translateY(-2px);
 }
 
-.npsBtnActive {
+/* Dos clases: mayor especificidad que .npsBtn solo (evita que dark mode pise el activo) */
+.npsBtn.npsBtnActive {
   background: #3b82f6;
   color: #fff;
   border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 
 .npsScaleLabels {
@@ -699,6 +702,20 @@
   .npsBox {
     background: #1f2937;
     border-color: #374151;
+  }
+
+  /* Por encima de la regla agrupada .npsBtn del bloque oscuro */
+  .npsBtn.npsBtnActive {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45);
+  }
+
+  .npsBtn:hover:not(.npsBtnActive) {
+    border-color: #3b82f6;
+    color: #93c5fd;
+    background: #1e293b;
   }
 
   .npsSubtitle {

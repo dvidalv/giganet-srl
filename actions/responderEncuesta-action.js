@@ -16,7 +16,12 @@ const LIMITS = {
   loQueMasGusta: 1000,
   loQueMejorar: 1000,
   comentarios: 2000,
+  nombreRespondiente: 120,
+  emailRespondiente: 254,
+  referenciaServicio: 200,
 };
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -64,6 +69,9 @@ function emptyValues() {
     loQueMasGusta: "",
     loQueMejorar: "",
     comentarios: "",
+    nombreRespondiente: "",
+    emailRespondiente: "",
+    referenciaServicio: "",
   };
 }
 
@@ -81,6 +89,15 @@ export async function responderEncuesta(prevState, formData) {
   const loQueMasGusta = String(formData.get("loQueMasGusta") || "").trim();
   const loQueMejorar = String(formData.get("loQueMejorar") || "").trim();
   const comentarios = String(formData.get("comentarios") || "").trim();
+  const nombreRespondiente = String(
+    formData.get("nombreRespondiente") || ""
+  ).trim();
+  const emailRespondiente = String(
+    formData.get("emailRespondiente") || ""
+  ).trim();
+  const referenciaServicio = String(
+    formData.get("referenciaServicio") || ""
+  ).trim();
 
   const values = {
     nps: String(formData.get("nps") ?? "").trim(),
@@ -95,6 +112,9 @@ export async function responderEncuesta(prevState, formData) {
     loQueMasGusta,
     loQueMejorar,
     comentarios,
+    nombreRespondiente,
+    emailRespondiente,
+    referenciaServicio,
   };
 
   const fieldErrors = {};
@@ -130,6 +150,21 @@ export async function responderEncuesta(prevState, formData) {
   }
   if (comentarios.length > LIMITS.comentarios) {
     fieldErrors.comentarios = `Máximo ${LIMITS.comentarios} caracteres.`;
+  }
+
+  if (nombreRespondiente.length > LIMITS.nombreRespondiente) {
+    fieldErrors.nombreRespondiente = `Máximo ${LIMITS.nombreRespondiente} caracteres.`;
+  }
+  if (emailRespondiente.length > LIMITS.emailRespondiente) {
+    fieldErrors.emailRespondiente = "El correo es demasiado largo.";
+  } else if (
+    emailRespondiente &&
+    !EMAIL_REGEX.test(emailRespondiente)
+  ) {
+    fieldErrors.emailRespondiente = "Correo electrónico no válido.";
+  }
+  if (referenciaServicio.length > LIMITS.referenciaServicio) {
+    fieldErrors.referenciaServicio = `Máximo ${LIMITS.referenciaServicio} caracteres.`;
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -182,6 +217,9 @@ export async function responderEncuesta(prevState, formData) {
     loQueMasGusta,
     loQueMejorar,
     comentarios,
+    nombreRespondiente,
+    emailRespondiente,
+    referenciaServicio,
   };
 
   const updated = await Encuesta.findOneAndUpdate(
@@ -256,6 +294,11 @@ export async function responderEncuesta(prevState, formData) {
             <h2>Encuesta de satisfacción respondida</h2>
             <p><strong>Empresa:</strong> ${escapeHtml(label)}</p>
             <p><strong>RNC:</strong> ${escapeHtml(emp.rnc || "—")}</p>
+            ${
+              nombreRespondiente || emailRespondiente || referenciaServicio
+                ? `<p><strong>Respondiente (opcional):</strong> ${escapeHtml(nombreRespondiente || "—")} · ${escapeHtml(emailRespondiente || "—")} · Ref: ${escapeHtml(referenciaServicio || "—")}</p>`
+                : ""
+            }
             <p><strong>NPS (0–10):</strong> ${answers.nps}</p>
             <p><strong>Satisfacción general (1–5):</strong> ${answers.satisfaccionGeneral}</p>
             <p><strong>Facilidad de integración (1–5):</strong> ${answers.facilidadIntegracion}</p>
@@ -272,6 +315,7 @@ export async function responderEncuesta(prevState, formData) {
         `,
         textContent: `Encuesta respondida — ${label}
 RNC: ${emp.rnc || "—"}
+Respondiente: ${nombreRespondiente || "—"} | ${emailRespondiente || "—"} | Ref: ${referenciaServicio || "—"}
 NPS: ${answers.nps}
 Satisfacción general: ${answers.satisfaccionGeneral}
 Facilidad integración: ${answers.facilidadIntegracion}

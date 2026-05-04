@@ -24,6 +24,10 @@ const answersSchema = new Schema(
     loQueMasGusta: { type: String, default: "", maxlength: 1000 },
     loQueMejorar: { type: String, default: "", maxlength: 1000 },
     comentarios: { type: String, default: "", maxlength: 2000 },
+    /** Paso 1 opcional (quien responde) */
+    nombreRespondiente: { type: String, default: "", maxlength: 120 },
+    emailRespondiente: { type: String, default: "", maxlength: 254 },
+    referenciaServicio: { type: String, default: "", maxlength: 200 },
   },
   { _id: false }
 );

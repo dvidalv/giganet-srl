@@ -62,6 +62,24 @@ export default async function EncuestaDetallePage({ params }) {
           <span>{emp.email || "—"}</span>
         </div>
 
+        {(a?.nombreRespondiente || a?.emailRespondiente || a?.referenciaServicio) ? (
+          <>
+            <div className={styles.sectionTitle}>Quién respondió (opcional)</div>
+            <div className={styles.row}>
+              <span>Nombre</span>
+              <span>{a.nombreRespondiente || "—"}</span>
+            </div>
+            <div className={styles.row}>
+              <span>Correo indicado</span>
+              <span>{a.emailRespondiente || "—"}</span>
+            </div>
+            <div className={styles.row}>
+              <span>Referencia</span>
+              <span>{a.referenciaServicio || "—"}</span>
+            </div>
+          </>
+        ) : null}
+
         {!a ? (
           <p className={styles.emptyAnswers}>
             {e.status === "pending"

@@ -143,9 +143,21 @@ if (!Encuesta._connectionWrapped) {
     return query;
   };
 
-  Encuesta.findOneAndUpdate = async function (...args) {
-    await ensureConnection();
-    return originalFindOneAndUpdate(...args);
+  Encuesta.findOneAndUpdate = function (...args) {
+    const query = originalFindOneAndUpdate(...args);
+    const originalExec = query.exec.bind(query);
+    query.exec = async function (...execArgs) {
+      await ensureConnection();
+      return originalExec(...execArgs);
+    };
+    const originalThen = query.then?.bind(query);
+    if (originalThen) {
+      query.then = async function (...thenArgs) {
+        await ensureConnection();
+        return originalThen(...thenArgs);
+      };
+    }
+    return query;
   };
 
   Encuesta.deleteOne = async function (...args) {

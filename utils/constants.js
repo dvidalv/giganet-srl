@@ -28,6 +28,10 @@ function buildTheFactoryUrls(baseUrl) {
     emailUrl: `${b}/EnvioCorreo`,
     anulacionUrl: `${b}/Anulacion`,
     descargaUrl: `${b}/DescargaArchivo`,
+    seriesUrl: `${b}/Series`,
+    crearSeriesUrl: `${b}/CrearSeries`,
+    actualizarSeriesUrl: `${b}/ActualizarSeries`,
+    borrarSeriesUrl: `${b}/BorrarSeries`,
   };
 }
 

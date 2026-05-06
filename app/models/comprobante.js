@@ -184,6 +184,20 @@ const comprobanteSchema = new mongoose.Schema({
     default: '',
     maxlength: [500, 'El comentario no puede exceder 500 caracteres'],
   },
+  /** Código de serie en The Factory HKA (ej. FE0001). Si vacío, se infiere por tipo. */
+  tf_serie: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: [24, 'La serie The Factory no puede exceder 24 caracteres'],
+  },
+  /** Sucursal en The Factory (ej. 0001). Si vacío, se usa 0001. */
+  tf_codigo_sucursal: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: [12, 'El código de sucursal no puede exceder 12 caracteres'],
+  },
   usuario: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'user',

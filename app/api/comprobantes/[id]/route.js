@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import {
+  syncTheFactoryActualizarSeriesFromComprobante,
+  syncTheFactoryBorrarSeriesFromComprobante,
+} from "@/app/controllers/comprobantes";
 
 async function getComprobante() {
   const mod = await import("@/app/models/comprobante");
@@ -90,10 +94,25 @@ export async function PATCH(request, { params }) {
     if (body.estado !== undefined) rango.estado = String(body.estado).trim();
     if (body.comentario !== undefined) rango.comentario = String(body.comentario).trim().slice(0, 500);
     if (body.alerta_minima_restante != null) rango.alerta_minima_restante = Number(body.alerta_minima_restante);
+    if (body.tf_serie !== undefined) {
+      rango.tf_serie = body.tf_serie != null ? String(body.tf_serie).trim().slice(0, 24) : "";
+    }
+    if (body.tf_codigo_sucursal !== undefined) {
+      rango.tf_codigo_sucursal =
+        body.tf_codigo_sucursal != null
+          ? String(body.tf_codigo_sucursal).trim().slice(0, 12)
+          : "";
+    }
 
     await rango.save();
     const updated = rango.toObject ? rango.toObject() : rango;
-    return NextResponse.json({ data: updated });
+
+    const theFactorySync = await syncTheFactoryActualizarSeriesFromComprobante(
+      updated,
+      session.user.id
+    );
+
+    return NextResponse.json({ data: updated, theFactorySync });
   } catch (err) {
     console.error("PATCH /api/comprobantes/[id]:", err);
     if (err.name === "ValidationError") {
@@ -127,7 +146,7 @@ export async function DELETE(request, { params }) {
 
   try {
     const Comprobante = await getComprobante();
-    const rango = await Comprobante.findOneAndDelete({
+    const rango = await Comprobante.findOne({
       _id: id,
       usuario: session.user.id,
     });
@@ -138,8 +157,30 @@ export async function DELETE(request, { params }) {
         { status: 404 },
       );
     }
+
+    const snapshot = rango.toObject ? rango.toObject() : { ...rango };
+    const theFactorySync = await syncTheFactoryBorrarSeriesFromComprobante(
+      snapshot,
+      session.user.id
+    );
+
+    if (!theFactorySync.ok) {
+      return NextResponse.json(
+        {
+          error:
+            theFactorySync.message ||
+            "No se pudo eliminar la serie en The Factory. Revise credenciales y datos.",
+          theFactorySync,
+        },
+        { status: 502 },
+      );
+    }
+
+    await Comprobante.deleteOne({ _id: id, usuario: session.user.id });
+
     return NextResponse.json({
-      message: "Secuencia eliminada correctamente",
+      message: "Secuencia eliminada correctamente en Giganet y The Factory",
+      theFactorySync,
     });
   } catch (err) {
     console.error("DELETE /api/comprobantes/[id]:", err);

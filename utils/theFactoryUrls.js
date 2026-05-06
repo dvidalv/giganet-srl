@@ -12,7 +12,7 @@ const demoUrlsCached = () => buildTheFactoryUrls(THEFACTORY_BASE_URL_DEMO);
  * Resuelve URLs de The Factory HKA según el usuario (empresa.theFactoryAmbiente).
  * Sin userId usa siempre producción (mismo comportamiento que credenciales solo en .env).
  * @param {string|null|undefined} userId
- * @returns {Promise<{ ambienteKey: 'production'|'demo', baseUrl: string, authUrl: string, enviarUrl: string, estatusUrl: string, emailUrl: string, anulacionUrl: string, descargaUrl: string }>}
+ * @returns {Promise<{ ambienteKey: 'production'|'demo', baseUrl: string, authUrl: string, enviarUrl: string, estatusUrl: string, emailUrl: string, anulacionUrl: string, descargaUrl: string, seriesUrl: string, crearSeriesUrl: string, actualizarSeriesUrl: string, borrarSeriesUrl: string }>}
  */
 export async function resolveTheFactoryUrlsForUser(userId) {
   if (!userId) {

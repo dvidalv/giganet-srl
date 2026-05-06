@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { syncTheFactoryCrearSeriesFromComprobante } from "@/app/controllers/comprobantes";
 
 async function getComprobante() {
   const mod = await import("@/app/models/comprobante");
@@ -78,6 +79,8 @@ export async function POST(request) {
     fecha_vencimiento,
     alerta_minima_restante,
     comentario,
+    tf_serie,
+    tf_codigo_sucursal,
   } = body;
 
   const tipoOpcionalesFechaVenc = ["32", "34"];
@@ -101,6 +104,11 @@ export async function POST(request) {
     alerta_minima_restante:
       alerta_minima_restante != null ? Number(alerta_minima_restante) : undefined,
     comentario: comentario ? String(comentario).trim().slice(0, 500) : "",
+    tf_serie: tf_serie != null ? String(tf_serie).trim().slice(0, 24) : "",
+    tf_codigo_sucursal:
+      tf_codigo_sucursal != null
+        ? String(tf_codigo_sucursal).trim().slice(0, 12)
+        : "",
     usuario: session.user.id,
   };
 
@@ -111,11 +119,33 @@ export async function POST(request) {
   try {
     const Comprobante = await getComprobante();
     const rango = await Comprobante.create(rangoData);
-    const created = rango.toObject ? rango.toObject() : rango;
+    let created = rango.toObject ? rango.toObject() : rango;
+
+    const theFactorySync = await syncTheFactoryCrearSeriesFromComprobante(
+      created,
+      session.user.id
+    );
+
+    if (theFactorySync.ok && theFactorySync.enrichedSerie?.serie) {
+      await Comprobante.updateOne(
+        { _id: rango._id },
+        {
+          $set: {
+            tf_serie: theFactorySync.enrichedSerie.serie,
+            tf_codigo_sucursal:
+              theFactorySync.enrichedSerie.codigoSucursal || "",
+          },
+        }
+      );
+      const refreshed = await Comprobante.findById(rango._id).lean();
+      if (refreshed) created = refreshed;
+    }
+
     return NextResponse.json({
       status: "success",
       message: "Secuencia creada correctamente",
       data: created,
+      theFactorySync,
     });
   } catch (err) {
     console.error("POST /api/comprobantes:", err);

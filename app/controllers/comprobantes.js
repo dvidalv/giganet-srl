@@ -3042,6 +3042,409 @@ const enviarFacturaElectronica = async (req, res) => {
 };
 
 /**
+ * Lista las series de numeración en The Factory HKA para el RNC (POST /Series).
+ * @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapiseries
+ * @param {{ rnc?: string }} body - Si falta, se usa empresa.rnc del usuario en options.userId
+ * @param {{ userId?: string }} options
+ * @returns {Promise<{ status: number, data: object }>}
+ */
+export async function listarSeriesTheFactoryLogic(body, options = {}) {
+  try {
+    let rncRaw = body?.rnc;
+    if ((!rncRaw || String(rncRaw).trim() === "") && options.userId) {
+      const u = await User.findById(options.userId).select("empresa.rnc").lean();
+      rncRaw = u?.empresa?.rnc;
+    }
+    const rnc = String(rncRaw ?? "")
+      .replace(/\D/g, "")
+      .trim();
+    if (!rnc || rnc.length < RNC_MIN || rnc.length > RNC_MAX) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: "RNC no válido o no configurado",
+          details:
+            "Configure el RNC en Mi empresa para ver las series de The Factory.",
+        },
+      };
+    }
+
+    const urls = await resolveTheFactoryUrlsForUser(options.userId);
+    const token = await obtenerTokenTheFactory(rnc, {
+      ...options,
+      theFactoryUrls: urls,
+    });
+
+    const response = await axios.post(
+      urls.seriesUrl,
+      { token, rnc },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 30000,
+      }
+    );
+
+    const data = response.data ?? {};
+    const codigo = data.codigo;
+    const seriesRaw = Array.isArray(data.serie) ? data.serie : [];
+
+    const codigoOk =
+      codigo === 0 ||
+      codigo === 100 ||
+      codigo === undefined ||
+      codigo === null;
+    if (!codigoOk) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message:
+            data.mensaje ||
+            "The Factory no devolvió las series correctamente.",
+          details: { codigo, respuesta: data },
+        },
+      };
+    }
+
+    return {
+      status: httpStatus.OK,
+      data: {
+        status: "success",
+        message: data.mensaje || "Series obtenidas correctamente",
+        ambiente: urls.ambienteKey,
+        rnc,
+        series: seriesRaw,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error al listar series The Factory:", error);
+    const msg = error?.message ?? String(error);
+    if (
+      msg.includes("CREDENCIALES_THEFACTORY") ||
+      msg.includes("CREDENCIALES_THEFACTORY_")
+    ) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message:
+            "Configure usuario y clave de The Factory en Mi empresa para consultar las series.",
+          details: msg,
+        },
+      };
+    }
+    if (error.response) {
+      return {
+        status: httpStatus.BAD_GATEWAY,
+        data: {
+          status: "error",
+          message: "Error en la respuesta de The Factory al consultar series",
+          details: {
+            status: error.response.status,
+            data: error.response.data,
+          },
+        },
+      };
+    }
+    if (error.code === "ECONNABORTED") {
+      return {
+        status: httpStatus.REQUEST_TIMEOUT,
+        data: {
+          status: "error",
+          message: "Tiempo de espera agotado al consultar series en The Factory",
+        },
+      };
+    }
+    return {
+      status: httpStatus.INTERNAL_SERVER_ERROR,
+      data: {
+        status: "error",
+        message: "Error interno al consultar series en The Factory",
+        details: msg,
+      },
+    };
+  }
+}
+
+/** Serie por defecto alineada con ejemplos TFHKA (demo) @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapicrearseries */
+const DEFAULT_TF_SERIE_BY_TIPO = {
+  "31": "FE0001",
+  "32": "FC0001",
+  "33": "ND0001",
+  "34": "NC0001",
+  "41": "CE0001",
+  "43": "GM0001",
+  "44": "RE0001",
+  "45": "GE0001",
+};
+
+function theFactorySerieCodigoOk(data) {
+  const d = data ?? {};
+  return (
+    d.codigo === 0 ||
+    d.codigo === 100 ||
+    d.procesado === true
+  );
+}
+
+/**
+ * @param {Record<string, unknown>} doc - Comprobante (lean o documento)
+ * @returns {{ serie: string, tipoDocumento: string, fechaVencimientoSecuencia: string, correlativo: number, valorMinimo: number, valorMaximo: number, codigoSucursal: string }}
+ */
+function comprobanteDocToSeriePayload(doc) {
+  const tipo = String(doc.tipo_comprobante ?? "").trim();
+  const serieStored = doc.tf_serie != null ? String(doc.tf_serie).trim() : "";
+  const serie =
+    serieStored ||
+    DEFAULT_TF_SERIE_BY_TIPO[tipo] ||
+    `AUT${tipo}001`;
+  const codigoSucursal =
+    doc.tf_codigo_sucursal != null && String(doc.tf_codigo_sucursal).trim()
+      ? String(doc.tf_codigo_sucursal).trim()
+      : "0001";
+
+  const fv = doc.fecha_vencimiento;
+  const fechaDate =
+    fv instanceof Date ? fv : fv ? new Date(fv) : null;
+  let fechaStr = formatFechaVencimiento(fechaDate);
+  if (!fechaStr && ["32", "34"].includes(tipo)) {
+    fechaStr = "31-12-2099";
+  }
+  if (!fechaStr) {
+    fechaStr = "31-12-2099";
+  }
+
+  return {
+    serie,
+    tipoDocumento: tipo,
+    fechaVencimientoSecuencia: fechaStr,
+    correlativo: Number(doc.numeros_utilizados ?? 0),
+    valorMinimo: Number(doc.numero_inicial),
+    valorMaximo: Number(doc.numero_final),
+    codigoSucursal,
+  };
+}
+
+/**
+ * Intenta obtener serie/código sucursal ya existente en TF para este rango y tipo.
+ * @param {Array<Record<string, unknown>>} factoryRows - Respuesta de GET Series
+ * @param {Record<string, unknown>} doc
+ */
+function pickSerieFromFactoryList(factoryRows, doc) {
+  if (!Array.isArray(factoryRows) || factoryRows.length === 0) return null;
+  const tipo = String(doc.tipo_comprobante ?? "").trim();
+  const ni = Number(doc.numero_inicial);
+  const nf = Number(doc.numero_final);
+  for (const row of factoryRows) {
+    const td = String(row.tipoDocumento ?? row.tipo_documento ?? "").trim();
+    if (td !== tipo) continue;
+    const vmin = Number(row.valorMinimo ?? row.valor_minimo);
+    const vmax = Number(row.valorMaximo ?? row.valor_maximo);
+    if (Number.isNaN(vmin) || Number.isNaN(vmax)) continue;
+    if (ni <= vmax && nf >= vmin) {
+      return {
+        serie: String(row.serie ?? "").trim(),
+        codigoSucursal: String(
+          row.codigoSucursal ?? row.codigo_sucursal ?? "0001"
+        ).trim(),
+      };
+    }
+  }
+  return null;
+}
+
+async function fetchFactorySeriesRows(userId, rnc) {
+  const listRes = await listarSeriesTheFactoryLogic({ rnc }, { userId });
+  if (listRes.status !== httpStatus.OK || listRes.data?.status !== "success") {
+    return [];
+  }
+  return Array.isArray(listRes.data.series) ? listRes.data.series : [];
+}
+
+/**
+ * Tras crear secuencia en Giganet: CrearSeries en The Factory.
+ * @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapicrearseries
+ * @returns {Promise<{ ok: boolean, message?: string, details?: unknown, enrichedSerie?: { serie: string, codigoSucursal: string } }>}
+ */
+export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
+  try {
+    const rnc = String(doc.rnc ?? "")
+      .replace(/\D/g, "")
+      .trim();
+    if (!rnc || !userId) {
+      return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
+    }
+
+    const urls = await resolveTheFactoryUrlsForUser(userId);
+    const token = await obtenerTokenTheFactory(rnc, {
+      userId,
+      theFactoryUrls: urls,
+    });
+
+    const payload = comprobanteDocToSeriePayload(doc);
+
+    const response = await axios.post(
+      urls.crearSeriesUrl,
+      { token, rnc, serie: payload },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 30000,
+      }
+    );
+
+    const data = response.data ?? {};
+    if (!theFactorySerieCodigoOk(data)) {
+      return {
+        ok: false,
+        message:
+          data.mensaje ||
+          "The Factory rechazó CrearSeries (código distinto de éxito).",
+        details: data,
+      };
+    }
+
+    const arr = data.serie;
+    const first = Array.isArray(arr) && arr[0];
+    const enrichedSerie =
+      first && first.serie
+        ? {
+            serie: String(first.serie),
+            codigoSucursal: String(
+              first.codigoSucursal ?? first.codigo_sucursal ?? payload.codigoSucursal
+            ),
+          }
+        : { serie: payload.serie, codigoSucursal: payload.codigoSucursal };
+
+    return { ok: true, message: data.mensaje, details: data, enrichedSerie };
+  } catch (error) {
+    console.error("syncTheFactoryCrearSeriesFromComprobante:", error);
+    const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    return {
+      ok: false,
+      message: msg,
+      details: error?.response?.data ?? null,
+    };
+  }
+}
+
+/**
+ * Tras actualizar secuencia en Giganet: ActualizarSeries en The Factory.
+ * @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapiactualizarseries
+ */
+export async function syncTheFactoryActualizarSeriesFromComprobante(doc, userId) {
+  try {
+    const rnc = String(doc.rnc ?? "")
+      .replace(/\D/g, "")
+      .trim();
+    if (!rnc || !userId) {
+      return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
+    }
+
+    const urls = await resolveTheFactoryUrlsForUser(userId);
+    const token = await obtenerTokenTheFactory(rnc, {
+      userId,
+      theFactoryUrls: urls,
+    });
+
+    const rows = await fetchFactorySeriesRows(userId, rnc);
+    let payload = comprobanteDocToSeriePayload(doc);
+    const matched = pickSerieFromFactoryList(rows, doc);
+    if (matched?.serie && !String(doc.tf_serie ?? "").trim()) {
+      payload = { ...payload, serie: matched.serie, codigoSucursal: matched.codigoSucursal || payload.codigoSucursal };
+    }
+
+    const response = await axios.post(
+      urls.actualizarSeriesUrl,
+      { token, rnc, serie: payload },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 30000,
+      }
+    );
+
+    const data = response.data ?? {};
+    if (!theFactorySerieCodigoOk(data)) {
+      return {
+        ok: false,
+        message:
+          data.mensaje ||
+          "The Factory rechazó ActualizarSeries (código distinto de éxito).",
+        details: data,
+      };
+    }
+
+    return { ok: true, message: data.mensaje, details: data };
+  } catch (error) {
+    console.error("syncTheFactoryActualizarSeriesFromComprobante:", error);
+    const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    return {
+      ok: false,
+      message: msg,
+      details: error?.response?.data ?? null,
+    };
+  }
+}
+
+/**
+ * Antes de borrar en Giganet: BorrarSeries en The Factory.
+ * @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapiborrarseries
+ */
+export async function syncTheFactoryBorrarSeriesFromComprobante(doc, userId) {
+  try {
+    const rnc = String(doc.rnc ?? "")
+      .replace(/\D/g, "")
+      .trim();
+    if (!rnc || !userId) {
+      return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
+    }
+
+    const urls = await resolveTheFactoryUrlsForUser(userId);
+    const token = await obtenerTokenTheFactory(rnc, {
+      userId,
+      theFactoryUrls: urls,
+    });
+
+    const rows = await fetchFactorySeriesRows(userId, rnc);
+    let payload = comprobanteDocToSeriePayload(doc);
+    const matched = pickSerieFromFactoryList(rows, doc);
+    if (matched?.serie && !String(doc.tf_serie ?? "").trim()) {
+      payload = { ...payload, serie: matched.serie, codigoSucursal: matched.codigoSucursal || payload.codigoSucursal };
+    }
+
+    const response = await axios.post(
+      urls.borrarSeriesUrl,
+      { token, rnc, serie: payload },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 30000,
+      }
+    );
+
+    const data = response.data ?? {};
+    if (!theFactorySerieCodigoOk(data)) {
+      return {
+        ok: false,
+        message:
+          data.mensaje ||
+          "The Factory rechazó BorrarSeries (código distinto de éxito).",
+        details: data,
+      };
+    }
+
+    return { ok: true, message: data.mensaje, details: data };
+  } catch (error) {
+    console.error("syncTheFactoryBorrarSeriesFromComprobante:", error);
+    const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    return {
+      ok: false,
+      message: msg,
+      details: error?.response?.data ?? null,
+    };
+  }
+}
+
+/**
  * Lógica para consultar el estatus de un documento desde Next.js (sin Express).
  * Devuelve { status, data } para uso directo con NextResponse.
  * @param {{ ncf: string, rnc: string, reintentar?: boolean }} body

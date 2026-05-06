@@ -54,6 +54,12 @@ function getTipoTheme(tipo) {
   return { Icon: FaReceipt, iconClass: styles.cardIcon_default };
 }
 
+function labelAmbienteTheFactory(key) {
+  if (key === "demo") return "Pruebas (demo)";
+  if (key === "production") return "Producción";
+  return key ? String(key) : "—";
+}
+
 function getCardTheme(estadoTipo) {
   const e = (estadoTipo ?? "activo").toString().toLowerCase();
   const isInactive = ["agotado", "vencido", "inactivo"].includes(e);
@@ -121,6 +127,10 @@ export default function ComprobantesList() {
   const [anulandoId, setAnulandoId] = useState(null);
   const [anularNcfDesde, setAnularNcfDesde] = useState("");
   const [anularNcfHasta, setAnularNcfHasta] = useState("");
+  const [tfSeriesLoading, setTfSeriesLoading] = useState(true);
+  const [tfSeriesError, setTfSeriesError] = useState(null);
+  const [tfSeriesPayload, setTfSeriesPayload] = useState(null);
+  const [tfPanelOpen, setTfPanelOpen] = useState(false);
 
   const fetchComprobantes = useCallback(async () => {
     setLoading(true);
@@ -143,9 +153,43 @@ export default function ComprobantesList() {
     }
   }, []);
 
+  const fetchTheFactorySeries = useCallback(async () => {
+    setTfSeriesLoading(true);
+    setTfSeriesError(null);
+    setTfSeriesPayload(null);
+    try {
+      const res = await fetch("/api/comprobantes/thefactory-series");
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setTfSeriesError(
+          json.message ??
+            json.error ??
+            "No se pudieron obtener las series de The Factory."
+        );
+        return;
+      }
+      if (json.status === "success") {
+        setTfSeriesPayload({
+          ambiente: json.ambiente,
+          rnc: json.rnc,
+          series: Array.isArray(json.series) ? json.series : [],
+        });
+      } else {
+        setTfSeriesError(
+          json.message ?? "Respuesta inesperada al consultar The Factory."
+        );
+      }
+    } catch {
+      setTfSeriesError("Error de conexión al consultar The Factory.");
+    } finally {
+      setTfSeriesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchComprobantes();
-  }, [fetchComprobantes]);
+    fetchTheFactorySeries();
+  }, [fetchComprobantes, fetchTheFactorySeries]);
 
   const openDeleteModal = useCallback((c) => {
     setPendingDelete(c);
@@ -247,8 +291,11 @@ export default function ComprobantesList() {
       const res = await fetch(`/api/comprobantes/${id}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPendingDelete(null);
-        alert(json.error ?? "Error al eliminar la secuencia");
+        const extra =
+          json.theFactorySync?.message != null
+            ? `\n\nThe Factory: ${json.theFactorySync.message}`
+            : "";
+        alert(`${json.error ?? "Error al eliminar la secuencia"}${extra}`);
         return;
       }
       setPendingDelete(null);
@@ -298,18 +345,6 @@ export default function ComprobantesList() {
       return tipo.includes(q) || descripcion.includes(q);
     });
   }, [comprobantes, query, filterEstado]);
-
-  if (loading) {
-    return <p className={styles.empty}>Cargando comprobantes...</p>;
-  }
-
-  if (error) {
-    return (
-      <p className={styles.empty} role="alert">
-        {error}
-      </p>
-    );
-  }
 
   return (
     <>
@@ -458,6 +493,157 @@ export default function ComprobantesList() {
         </div>
       )}
 
+      <section className={styles.tfSeriesPanel} aria-label="Series The Factory HKA">
+        <div className={styles.tfSeriesPanelBar}>
+          <button
+            type="button"
+            className={styles.tfSeriesToggle}
+            id="tf-series-toggle"
+            aria-expanded={tfPanelOpen}
+            aria-controls="tf-series-panel-content"
+            onClick={() => setTfPanelOpen((o) => !o)}>
+            <span
+              className={styles.tfSeriesChevron}
+              data-expanded={tfPanelOpen}
+              aria-hidden>
+              ▸
+            </span>
+            <span className={styles.tfSeriesToggleLabel}>
+              <span className={styles.tfSeriesPanelTitle}>
+                Series en The Factory HKA
+              </span>
+              <span className={styles.tfSeriesPanelSubtitle}>
+                {tfSeriesLoading
+                  ? "Consultando The Factory…"
+                  : tfSeriesError
+                  ? "Error al consultar · expanda o pulse Actualizar"
+                  : tfSeriesPayload
+                  ? `${tfSeriesPayload.series.length} serie(s) · ${labelAmbienteTheFactory(tfSeriesPayload.ambiente)}`
+                  : "Listado del emisor en The Factory"}
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.tfSeriesRefresh}
+            onClick={(e) => {
+              e.stopPropagation();
+              fetchTheFactorySeries();
+            }}
+            disabled={tfSeriesLoading}
+            aria-label="Actualizar series desde The Factory">
+            {tfSeriesLoading ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
+        {tfPanelOpen && (
+          <div
+            id="tf-series-panel-content"
+            className={styles.tfSeriesPanelContent}
+            role="region"
+            aria-labelledby="tf-series-toggle">
+            <p className={styles.tfSeriesIntro}>
+              Datos en tiempo real según el RNC y el ambiente configurados en{" "}
+              <Link href="/dashboard/empresa" className={styles.tfSeriesInlineLink}>
+                Mi empresa
+              </Link>
+              . Las secuencias que gestionas en Giganet aparecen abajo; compara
+              con este listado para alinear rangos.
+            </p>
+            {tfSeriesPayload && !tfSeriesLoading && (
+              <p className={styles.tfSeriesMeta}>
+                RNC consultado: <strong>{tfSeriesPayload.rnc}</strong>
+                {" · "}
+                Ambiente:{" "}
+                <strong>{labelAmbienteTheFactory(tfSeriesPayload.ambiente)}</strong>
+                {" · "}
+                <a
+                  className={styles.tfSeriesInlineLink}
+                  href="https://felwiki.thefactoryhka.com.do/doku.php?id=restapiseries"
+                  target="_blank"
+                  rel="noopener noreferrer">
+                  API Series (wiki TFHKA)
+                </a>
+              </p>
+            )}
+            {tfSeriesLoading && (
+              <p className={styles.tfSeriesStatus}>Consultando The Factory…</p>
+            )}
+            {tfSeriesError && !tfSeriesLoading && (
+              <div className={styles.tfSeriesError} role="alert">
+                <p className={styles.tfSeriesErrorText}>{tfSeriesError}</p>
+                <p className={styles.tfSeriesErrorHint}>
+                  Compruebe RNC, usuario y clave de The Factory, y que el ambiente
+                  (demo/producción) coincida con su cuenta.
+                </p>
+              </div>
+            )}
+            {tfSeriesPayload && !tfSeriesLoading && !tfSeriesError && (
+              <>
+                {tfSeriesPayload.series.length === 0 ? (
+                  <p className={styles.tfSeriesEmpty}>
+                    The Factory devolvió un listado vacío de series para este RNC.
+                  </p>
+                ) : (
+                  <div className={styles.tfTableWrap}>
+                    <table className={styles.tfTable}>
+                      <thead>
+                        <tr>
+                          <th scope="col">Tipo</th>
+                          <th scope="col">Serie</th>
+                          <th scope="col">Correlativo</th>
+                          <th scope="col">Rango</th>
+                          <th scope="col">Vencimiento sec.</th>
+                          <th scope="col">Sucursal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tfSeriesPayload.series.map((row, idx) => {
+                          const tipo =
+                            row.tipoDocumento ?? row.tipo_documento ?? "—";
+                          const serie = row.serie ?? "—";
+                          const correlativo =
+                            row.correlativo != null ? row.correlativo : "—";
+                          const vmin =
+                            row.valorMinimo != null
+                              ? row.valorMinimo
+                              : row.valor_minimo;
+                          const vmax =
+                            row.valorMaximo != null
+                              ? row.valorMaximo
+                              : row.valor_maximo;
+                          const rango =
+                            vmin != null && vmax != null
+                              ? `${Number(vmin).toLocaleString("es-DO")} – ${Number(vmax).toLocaleString("es-DO")}`
+                              : "—";
+                          const venc =
+                            row.fechaVencimientoSecuencia ??
+                            row.fecha_vencimiento_secuencia ??
+                            "—";
+                          const sucursal =
+                            row.codigoSucursal ??
+                            row.codigo_sucursal ??
+                            "—";
+                          return (
+                            <tr key={`${serie}-${tipo}-${idx}`}>
+                              <td>{tipo}</td>
+                              <td>{serie}</td>
+                              <td>{correlativo}</td>
+                              <td>{rango}</td>
+                              <td>{venc}</td>
+                              <td>{sucursal}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
       <div className={styles.filtersRow}>
         <div className={styles.filterEstadoWrap}>
           <label htmlFor="filter-estado" className={styles.filterLabel}>
@@ -518,7 +704,13 @@ export default function ComprobantesList() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <p className={styles.empty}>Cargando secuencias en Giganet…</p>
+      ) : error ? (
+        <p className={styles.empty} role="alert">
+          {error}
+        </p>
+      ) : filtered.length === 0 ? (
         <p className={styles.empty}>
           {query
             ? "Ningún comprobante coincide con la búsqueda."

@@ -106,7 +106,11 @@ export default function SecuenciaEditForm({ id }) {
         setMessage({ type: "error", text: json.error ?? "Error al guardar" });
         return;
       }
-      setMessage({ type: "success", text: "Cambios guardados correctamente" });
+      let okText = "Cambios guardados correctamente";
+      if (json.theFactorySync && !json.theFactorySync.ok) {
+        okText += ` · Aviso The Factory: ${json.theFactorySync.message || "no se pudo actualizar la serie en el emisor."}`;
+      }
+      setMessage({ type: "success", text: okText });
       const updated = json.data ?? comprobante;
       setComprobante(updated);
       setNumero_inicial(String(updated.numero_inicial ?? ""));

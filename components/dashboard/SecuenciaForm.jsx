@@ -226,7 +226,11 @@ export default function SecuenciaForm({ onSuccess, tipoPreseleccionado }) {
         if (data.details) setErrors((prev) => ({ ...prev, _form: data.details }));
         return;
       }
-      setMessage({ type: "success", text: data.message || "Secuencia creada correctamente" });
+      let successText = data.message || "Secuencia creada correctamente";
+      if (data.theFactorySync && !data.theFactorySync.ok) {
+        successText += ` · Aviso The Factory: ${data.theFactorySync.message || "no se pudo crear la serie en el emisor."}`;
+      }
+      setMessage({ type: "success", text: successText });
       const nextForm = { ...getInitialForm(), razon_social: empresa.razonSocial || "" };
       setForm(nextForm);
       refNumeroInicial.current = nextForm.numero_inicial;

@@ -19,7 +19,8 @@ export default async function MisComprobantes() {
           <h1 className={styles.title}>Gestión de Comprobantes Fiscales</h1>
           <p className={styles.subtitle}>
             Visualiza y administra tus tipos de comprobantes y secuencias
-            disponibles
+            disponibles. Puedes anular NCF no utilizados ante DGII desde cada
+            tarjeta (icono de prohibido).
           </p>
         </div>
         <Link href="/dashboard/mis-comprobantes/nuevo" className={styles.cta}>

@@ -354,8 +354,7 @@ comprobanteSchema.statics.marcarNumerosComoAnulados = async function (
     const nuevosUtilizados = hastaEnRango - rango.numero_inicial + 1;
     if (nuevosUtilizados > rango.numeros_utilizados) {
       rango.numeros_utilizados = nuevosUtilizados;
-      rango.estado = 'inactivo'; // Excluir de solicitar-numero; pre-save respeta 'inactivo'
-      await rango.save();
+      await rango.save(); // pre-save recalcula numeros_disponibles y estado (activo/alerta/agotado/vencido)
     }
   }
 };

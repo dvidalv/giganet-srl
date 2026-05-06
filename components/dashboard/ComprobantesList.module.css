@@ -644,6 +644,23 @@
   text-align: center;
 }
 
+.modalWikiNote {
+  font-size: 0.8125rem;
+  text-align: center;
+  margin: 0 0 0.75rem;
+}
+
+.modalWikiLink {
+  color: #1e3a5f;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.modalWikiLink:hover {
+  color: #0f172a;
+}
+
 .modalDetail {
   font-size: 0.875rem;
   color: #64748b;

@@ -391,8 +391,18 @@ export default function ComprobantesList() {
               Anular secuencias no usadas
             </h2>
             <p id="modal-anular-desc" className={styles.modalMessage}>
-              Anula NCF ante la DGII para que el sistema no intente usarlos. Útil
-              cuando hay números que no utilizarás (ej. comprobantes vencidos).
+              Anula secuencias de NCF no utilizadas ante DGII / The Factory HKA
+              para que no se reutilicen (p. ej. números que no usarás o rangos
+              vencidos). No sustituye la corrección de un e-CF ya emitido.
+            </p>
+            <p className={styles.modalWikiNote}>
+              <a
+                className={styles.modalWikiLink}
+                href="https://felwiki.thefactoryhka.com.do/doku.php?id=restapianulacion"
+                target="_blank"
+                rel="noopener noreferrer">
+                Documentación REST: Anulación (The Factory HKA)
+              </a>
             </p>
             {pendingAnular.titulo && (
               <p className={styles.modalDetail}>

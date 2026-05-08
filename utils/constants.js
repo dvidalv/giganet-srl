@@ -29,9 +29,10 @@ function buildTheFactoryUrls(baseUrl) {
     anulacionUrl: `${b}/Anulacion`,
     descargaUrl: `${b}/DescargaArchivo`,
     seriesUrl: `${b}/Series`,
-    crearSeriesUrl: `${b}/CrearSeries`,
-    actualizarSeriesUrl: `${b}/ActualizarSeries`,
-    borrarSeriesUrl: `${b}/BorrarSeries`,
+    // Rutas actuales según Swagger (demo/prod): /api/Series/CrearSerie (el wiki antiguo usaba /api/CrearSeries → 404).
+    crearSeriesUrl: `${b}/Series/CrearSerie`,
+    actualizarSeriesUrl: `${b}/Series/ActualizarSerie`,
+    borrarSeriesUrl: `${b}/Series/BorrarSerie`,
   };
 }
 

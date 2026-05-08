@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { hashApiKey } from "@/utils/apiKey";
+import { getComprobanteModelForUserId } from "@/lib/comprobantesStore";
 
 /** @param {string} reqId */
 function logSn(reqId, ...args) {
@@ -31,19 +32,6 @@ async function getUserIdByApiKey(apiKey) {
   const User = mod.default;
   const user = await User.findOne({ apiKeyHash: keyHash }).select("_id").lean();
   return user?._id?.toString() ?? null;
-}
-
-async function getComprobante() {
-  const mod = await import("@/app/models/comprobante");
-  const def = mod.default;
-  const Comprobante =
-    mod.Comprobante ??
-    (def && typeof def.Comprobante !== "undefined" ? def.Comprobante : null) ??
-    (def && typeof def.create === "function" ? def : null);
-  if (!Comprobante || typeof Comprobante.create !== "function") {
-    throw new Error("Comprobante model not available");
-  }
-  return Comprobante;
 }
 
 /**
@@ -127,7 +115,7 @@ export async function POST(request) {
 
   try {
     logSn(reqId,"Obteniendo modelo Comprobante...");
-    const Comprobante = await getComprobante();
+    const Comprobante = await getComprobanteModelForUserId(userId);
     logSn(reqId,"✓ Modelo Comprobante obtenido");
 
     const mongoose = await import("mongoose");

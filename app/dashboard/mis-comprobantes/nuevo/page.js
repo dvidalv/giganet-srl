@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import SecuenciaForm from "@/components/dashboard/SecuenciaForm";
 
-export default async function NuevoComprobante({ searchParams }) {
+export default async function NuevoComprobante(props) {
+  const searchParams = await props.searchParams;
   const session = await auth();
   const user = session?.user;
 

@@ -19,8 +19,8 @@
  */
 import httpStatus from "http-status";
 import mongoose from "mongoose";
-import { Comprobante } from "@/app/models/comprobante";
 import User from "@/app/models/user";
+import { getComprobanteModelForUserId } from "@/lib/comprobantesStore";
 import { hashApiKey } from "@/utils/apiKey";
 import axios from "axios";
 import QRCode from "qrcode";
@@ -70,6 +70,10 @@ import { decryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
 const THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK =
   String(process.env.THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK || "").toLowerCase() ===
   "true";
+
+function comprobantesOwnerId(req) {
+  return req.user?._id?.toString?.() || req.user?.id || null;
+}
 
 // Cache del token de TheFactoryHKA por usuario + RNC (cada emisor/usuario tiene su token)
 const tokenCacheByRnc = {};
@@ -809,6 +813,7 @@ const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
 // Crear un nuevo rango de numeración de e-CF
 const createComprobante = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     // Limpiar fecha_vencimiento si viene vacía y el tipo no la requiere (tipos 32 y 34)
     const rangoData = {
       ...req.body,
@@ -884,6 +889,7 @@ const createComprobante = async (req, res) => {
 // Obtener todos los rangos de numeración del usuario
 const getAllComprobantes = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const {
       page = 1,
       limit = 10,
@@ -944,6 +950,7 @@ const getAllComprobantes = async (req, res) => {
 // Obtener un rango por ID
 const getComprobanteById = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const { id } = req.params;
 
     const rango = await Comprobante.findOne({
@@ -975,6 +982,7 @@ const getComprobanteById = async (req, res) => {
 // Actualizar un rango de numeración
 const updateComprobante = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const { id } = req.params;
 
     console.log("📝 Intentando actualizar comprobante:", {
@@ -1058,6 +1066,7 @@ const updateComprobante = async (req, res) => {
 // Cambiar estado de un rango
 const updateComprobanteEstado = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const { id } = req.params;
     const { estado } = req.body;
 
@@ -1113,6 +1122,7 @@ const updateComprobanteEstado = async (req, res) => {
 // Eliminar un rango (solo si no se han utilizado números)
 const deleteComprobante = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const { id } = req.params;
 
     // console.log('🗑️ Intentando eliminar comprobante:', {
@@ -1172,6 +1182,7 @@ const deleteComprobante = async (req, res) => {
 // Obtener estadísticas de rangos del usuario
 const getComprobantesStats = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const stats = await Comprobante.aggregate([
       { $match: { usuario: req.user._id } },
       {
@@ -1227,6 +1238,7 @@ const getComprobantesStats = async (req, res) => {
 // Consumir un número de un rango específico
 const consumirNumero = async (req, res) => {
   try {
+    const Comprobante = await getComprobanteModelForUserId(comprobantesOwnerId(req));
     const { id } = req.params;
 
     const rango = await Comprobante.findOne({
@@ -1319,6 +1331,8 @@ const consumirNumeroPorRnc = async (req, res) => {
           "Tipo de comprobante inválido. Debe ser: 31, 32, 33, 34, 41, 43, 44, 45",
       });
     }
+
+    const Comprobante = await getComprobanteModelForUserId(userId);
 
     const query = {
       usuario: new mongoose.Types.ObjectId(userId),
@@ -3268,6 +3282,7 @@ async function fetchFactorySeriesRows(userId, rnc) {
  * @returns {Promise<{ ok: boolean, message?: string, details?: unknown, enrichedSerie?: { serie: string, codigoSucursal: string } }>}
  */
 export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
+  let urls = null;
   try {
     const rnc = String(doc.rnc ?? "")
       .replace(/\D/g, "")
@@ -3276,7 +3291,7 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
       return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
     }
 
-    const urls = await resolveTheFactoryUrlsForUser(userId);
+    urls = await resolveTheFactoryUrlsForUser(userId);
     const token = await obtenerTokenTheFactory(rnc, {
       userId,
       theFactoryUrls: urls,
@@ -3318,8 +3333,18 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
 
     return { ok: true, message: data.mensaje, details: data, enrichedSerie };
   } catch (error) {
-    console.error("syncTheFactoryCrearSeriesFromComprobante:", error);
-    const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    const status = error?.response?.status;
+    const reqUrl = error?.config?.url || urls?.crearSeriesUrl || null;
+    console.error("syncTheFactoryCrearSeriesFromComprobante:", {
+      message: error?.message,
+      status,
+      requestUrl: reqUrl,
+      responseData: error?.response?.data,
+    });
+    const msg =
+      status === 404
+        ? `The Factory respondió 404 en ${reqUrl}. Revise la base URL en .env; las rutas de series deben ser /api/Series/CrearSerie (Swagger: …/swagger/index.html), no el path antiguo /api/CrearSeries del wiki.`
+        : error?.response?.data?.mensaje || error?.message || String(error);
     return {
       ok: false,
       message: msg,
@@ -3900,6 +3925,7 @@ export async function anularComprobantesLogic(body, options = {}) {
       const { userId } = options;
       if (userId) {
         try {
+          const Comprobante = await getComprobanteModelForUserId(userId);
           for (const anulacion of anulaciones) {
             const secuenciaDesde = parseInt(
               anulacion.ncfDesde.substring(3),

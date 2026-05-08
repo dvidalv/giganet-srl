@@ -1,19 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { syncTheFactoryCrearSeriesFromComprobante } from "@/app/controllers/comprobantes";
-
-async function getComprobante() {
-  const mod = await import("@/app/models/comprobante");
-  const def = mod.default;
-  const Comprobante =
-    mod.Comprobante ??
-    (def && typeof def.Comprobante !== "undefined" ? def.Comprobante : null) ??
-    (def && typeof def.create === "function" ? def : null);
-  if (!Comprobante || typeof Comprobante.create !== "function") {
-    throw new Error("Comprobante model not available");
-  }
-  return Comprobante;
-}
+import { getComprobanteModelForUserId } from "@/lib/comprobantesStore";
 
 /** GET /api/comprobantes - Listar secuencias del usuario actual */
 export async function GET(request) {
@@ -34,7 +22,7 @@ export async function GET(request) {
     if (estado) filters.estado = estado;
 
     const skip = (page - 1) * limit;
-    const Comprobante = await getComprobante();
+    const Comprobante = await getComprobanteModelForUserId(session.user.id);
     const [rangos, total] = await Promise.all([
       Comprobante.find(filters).sort({ fechaCreacion: -1 }).skip(skip).limit(limit).lean(),
       Comprobante.countDocuments(filters),
@@ -117,7 +105,7 @@ export async function POST(request) {
   }
 
   try {
-    const Comprobante = await getComprobante();
+    const Comprobante = await getComprobanteModelForUserId(session.user.id);
     const rango = await Comprobante.create(rangoData);
     let created = rango.toObject ? rango.toObject() : rango;
 

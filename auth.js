@@ -86,6 +86,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user.email;
         token.name = user.name;
         token.role = user.role;
+        const ambiente = user?.empresa?.theFactoryAmbiente;
+        token.theFactoryAmbiente =
+          ambiente === "demo" || ambiente === "production" ? ambiente : "production";
       }
       return token;
     },
@@ -95,6 +98,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.email = token.email;
         session.user.name = token.name;
         session.user.role = token.role;
+        session.user.theFactoryAmbiente =
+          token.theFactoryAmbiente === "demo" ? "demo" : "production";
       }
       return session;
     },

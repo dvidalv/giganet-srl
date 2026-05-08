@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { connectDB } from '@/lib/mongoDB';
+import { connectDB, getComprobantesDevMongooseConnection } from '@/lib/mongoDB';
 
 // Promesa compartida: todos los callers esperan la misma conexión (evita race)
 let connectionPromise = null;
@@ -433,7 +433,6 @@ comprobanteSchema.statics.formatearECF = function (
 };
 
 // Asegurar que los virtuals se incluyan en JSON
-// Asegurar que los virtuals se incluyan en JSON
 comprobanteSchema.set('toJSON', {
   virtuals: true,
   transform: function (doc, ret) {
@@ -445,101 +444,120 @@ comprobanteSchema.set('toJSON', {
 
 const Comprobante = mongoose.models.Comprobante || mongoose.model('Comprobante', comprobanteSchema, 'comprobantes');
 
-// Asegurar que marcarNumerosComoAnulados exista (evita problemas con modelo cacheado en Next.js/Turbopack)
-if (typeof Comprobante.marcarNumerosComoAnulados !== 'function') {
-  Comprobante.marcarNumerosComoAnulados = async function (
-    rnc,
-    tipoDocumento,
-    secuenciaDesde,
-    secuenciaHasta,
-    usuarioId,
-  ) {
-    const mongooseMod = await import('mongoose');
-    const rncLimpio = String(rnc ?? '').replace(/\D/g, '').trim();
-    const query = {
-      usuario: new mongooseMod.default.Types.ObjectId(usuarioId),
-      rnc: rncLimpio,
-      tipo_comprobante: String(tipoDocumento),
-      numero_inicial: { $lte: secuenciaHasta },
-      numero_final: { $gte: secuenciaDesde },
-    };
-    const rangos = await this.find(query);
-    for (const rango of rangos) {
-      const hastaEnRango = Math.min(rango.numero_final, secuenciaHasta);
-      const nuevosUtilizados = hastaEnRango - rango.numero_inicial + 1;
-      if (nuevosUtilizados > rango.numeros_utilizados) {
-        rango.numeros_utilizados = nuevosUtilizados;
-        rango.estado = 'inactivo';
-        await rango.save();
-      }
-    }
-  };
-}
-
-// Asegurar conexión a MongoDB antes de cada operación (Next.js/serverless)
-if (!Comprobante._connectionWrapped) {
-  Comprobante._connectionWrapped = true;
-  const originalCreate = Comprobante.create.bind(Comprobante);
-  const originalFind = Comprobante.find.bind(Comprobante);
-  const originalFindOne = Comprobante.findOne.bind(Comprobante);
-  const originalFindById = Comprobante.findById.bind(Comprobante);
-  const originalFindOneAndUpdate = Comprobante.findOneAndUpdate.bind(Comprobante);
-  const originalFindByIdAndUpdate = Comprobante.findByIdAndUpdate.bind(Comprobante);
-  const originalFindByIdAndDelete = Comprobante.findByIdAndDelete.bind(Comprobante);
-  const originalCountDocuments = Comprobante.countDocuments.bind(Comprobante);
-  const originalAggregate = Comprobante.aggregate.bind(Comprobante);
+/**
+ * @param {import('mongoose').Model} Model
+ * @param {() => Promise<unknown>} ensureConn
+ */
+function wrapComprobanteModel(Model, ensureConn) {
+  if (Model._connectionWrapped) {
+    return;
+  }
+  Model._connectionWrapped = true;
+  const originalCreate = Model.create.bind(Model);
+  const originalFind = Model.find.bind(Model);
+  const originalFindOne = Model.findOne.bind(Model);
+  const originalFindById = Model.findById.bind(Model);
+  const originalFindOneAndUpdate = Model.findOneAndUpdate.bind(Model);
+  const originalFindByIdAndUpdate = Model.findByIdAndUpdate.bind(Model);
+  const originalFindByIdAndDelete = Model.findByIdAndDelete.bind(Model);
+  const originalCountDocuments = Model.countDocuments.bind(Model);
+  const originalAggregate = Model.aggregate.bind(Model);
+  const originalUpdateOne = Model.updateOne.bind(Model);
+  const originalDeleteOne = Model.deleteOne.bind(Model);
 
   const wrapQuery = (query) => {
     const originalExec = query.exec?.bind(query);
     if (originalExec) {
       query.exec = async function (...execArgs) {
-        await ensureConnection();
+        await ensureConn();
         return originalExec(...execArgs);
       };
     }
     const originalThen = query.then?.bind(query);
     if (originalThen) {
       query.then = async function (...thenArgs) {
-        await ensureConnection();
+        await ensureConn();
         return originalThen(...thenArgs);
       };
     }
     return query;
   };
 
-  Comprobante.create = async function (...args) {
-    await ensureConnection();
+  Model.create = async function (...args) {
+    await ensureConn();
     return originalCreate(...args);
   };
-  Comprobante.find = function (...args) {
+  Model.find = function (...args) {
     return wrapQuery(originalFind(...args));
   };
-  Comprobante.findOne = function (...args) {
+  Model.findOne = function (...args) {
     return wrapQuery(originalFindOne(...args));
   };
-  Comprobante.findById = function (...args) {
+  Model.findById = function (...args) {
     return wrapQuery(originalFindById(...args));
   };
-  Comprobante.findOneAndUpdate = async function (...args) {
-    await ensureConnection();
+  Model.findOneAndUpdate = async function (...args) {
+    await ensureConn();
     return originalFindOneAndUpdate(...args);
   };
-  Comprobante.findByIdAndUpdate = async function (...args) {
-    await ensureConnection();
+  Model.findByIdAndUpdate = async function (...args) {
+    await ensureConn();
     return originalFindByIdAndUpdate(...args);
   };
-  Comprobante.findByIdAndDelete = async function (...args) {
-    await ensureConnection();
+  Model.findByIdAndDelete = async function (...args) {
+    await ensureConn();
     return originalFindByIdAndDelete(...args);
   };
-  Comprobante.countDocuments = function (...args) {
-    const query = originalCountDocuments(...args);
-    return wrapQuery(query);
+  Model.countDocuments = function (...args) {
+    const q = originalCountDocuments(...args);
+    return wrapQuery(q);
   };
-  Comprobante.aggregate = async function (...args) {
-    await ensureConnection();
+  Model.aggregate = async function (...args) {
+    await ensureConn();
     return originalAggregate(...args);
   };
+  Model.updateOne = async function (...args) {
+    await ensureConn();
+    return originalUpdateOne(...args);
+  };
+  Model.deleteOne = async function (...args) {
+    await ensureConn();
+    return originalDeleteOne(...args);
+  };
+}
+
+wrapComprobanteModel(Comprobante, ensureConnection);
+
+/** @type {Promise<import('mongoose').Model>|null} */
+let devComprobanteModelPromise = null;
+
+/**
+ * Modelo de rangos e-CF: BD principal o MONGODB_URI_DEV si la empresa está en demo The Factory.
+ * @param {boolean} useDemo - true si `empresa.theFactoryAmbiente === 'demo'`
+ */
+export async function getComprobanteModel(useDemo) {
+  if (!useDemo) {
+    return Comprobante;
+  }
+  if (!String(process.env.MONGODB_URI_DEV ?? '').trim()) {
+    throw new Error(
+      'MONGODB_URI_DEV no está definida: no se pueden manipular comprobantes para empresas en ambiente demo.',
+    );
+  }
+  if (!devComprobanteModelPromise) {
+    devComprobanteModelPromise = (async () => {
+      const conn = await getComprobantesDevMongooseConnection();
+      const schema = comprobanteSchema.clone();
+      const Model =
+        conn.models.Comprobante || conn.model('Comprobante', schema, 'comprobantes');
+      wrapComprobanteModel(Model, getComprobantesDevMongooseConnection);
+      return Model;
+    })().catch((err) => {
+      devComprobanteModelPromise = null;
+      throw err;
+    });
+  }
+  return devComprobanteModelPromise;
 }
 
 module.exports = {

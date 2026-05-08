@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import User from "@/app/models/user";
+import { encryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -11,8 +12,40 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
+  theFactoryUsuarioDemo: "",
+  theFactoryUsuarioProduction: "",
+  theFactoryClaveDemoConfigured: false,
+  theFactoryClaveProductionConfigured: false,
   theFactoryAmbiente: "production",
 };
+
+function sanitizeEmpresa(empresa = {}, hasDemoClaveEnc = false, hasProdClaveEnc = false) {
+  const safe = { ...EMPRESA_DEFAULTS, ...(empresa || {}) };
+  // Backward compatibility: if old single fields exist, map them to demo.
+  if (!safe.theFactoryUsuarioDemo && safe.theFactoryUsuario) {
+    safe.theFactoryUsuarioDemo = safe.theFactoryUsuario;
+  }
+  delete safe.theFactoryUsuario;
+  delete safe.theFactoryClaveEnc;
+  delete safe.theFactoryClaveDemoEnc;
+  delete safe.theFactoryClaveProductionEnc;
+  safe.theFactoryClaveDemoConfigured =
+    !!hasDemoClaveEnc || !!(empresa?.theFactoryClaveEnc || "").trim();
+  safe.theFactoryClaveProductionConfigured = !!hasProdClaveEnc;
+  return safe;
+}
+
+async function getStoredTheFactoryClaves(userId) {
+  const row = await User.findById(userId)
+    .select("+empresa.theFactoryClaveDemoEnc +empresa.theFactoryClaveProductionEnc +empresa.theFactoryClaveEnc")
+    .lean();
+  return {
+    hasDemo:
+      !!(row?.empresa?.theFactoryClaveDemoEnc?.trim()) ||
+      !!(row?.empresa?.theFactoryClaveEnc?.trim()),
+    hasProduction: !!(row?.empresa?.theFactoryClaveProductionEnc?.trim()),
+  };
+}
 
 async function requireAdmin() {
   const session = await auth();
@@ -40,7 +73,8 @@ export async function GET(request, { params }) {
         { status: 404 },
       );
     }
-    const empresa = { ...EMPRESA_DEFAULTS, ...(user.empresa || {}) };
+    const stored = await getStoredTheFactoryClaves(id);
+    const empresa = sanitizeEmpresa(user.empresa || {}, stored.hasDemo, stored.hasProduction);
     return NextResponse.json({ empresa });
   } catch (err) {
     console.error("GET /api/users/[id]/empresa:", err);
@@ -75,7 +109,14 @@ export async function PATCH(request, { params }) {
     ciudad,
     telefono,
     email,
+    theFactoryUsuarioDemo,
+    theFactoryClaveDemo,
+    theFactoryUsuarioProduction,
+    theFactoryClaveProduction,
     theFactoryAmbiente,
+    // Backward compatibility aliases.
+    theFactoryUsuario,
+    theFactoryClave,
   } = body;
 
   const updates = {};
@@ -95,6 +136,54 @@ export async function PATCH(request, { params }) {
       );
     }
     updates["empresa.email"] = val;
+  }
+  const usuarioDemoValue = theFactoryUsuarioDemo ?? theFactoryUsuario;
+  if (usuarioDemoValue !== undefined) {
+    updates["empresa.theFactoryUsuarioDemo"] = String(usuarioDemoValue)
+      .trim()
+      .slice(0, 100);
+  }
+  const claveDemoValue = theFactoryClaveDemo ?? theFactoryClave;
+  if (claveDemoValue !== undefined) {
+    const val = String(claveDemoValue).trim();
+    if (val) {
+      try {
+        updates["empresa.theFactoryClaveDemoEnc"] = encryptTheFactoryPassword(val);
+      } catch (error) {
+        console.error("PATCH /api/users/[id]/empresa encryption error:", error);
+        return NextResponse.json(
+          { error: "No se pudo proteger la clave de The Factory" },
+          { status: 500 },
+        );
+      }
+      updates["empresa.theFactoryCredsDemoUpdatedAt"] = new Date();
+    } else {
+      updates["empresa.theFactoryClaveDemoEnc"] = "";
+      updates["empresa.theFactoryCredsDemoUpdatedAt"] = null;
+    }
+  }
+  if (theFactoryUsuarioProduction !== undefined) {
+    updates["empresa.theFactoryUsuarioProduction"] = String(theFactoryUsuarioProduction)
+      .trim()
+      .slice(0, 100);
+  }
+  if (theFactoryClaveProduction !== undefined) {
+    const val = String(theFactoryClaveProduction).trim();
+    if (val) {
+      try {
+        updates["empresa.theFactoryClaveProductionEnc"] = encryptTheFactoryPassword(val);
+      } catch (error) {
+        console.error("PATCH /api/users/[id]/empresa encryption error:", error);
+        return NextResponse.json(
+          { error: "No se pudo proteger la clave de The Factory" },
+          { status: 500 },
+        );
+      }
+      updates["empresa.theFactoryCredsProductionUpdatedAt"] = new Date();
+    } else {
+      updates["empresa.theFactoryClaveProductionEnc"] = "";
+      updates["empresa.theFactoryCredsProductionUpdatedAt"] = null;
+    }
   }
 
   if (theFactoryAmbiente !== undefined) {
@@ -127,7 +216,8 @@ export async function PATCH(request, { params }) {
         { status: 404 },
       );
     }
-    const empresa = { ...EMPRESA_DEFAULTS, ...(user.empresa || {}) };
+    const stored = await getStoredTheFactoryClaves(id);
+    const empresa = sanitizeEmpresa(user.empresa || {}, stored.hasDemo, stored.hasProduction);
     return NextResponse.json({ empresa });
   } catch (err) {
     if (err.name === "ValidationError") {

@@ -90,18 +90,33 @@ const userSchema = new Schema(
         default: "",
         match: [/^$|^\S+@\S+\.\S+$/, "Por favor ingrese un email válido"],
       },
-      theFactoryUsuario: {
+      theFactoryUsuarioDemo: {
         type: String,
         default: "",
         trim: true,
-        maxlength: [100, "El usuario de The Factory no puede exceder 100 caracteres"],
+        maxlength: [100, "El usuario demo de The Factory no puede exceder 100 caracteres"],
       },
-      theFactoryClaveEnc: {
+      theFactoryClaveDemoEnc: {
         type: String,
         default: "",
         select: false,
       },
-      theFactoryCredsUpdatedAt: {
+      theFactoryCredsDemoUpdatedAt: {
+        type: Date,
+        default: null,
+      },
+      theFactoryUsuarioProduction: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: [100, "El usuario producción de The Factory no puede exceder 100 caracteres"],
+      },
+      theFactoryClaveProductionEnc: {
+        type: String,
+        default: "",
+        select: false,
+      },
+      theFactoryCredsProductionUpdatedAt: {
         type: Date,
         default: null,
       },
@@ -140,7 +155,23 @@ const userSchema = new Schema(
   },
 );
 
-// Crear el modelo
+// Crear el modelo.
+// En desarrollo, si el modelo ya existe pero no contiene campos nuevos
+// (por hot-reload), lo recompilamos para evitar que Mongoose ignore updates.
+const existingUserModel = models.User;
+const needsUserModelRecompile =
+  !!existingUserModel &&
+  (
+    !existingUserModel.schema.path("empresa.theFactoryUsuarioDemo") ||
+    !existingUserModel.schema.path("empresa.theFactoryClaveDemoEnc") ||
+    !existingUserModel.schema.path("empresa.theFactoryUsuarioProduction") ||
+    !existingUserModel.schema.path("empresa.theFactoryClaveProductionEnc")
+  );
+
+if (needsUserModelRecompile) {
+  delete models.User;
+}
+
 const User = models.User || model("User", userSchema);
 
 // Only wrap methods if they haven't been wrapped already (to handle hot reload)

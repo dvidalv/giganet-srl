@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import User from "@/app/models/user";
-import { encryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -12,23 +11,38 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
-  theFactoryUsuario: "",
-  theFactoryClaveConfigured: false,
+  theFactoryUsuarioDemo: "",
+  theFactoryUsuarioProduction: "",
+  theFactoryClaveDemoConfigured: false,
+  theFactoryClaveProductionConfigured: false,
   theFactoryAmbiente: "production",
 };
 
-function sanitizeEmpresa(empresa = {}, hasClaveEnc = false) {
+function sanitizeEmpresa(empresa = {}, hasDemoClaveEnc = false, hasProdClaveEnc = false) {
   const safe = { ...EMPRESA_DEFAULTS, ...(empresa || {}) };
+  if (!safe.theFactoryUsuarioDemo && safe.theFactoryUsuario) {
+    safe.theFactoryUsuarioDemo = safe.theFactoryUsuario;
+  }
+  delete safe.theFactoryUsuario;
   delete safe.theFactoryClaveEnc;
-  safe.theFactoryClaveConfigured = !!hasClaveEnc;
+  delete safe.theFactoryClaveDemoEnc;
+  delete safe.theFactoryClaveProductionEnc;
+  safe.theFactoryClaveDemoConfigured =
+    !!hasDemoClaveEnc || !!(empresa?.theFactoryClaveEnc || "").trim();
+  safe.theFactoryClaveProductionConfigured = !!hasProdClaveEnc;
   return safe;
 }
 
-async function hasTheFactoryClaveStored(userId) {
+async function getStoredTheFactoryClaves(userId) {
   const row = await User.findById(userId)
-    .select("+empresa.theFactoryClaveEnc")
+    .select("+empresa.theFactoryClaveDemoEnc +empresa.theFactoryClaveProductionEnc +empresa.theFactoryClaveEnc")
     .lean();
-  return !!(row?.empresa?.theFactoryClaveEnc?.trim());
+  return {
+    hasDemo:
+      !!(row?.empresa?.theFactoryClaveDemoEnc?.trim()) ||
+      !!(row?.empresa?.theFactoryClaveEnc?.trim()),
+    hasProduction: !!(row?.empresa?.theFactoryClaveProductionEnc?.trim()),
+  };
 }
 
 /** GET /api/users/me/empresa - Obtener datos de empresa del usuario actual */
@@ -46,8 +60,8 @@ export async function GET() {
         { status: 404 },
       );
     }
-    const hasClave = await hasTheFactoryClaveStored(session.user.id);
-    const empresa = sanitizeEmpresa(user.empresa || {}, hasClave);
+    const stored = await getStoredTheFactoryClaves(session.user.id);
+    const empresa = sanitizeEmpresa(user.empresa || {}, stored.hasDemo, stored.hasProduction);
     return NextResponse.json({ empresa });
   } catch (err) {
     console.error("GET /api/users/me/empresa:", err);
@@ -81,8 +95,6 @@ export async function PATCH(request) {
     ciudad,
     telefono,
     email,
-    theFactoryUsuario,
-    theFactoryClave,
   } = body;
 
   const updates = {};
@@ -103,30 +115,6 @@ export async function PATCH(request) {
     }
     updates["empresa.email"] = val;
   }
-  if (theFactoryUsuario !== undefined) {
-    updates["empresa.theFactoryUsuario"] = String(theFactoryUsuario)
-      .trim()
-      .slice(0, 100);
-  }
-  if (theFactoryClave !== undefined) {
-    const val = String(theFactoryClave).trim();
-    if (val) {
-      try {
-        updates["empresa.theFactoryClaveEnc"] = encryptTheFactoryPassword(val);
-      } catch (error) {
-        console.error("PATCH /api/users/me/empresa encryption error:", error);
-        return NextResponse.json(
-          { error: "No se pudo proteger la clave de The Factory" },
-          { status: 500 },
-        );
-      }
-      updates["empresa.theFactoryCredsUpdatedAt"] = new Date();
-    } else {
-      updates["empresa.theFactoryClaveEnc"] = "";
-      updates["empresa.theFactoryCredsUpdatedAt"] = null;
-    }
-  }
-
   if (Object.keys(updates).length === 0) {
     return NextResponse.json(
       { error: "No hay campos para actualizar" },
@@ -151,8 +139,8 @@ export async function PATCH(request) {
         { status: 404 },
       );
     }
-    const hasClave = await hasTheFactoryClaveStored(session.user.id);
-    const empresa = sanitizeEmpresa(user.empresa || {}, hasClave);
+    const stored = await getStoredTheFactoryClaves(session.user.id);
+    const empresa = sanitizeEmpresa(user.empresa || {}, stored.hasDemo, stored.hasProduction);
     return NextResponse.json({ empresa });
   } catch (err) {
     if (err.name === "ValidationError") {

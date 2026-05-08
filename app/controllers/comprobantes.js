@@ -84,20 +84,38 @@ const limpiarCacheToken = () => {
   Object.keys(tokenCacheByRnc).forEach((key) => delete tokenCacheByRnc[key]);
 };
 
-async function getTheFactoryCredentialsByUser(userId) {
+async function getTheFactoryCredentialsByUser(userId, ambienteKey = "production") {
   if (!userId) return null;
 
-  const [userRow, encRow] = await Promise.all([
-    User.findById(userId).select("empresa.theFactoryUsuario").lean(),
-    User.findById(userId).select("+empresa.theFactoryClaveEnc").lean(),
-  ]);
-  if (!userRow && !encRow) return null;
+  const row = await User.findById(userId)
+    .select(
+      "empresa.theFactoryUsuarioDemo empresa.theFactoryUsuarioProduction empresa.theFactoryUsuario +empresa.theFactoryClaveDemoEnc +empresa.theFactoryClaveProductionEnc +empresa.theFactoryClaveEnc"
+    )
+    .lean();
+  if (!row) return null;
 
-  const usuario = userRow?.empresa?.theFactoryUsuario?.trim();
-  const claveEnc = encRow?.empresa?.theFactoryClaveEnc?.trim();
+  const isDemo = ambienteKey === "demo";
+  const usuario = isDemo
+    ? (
+        row?.empresa?.theFactoryUsuarioDemo ||
+        // Backward compatibility with old single-field credentials.
+        row?.empresa?.theFactoryUsuario ||
+        ""
+      ).trim()
+    : (row?.empresa?.theFactoryUsuarioProduction || "").trim();
+  const claveEnc = isDemo
+    ? (
+        row?.empresa?.theFactoryClaveDemoEnc ||
+        // Backward compatibility with old single-field encrypted password.
+        row?.empresa?.theFactoryClaveEnc ||
+        ""
+      ).trim()
+    : (row?.empresa?.theFactoryClaveProductionEnc || "").trim();
   if (!usuario || !claveEnc) {
     throw new Error(
-      "CREDENCIALES_THEFACTORY_FALTANTES: Debe configurar usuario y clave de The Factory en los datos de empresa."
+      `CREDENCIALES_THEFACTORY_FALTANTES: Debe configurar usuario y clave de The Factory para ambiente ${
+        isDemo ? "demo" : "producción"
+      } en los datos de empresa.`
     );
   }
 
@@ -137,7 +155,7 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
 
     let credentials = null;
     if (userId) {
-      credentials = await getTheFactoryCredentialsByUser(userId);
+      credentials = await getTheFactoryCredentialsByUser(userId, urls.ambienteKey);
     }
     if (!credentials && THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK) {
       if (THEFACTORY_USUARIO && THEFACTORY_CLAVE) {
@@ -183,6 +201,13 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       RNC: rnc,
     };
 
+    if (process.env.NODE_ENV !== "production") {
+      const u = String(credentials.usuario || "");
+      console.log(
+        `[TheFactory] Auth POST ambiente=${urls.ambienteKey} authUrl=${urls.authUrl} usuarioLen=${u.length} usuarioSuffix=${u.length >= 4 ? u.slice(-4) : "(vacío)"} rnc=${rncNorm}`
+      );
+    }
+
     const response = await axios.post(urls.authUrl, authRequest, {
       headers: {
         "Content-Type": "application/json",
@@ -198,12 +223,13 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       const msgLower = String(baseMsg).toLowerCase();
       const hints =
         msgLower.includes("incorrect") || msgLower.includes("autentic")
-          ? " Revise en el portal de The Factory que usuario y contraseña sean correctos; en Mi Empresa vuelva a guardar la clave si cambió. Verifique que el ambiente The Factory (demo vs producción) configurado para la empresa coincida con sus credenciales y con THEFACTORY_BASE_URL / THEFACTORY_BASE_URL_DEMO en el servidor, y que el RNC enviado sea el del emisor registrado en The Factory y coincida con Mi Empresa."
+          ? " Revise en el portal de The Factory que usuario y contraseña sean correctos; en Gestión de empresas vuelva a guardar la clave del ambiente correspondiente si cambió. Verifique que el ambiente The Factory (demo vs producción) configurado para la empresa coincida con sus credenciales y con THEFACTORY_BASE_URL / THEFACTORY_BASE_URL_DEMO en el servidor, y que el RNC enviado sea el del emisor registrado en The Factory y coincida con Mi Empresa."
           : "";
       console.error(
         `[TheFactory] Autenticación fallida. URL=${urls.authUrl} codigo=${response.data.codigo} mensaje=${baseMsg}`
       );
-      throw new Error(`Error de autenticación: ${baseMsg}${hints}`);
+      // Mensaje sin prefijo "Error de autenticación:" para que los logs no muestren "Error: Error de autenticación: …"
+      throw new Error(`${baseMsg}${hints}`);
     }
 
     // Actualizar cache para este RNC
@@ -226,6 +252,8 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
         `Error ${error.response.status}: ${JSON.stringify(error.response.data)}`
       );
     }
+
+    const msg = error instanceof Error ? error.message : String(error);
 
     // Detectar si el servidor está caído
     if (error.code === "ECONNREFUSED") {
@@ -250,7 +278,7 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       );
     }
 
-    throw new Error(`Error de autenticación: ${error.message}`);
+    throw new Error(`Fallo al autenticar con The Factory: ${msg}`);
   }
 };
 
@@ -3132,8 +3160,19 @@ export async function listarSeriesTheFactoryLogic(body, options = {}) {
       },
     };
   } catch (error) {
-    console.error("❌ Error al listar series The Factory:", error);
+    console.error("❌ Error al listar series The Factory:", error?.message ?? error);
     const msg = error?.message ?? String(error);
+    if (msg.includes("Usuario y/o contraseña incorrectos")) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message:
+            "The Factory rechazó usuario o clave para este ambiente (demo/producción). Compruebe en Gestión de empresas que la pare usuario + password demo (o producción) coincida con el portal de The Factory correspondiente.",
+          details: msg.slice(0, 500),
+        },
+      };
+    }
     if (
       msg.includes("CREDENCIALES_THEFACTORY") ||
       msg.includes("CREDENCIALES_THEFACTORY_")
@@ -3143,7 +3182,7 @@ export async function listarSeriesTheFactoryLogic(body, options = {}) {
         data: {
           status: "error",
           message:
-            "Configure usuario y clave de The Factory en Mi empresa para consultar las series.",
+            "Configure usuario y clave de The Factory (demo y/o producción en Gestión de empresas, según el ambiente activo) para consultar las series.",
           details: msg,
         },
       };

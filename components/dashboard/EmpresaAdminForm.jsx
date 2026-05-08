@@ -17,6 +17,10 @@ const EMPRESA_DEFAULTS = {
   ciudad: "",
   telefono: "",
   email: "",
+  theFactoryUsuarioDemo: "",
+  theFactoryUsuarioProduction: "",
+  theFactoryClaveDemoConfigured: false,
+  theFactoryClaveProductionConfigured: false,
   theFactoryAmbiente: "production",
 };
 
@@ -76,6 +80,20 @@ const IconArrowLeft = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
   </svg>
 );
+const IconKey = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.028-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.169.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
+    />
+  </svg>
+);
+const IconChevronDown = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+  </svg>
+);
 
 const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_LOGO_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -94,6 +112,9 @@ export default function EmpresaAdminForm({ userId }) {
   const [telefonoDisplay, setTelefonoDisplay] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [theFactoryClaveDemoDraft, setTheFactoryClaveDemoDraft] = useState("");
+  const [theFactoryClaveProductionDraft, setTheFactoryClaveProductionDraft] = useState("");
+  const [clearingTfClave, setClearingTfClave] = useState(false);
   const [surveySending, setSurveySending] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -122,6 +143,8 @@ export default function EmpresaAdminForm({ userId }) {
       }
       const data = await res.json();
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      setTheFactoryClaveDemoDraft("");
+      setTheFactoryClaveProductionDraft("");
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
     } finally {
@@ -184,6 +207,49 @@ export default function EmpresaAdminForm({ userId }) {
     setLogoPreview("");
   };
 
+  const handleClearTheFactoryClave = async (ambienteKey) => {
+    if (
+      !window.confirm(
+        "¿Eliminar la clave de The Factory guardada? No podrá emitir comprobantes hasta que configure una clave de nuevo.",
+      )
+    ) {
+      return;
+    }
+    setMessage(null);
+    setClearingTfClave(true);
+    try {
+      const isDemo = ambienteKey === "demo";
+      const res = await fetch(`/api/users/${userId}/empresa`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          isDemo ? { theFactoryClaveDemo: "" } : { theFactoryClaveProduction: "" }
+        ),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "Error al eliminar la clave" });
+        return;
+      }
+      setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      if (isDemo) {
+        setTheFactoryClaveDemoDraft("");
+      } else {
+        setTheFactoryClaveProductionDraft("");
+      }
+      setMessage({
+        type: "success",
+        text: `Clave de The Factory ${
+          isDemo ? "demo" : "producción"
+        } eliminada`,
+      });
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión" });
+    } finally {
+      setClearingTfClave(false);
+    }
+  };
+
   const handleSendSurvey = async () => {
     if (!userId) return;
     setSurveySending(true);
@@ -244,8 +310,16 @@ export default function EmpresaAdminForm({ userId }) {
         ciudad: empresa.ciudad || "",
         telefono: (empresa.telefono || "").replace(/\D/g, "").slice(0, 10),
         email: empresa.email || "",
+        theFactoryUsuarioDemo: (empresa.theFactoryUsuarioDemo || "").trim().slice(0, 100),
+        theFactoryUsuarioProduction: (empresa.theFactoryUsuarioProduction || "").trim().slice(0, 100),
         theFactoryAmbiente: empresa.theFactoryAmbiente || "production",
       };
+      if (theFactoryClaveDemoDraft.trim()) {
+        payload.theFactoryClaveDemo = theFactoryClaveDemoDraft;
+      }
+      if (theFactoryClaveProductionDraft.trim()) {
+        payload.theFactoryClaveProduction = theFactoryClaveProductionDraft;
+      }
       const res = await fetch(`/api/users/${userId}/empresa`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -258,6 +332,8 @@ export default function EmpresaAdminForm({ userId }) {
         return;
       }
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      setTheFactoryClaveDemoDraft("");
+      setTheFactoryClaveProductionDraft("");
       setMessage({ type: "success", text: "Empresa actualizada correctamente" });
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -440,26 +516,6 @@ export default function EmpresaAdminForm({ userId }) {
             </div>
 
             <div className={styles.fieldWrapper}>
-              <label className={styles.label}>Ambiente The Factory (e-CF)</label>
-              <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
-                Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
-                <code>THEFACTORY_BASE_URL_DEMO</code>. Las credenciales deben coincidir con el
-                ambiente elegido.
-              </p>
-              <div className={styles.inputWrap}>
-                <span className={styles.inputIcon}><IconDocument /></span>
-                <select
-                  className={styles.input}
-                  value={empresa.theFactoryAmbiente || "production"}
-                  onChange={(e) => handleChange("theFactoryAmbiente", e.target.value)}
-                >
-                  <option value="production">Producción</option>
-                  <option value="demo">Pruebas (demo)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.fieldWrapper}>
               <label className={styles.label}>Logo de la empresa</label>
               <div className={styles.logoSection}>
                 <div className={styles.logoPreviewWrap}>
@@ -534,6 +590,157 @@ export default function EmpresaAdminForm({ userId }) {
                 </div>
               </div>
             </div>
+
+            <details className={adminStyles.configPanel}>
+              <summary className={adminStyles.configPanelSummary}>
+                <span className={adminStyles.configPanelTitle}>
+                  <span className={styles.inputIcon}><IconDocument /></span>
+                  <span>The Factory HKA (e-CF)</span>
+                </span>
+                <span className={adminStyles.configPanelChevron} aria-hidden="true">
+                  <IconChevronDown />
+                </span>
+              </summary>
+              <div className={adminStyles.configPanelBody}>
+                <p className={styles.subsectionDesc}>
+                  Credenciales para autenticar emisiones y consultas ante The Factory. La clave se
+                  guarda cifrada; no se muestra de nuevo después de guardarla.
+                </p>
+                <p className={styles.hintText}>
+                  Ambiente de API para e-CF:{" "}
+                  <strong>
+                    {empresa.theFactoryAmbiente === "demo"
+                      ? "Pruebas (demo)"
+                      : "Producción"}
+                  </strong>
+                  .
+                </p>
+                <div className={styles.badgeRow}>
+                  {empresa.theFactoryClaveDemoConfigured ? (
+                    <span className={styles.badgeConfigured}>Clave demo configurada</span>
+                  ) : (
+                    <span className={styles.badgeMissing}>Sin clave demo guardada</span>
+                  )}
+                  {empresa.theFactoryClaveDemoConfigured && (
+                    <button
+                      type="button"
+                      className={styles.clearClaveButton}
+                      onClick={() => handleClearTheFactoryClave("demo")}
+                      disabled={clearingTfClave || saving}
+                    >
+                      {clearingTfClave ? "Eliminando..." : "Eliminar clave demo"}
+                    </button>
+                  )}
+                  {empresa.theFactoryClaveProductionConfigured ? (
+                    <span className={styles.badgeConfigured}>Clave producción configurada</span>
+                  ) : (
+                    <span className={styles.badgeMissing}>Sin clave producción guardada</span>
+                  )}
+                  {empresa.theFactoryClaveProductionConfigured && (
+                    <button
+                      type="button"
+                      className={styles.clearClaveButton}
+                      onClick={() => handleClearTheFactoryClave("production")}
+                      disabled={clearingTfClave || saving}
+                    >
+                      {clearingTfClave ? "Eliminando..." : "Eliminar clave producción"}
+                    </button>
+                  )}
+                </div>
+                <div className={styles.grid}>
+                  <div className={styles.fieldWrapper}>
+                    <label className={styles.label}>Usuario demo</label>
+                    <div className={styles.inputWrap}>
+                      <span className={styles.inputIcon}><IconDocument /></span>
+                      <input
+                        type="text"
+                        value={empresa.theFactoryUsuarioDemo}
+                        onChange={(e) => handleChange("theFactoryUsuarioDemo", e.target.value)}
+                        placeholder="Usuario demo en The Factory"
+                        className={styles.input}
+                        maxLength={100}
+                        autoComplete="username"
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.fieldWrapper}>
+                    <label className={styles.label}>Password demo</label>
+                    <div className={styles.inputWrap}>
+                      <span className={styles.inputIcon}><IconKey /></span>
+                      <input
+                        type="password"
+                        value={theFactoryClaveDemoDraft}
+                        onChange={(e) => setTheFactoryClaveDemoDraft(e.target.value)}
+                        placeholder={
+                          empresa.theFactoryClaveDemoConfigured
+                            ? "Dejar vacío para no cambiar la clave demo"
+                            : "Ingrese la clave demo de The Factory"
+                        }
+                        className={styles.input}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.grid}>
+                  <div className={styles.fieldWrapper}>
+                    <label className={styles.label}>Usuario producción</label>
+                    <div className={styles.inputWrap}>
+                      <span className={styles.inputIcon}><IconDocument /></span>
+                      <input
+                        type="text"
+                        value={empresa.theFactoryUsuarioProduction}
+                        onChange={(e) => handleChange("theFactoryUsuarioProduction", e.target.value)}
+                        placeholder="Usuario producción en The Factory"
+                        className={styles.input}
+                        maxLength={100}
+                        autoComplete="username"
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.fieldWrapper}>
+                    <label className={styles.label}>Password producción</label>
+                    <div className={styles.inputWrap}>
+                      <span className={styles.inputIcon}><IconKey /></span>
+                      <input
+                        type="password"
+                        value={theFactoryClaveProductionDraft}
+                        onChange={(e) => setTheFactoryClaveProductionDraft(e.target.value)}
+                        placeholder={
+                          empresa.theFactoryClaveProductionConfigured
+                            ? "Dejar vacío para no cambiar la clave producción"
+                            : "Ingrese la clave producción de The Factory"
+                        }
+                        className={styles.input}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
+                  Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
+                  <code>THEFACTORY_BASE_URL_DEMO</code>. Las credenciales deben coincidir con el
+                  ambiente elegido.
+                </p>
+                <p className={styles.hintText}>
+                  Requiere la variable de entorno{" "}
+                  <code style={{ fontSize: "0.7rem" }}>THEFACTORY_CREDENTIALS_ENCRYPTION_KEY</code>{" "}
+                  en el servidor (32 bytes). Si cambia esa clave, deberá volver a guardar la clave de
+                  The Factory aquí.
+                </p>
+                <div className={styles.inputWrap}>
+                  <span className={styles.inputIcon}><IconDocument /></span>
+                  <select
+                    className={styles.input}
+                    value={empresa.theFactoryAmbiente || "production"}
+                    onChange={(e) => handleChange("theFactoryAmbiente", e.target.value)}
+                  >
+                    <option value="production">Producción</option>
+                    <option value="demo">Pruebas (demo)</option>
+                  </select>
+                </div>
+              </div>
+            </details>
           </div>
 
           {message && (

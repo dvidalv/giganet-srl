@@ -123,7 +123,7 @@ export default function EmpresaAdminForm({ userId }) {
       const data = await res.json();
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
     } catch (err) {
-      setMessage({ type: "error", text: "Error de conexi?n" });
+      setMessage({ type: "error", text: "Error de conexión" });
     } finally {
       setLoading(false);
     }
@@ -172,7 +172,7 @@ export default function EmpresaAdminForm({ userId }) {
     } catch (err) {
       URL.revokeObjectURL(objectUrl);
       setLogoPreview(empresa.logo || "");
-      setMessage({ type: "error", text: "Error de conexi?n al subir" });
+      setMessage({ type: "error", text: "Error de conexión al subir" });
     } finally {
       setUploadingLogo(false);
       e.target.value = "";
@@ -206,7 +206,7 @@ export default function EmpresaAdminForm({ userId }) {
       setMessage({
         type: "success",
         text: copied
-          ? `${res.message} El enlace se copi? al portapapeles.`
+          ? `${res.message} El enlace se copió al portapapeles.`
           : `${res.message} Enlace: ${res.surveyUrl}`,
       });
     } catch {
@@ -223,7 +223,7 @@ export default function EmpresaAdminForm({ userId }) {
 
     const newErrors = {};
     if (empresa.email && !/^\S+@\S+\.\S+$/.test(empresa.email)) {
-      newErrors.email = "Email inv?lido";
+      newErrors.email = "Email inválido";
     }
     if (empresa.rnc && empresa.rnc.length > 10) {
       newErrors.rnc = "El RNC no puede exceder 10 caracteres";
@@ -260,7 +260,7 @@ export default function EmpresaAdminForm({ userId }) {
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
       setMessage({ type: "success", text: "Empresa actualizada correctamente" });
     } catch (err) {
-      setMessage({ type: "error", text: "Error de conexi?n" });
+      setMessage({ type: "error", text: "Error de conexión" });
     } finally {
       setSaving(false);
     }
@@ -320,7 +320,7 @@ export default function EmpresaAdminForm({ userId }) {
           </div>
           <div className={styles.headerText}>
             <h1>Editar empresa</h1>
-            <p>Revisa y actualiza la informaci?n de la empresa si tiene errores.</p>
+            <p>Revisa y actualiza la información de la empresa si tiene errores.</p>
           </div>
         </header>
 
@@ -343,14 +343,14 @@ export default function EmpresaAdminForm({ userId }) {
               </div>
 
               <div className={styles.fieldWrapper}>
-                <label className={styles.label}>Raz?n social</label>
+                <label className={styles.label}>Razón social</label>
                 <div className={styles.inputWrap}>
                   <span className={styles.inputIcon}><IconDocument /></span>
                   <input
                     type="text"
                     value={empresa.razonSocial}
                     onChange={(e) => handleChange("razonSocial", e.target.value)}
-                    placeholder="Raz?n social"
+                    placeholder="Razón social"
                     className={styles.input}
                     maxLength={100}
                   />
@@ -359,14 +359,14 @@ export default function EmpresaAdminForm({ userId }) {
             </div>
 
             <div className={styles.fieldWrapper}>
-              <label className={styles.label}>Direcci?n</label>
+              <label className={styles.label}>Dirección</label>
               <div className={styles.inputWrap}>
                 <span className={styles.inputIcon}><IconMapPin /></span>
                 <input
                   type="text"
                   value={empresa.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
-                  placeholder="Calle, ciudad, provincia, c?digo postal"
+                  placeholder="Calle, ciudad, provincia, código postal"
                   className={styles.input}
                 />
               </div>
@@ -374,7 +374,7 @@ export default function EmpresaAdminForm({ userId }) {
 
             <div className={styles.grid}>
               <div className={styles.fieldWrapper}>
-                <label className={styles.label}>Tel?fono</label>
+                <label className={styles.label}>Teléfono</label>
                 <div className={styles.inputWrap}>
                   <span className={styles.inputIcon}><IconPhone /></span>
                   <input
@@ -442,7 +442,7 @@ export default function EmpresaAdminForm({ userId }) {
             <div className={styles.fieldWrapper}>
               <label className={styles.label}>Ambiente The Factory (e-CF)</label>
               <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
-                Producci?n usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
+                Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
                 <code>THEFACTORY_BASE_URL_DEMO</code>. Las credenciales deben coincidir con el
                 ambiente elegido.
               </p>
@@ -453,7 +453,7 @@ export default function EmpresaAdminForm({ userId }) {
                   value={empresa.theFactoryAmbiente || "production"}
                   onChange={(e) => handleChange("theFactoryAmbiente", e.target.value)}
                 >
-                  <option value="production">Producci?n</option>
+                  <option value="production">Producción</option>
                   <option value="demo">Pruebas (demo)</option>
                 </select>
               </div>
@@ -520,7 +520,7 @@ export default function EmpresaAdminForm({ userId }) {
                   )}
                 </div>
                 <p className={styles.logoHint}>
-                  JPEG, PNG, GIF o WebP. M?x. 5 MB. O pega la URL del logo abajo.
+                  JPEG, PNG, GIF o WebP. Máx. 5 MB. O pega la URL del logo abajo.
                 </p>
                 <div className={styles.inputWrap}>
                   <span className={styles.inputIcon}><IconLink /></span>

@@ -4146,37 +4146,60 @@ export async function descargarArchivoLogic(body, options = {}) {
       timeout: 30000,
     });
 
-    if (
-      (response.data.codigo === 0 || response.data.codigo === 130) &&
-      response.data.procesado
-    ) {
+    const tf = response.data ?? {};
+    const codigoNum = Number(tf.codigo);
+    const codigoOk =
+      Number.isFinite(codigoNum) && (codigoNum === 0 || codigoNum === 130);
+    const procRaw = tf.procesado;
+    const procesadoOk =
+      procRaw === true ||
+      procRaw === 1 ||
+      procRaw === "1" ||
+      String(procRaw ?? "")
+        .trim()
+        .toLowerCase() === "true";
+    const archivoTfRaw = tf.archivo;
+    const archivoTf = Buffer.isBuffer(archivoTfRaw)
+      ? archivoTfRaw.toString("base64")
+      : archivoTfRaw != null
+        ? String(archivoTfRaw).trim()
+        : "";
+
+    if (codigoOk && procesadoOk && archivoTf.length > 0) {
       return {
         status: httpStatus.OK,
         data: {
           status: "success",
           message: "Archivo descargado exitosamente",
           data: {
-            archivo: response.data.archivo,
+            archivo: archivoTf,
             extension: ext,
             documento,
             rnc,
-            procesado: response.data.procesado,
-            codigo: response.data.codigo,
-            mensaje: response.data.mensaje,
+            procesado: tf.procesado,
+            codigo: tf.codigo,
+            mensaje: tf.mensaje,
           },
         },
       };
     }
 
+    const detalleFallo =
+      tf.mensaje != null && String(tf.mensaje).trim()
+        ? String(tf.mensaje).trim()
+        : tf.message != null && String(tf.message).trim()
+          ? String(tf.message).trim()
+          : `código ${tf.codigo ?? "?"} procesado=${String(tf.procesado)}`;
+
     return {
       status: httpStatus.BAD_REQUEST,
       data: {
         status: "error",
-        message: `Error al descargar archivo: ${response.data.mensaje}`,
+        message: `Error al descargar archivo: ${detalleFallo}`,
         details: {
-          codigo: response.data.codigo,
-          mensaje: response.data.mensaje,
-          procesado: response.data.procesado,
+          codigo: tf.codigo,
+          mensaje: tf.mensaje ?? tf.message,
+          procesado: tf.procesado,
         },
       },
     };

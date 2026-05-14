@@ -25,6 +25,7 @@ import { hashApiKey } from "@/utils/apiKey";
 import axios from "axios";
 import QRCode from "qrcode";
 import {
+  coerceDgiiQrAmbienteForTheFactoryAccount,
   generateDGIIQRUrl,
   generateDGIIQRUrlFromEnvioResponse,
   normalizeExternalDgiiQrUrl,
@@ -309,9 +310,13 @@ const esFechaVencimientoObligatoria = (tipoDocumento) => {
   return esObligatorio;
 };
 
-const generarUrlQR = (responseData, facturaOriginal) => {
+const generarUrlQR = (responseData, facturaOriginal, theFactoryAmbienteKey) => {
   try {
-    const r = generateDGIIQRUrlFromEnvioResponse({ responseData, facturaOriginal });
+    const r = generateDGIIQRUrlFromEnvioResponse({
+      responseData,
+      facturaOriginal,
+      theFactoryAmbienteKey,
+    });
     if (!r.ok) {
       console.error("[DGII] generarUrlQR:", r.message);
       return null;
@@ -329,9 +334,10 @@ const generarUrlQR = (responseData, facturaOriginal) => {
  * Devuelve { status, data } para uso directo con NextResponse.
  * @param {Object} body - { url?, rnc?, rncComprador?, ncf?, codigo?, fecha?, fechaFirma?, monto?, tipo?, formato?, tamaño?, ambiente? }
  * @param {string} body.ambiente - "produccion" (default) | "desarrollo" | "demo" | "certificacion" | "certecf"
+ * @param {{ theFactoryAmbienteKey?: "demo"|"production" }} [options] — si la cuenta usa The Factory demo, fuerza URL DGII testecf cuando el body pide producción por error
  * @returns {Promise<{ status: number, data: object }>}
  */
-export async function generarCodigoQRLogic(body) {
+export async function generarCodigoQRLogic(body, options = {}) {
   try {
     const {
       url,
@@ -347,7 +353,11 @@ export async function generarCodigoQRLogic(body) {
       tamaño = 300,
       ambiente: ambienteBody,
     } = body ?? {};
-    const ambiente = resolveAmbienteQr(ambienteBody);
+    const { theFactoryAmbienteKey } = options;
+    const ambiente = coerceDgiiQrAmbienteForTheFactoryAccount(
+      resolveAmbienteQr(ambienteBody),
+      theFactoryAmbienteKey,
+    );
 
     let urlParaQR;
 
@@ -2871,7 +2881,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       rnc,
       { ...options, theFactoryUrls: urls }
     );
-    const urlQR = generarUrlQR(response.data, body);
+    const urlQR = generarUrlQR(response.data, body, urls.ambienteKey);
 
     // Generar QR (imagen base64) con los datos de la factura aprobada
     let qrCode = null;
@@ -2884,20 +2894,25 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       fechaFirma: response.data.fechaFirma || response.data.fechaEmision,
       monto: body.factura?.total,
       tipo: body.factura?.tipo,
-      ambiente: resolveAmbienteQr(body.ambiente),
+      ambiente: body.ambiente,
       formato: "png",
       tamaño: 300,
     };
-    const qrResult = await generarCodigoQRLogic(qrBody);
+    const qrResult = await generarCodigoQRLogic(qrBody, {
+      theFactoryAmbienteKey: urls.ambienteKey,
+    });
     if (qrResult.status === httpStatus.OK && qrResult.data?.data?.qrCode) {
       qrCode = qrResult.data.data.qrCode;
     } else if (urlQR) {
       // Fallback: generar QR desde la URL ya construida
-      const qrFallback = await generarCodigoQRLogic({
-        url: urlQR,
-        formato: "png",
-        tamaño: 300,
-      });
+      const qrFallback = await generarCodigoQRLogic(
+        {
+          url: urlQR,
+          formato: "png",
+          tamaño: 300,
+        },
+        { theFactoryAmbienteKey: urls.ambienteKey },
+      );
       if (qrFallback.status === httpStatus.OK && qrFallback.data?.data?.qrCode) {
         qrCode = qrFallback.data.data.qrCode;
       }

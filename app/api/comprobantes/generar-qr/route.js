@@ -9,14 +9,19 @@ function getApiKeyFromRequest(request) {
   return request.headers.get("x-api-key")?.trim() ?? null;
 }
 
-async function getUserIdByApiKey(apiKey) {
+async function getApiKeyUserQrContext(apiKey) {
   if (!apiKey) return null;
   const keyHash = hashApiKey(apiKey);
   if (!keyHash) return null;
   const mod = await import("@/app/models/user");
   const User = mod.default;
-  const user = await User.findOne({ apiKeyHash: keyHash }).select("_id").lean();
-  return user?._id?.toString() ?? null;
+  const user = await User.findOne({ apiKeyHash: keyHash })
+    .select("_id empresa.theFactoryAmbiente")
+    .lean();
+  if (!user?._id) return null;
+  const theFactoryAmbienteKey =
+    user.empresa?.theFactoryAmbiente === "demo" ? "demo" : "production";
+  return { userId: user._id.toString(), theFactoryAmbienteKey };
 }
 
 /**
@@ -35,8 +40,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const userId = await getUserIdByApiKey(apiKey);
-  if (!userId) {
+  const ctx = await getApiKeyUserQrContext(apiKey);
+  if (!ctx?.userId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -47,6 +52,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const result = await generarCodigoQRLogic(body);
+  const result = await generarCodigoQRLogic(body, {
+    theFactoryAmbienteKey: ctx.theFactoryAmbienteKey,
+  });
   return NextResponse.json(result.data, { status: result.status });
 }

@@ -25,12 +25,11 @@ import { hashApiKey } from "@/utils/apiKey";
 import axios from "axios";
 import QRCode from "qrcode";
 import {
-  coerceDgiiQrAmbienteForTheFactoryAccount,
   generateDGIIQRUrl,
   generateDGIIQRUrlFromEnvioResponse,
   normalizeExternalDgiiQrUrl,
   normalizeFechaEmisionDdMmYyyy,
-  resolveAmbienteQr,
+  resolveAmbienteQrParaGenerarQr,
 } from "@/lib/dgiiConsultaTimbreUrl";
 
 
@@ -354,10 +353,7 @@ export async function generarCodigoQRLogic(body, options = {}) {
       ambiente: ambienteBody,
     } = body ?? {};
     const { theFactoryAmbienteKey } = options;
-    const ambiente = coerceDgiiQrAmbienteForTheFactoryAccount(
-      resolveAmbienteQr(ambienteBody),
-      theFactoryAmbienteKey,
-    );
+    const ambiente = resolveAmbienteQrParaGenerarQr(ambienteBody, theFactoryAmbienteKey);
 
     let urlParaQR;
 

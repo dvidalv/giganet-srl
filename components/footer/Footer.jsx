@@ -35,7 +35,7 @@ function Footer() {
 					<div className="footer_socials">
 						<a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><IoLogoFacebook /></a>
 						<a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><IoLogoInstagram /></a>
-						<a href="https://wa.me/6825602093" target="_blank" rel="noopener noreferrer" aria-label="Whatsapp"><IoLogoWhatsapp /></a>
+						<a href="https://wa.me/16825602093" target="_blank" rel="noopener noreferrer" aria-label="Whatsapp"><IoLogoWhatsapp /></a>
 					</div>
 				</div>
 
@@ -59,13 +59,13 @@ function Footer() {
 						<div>
 							<p className="contact_label">Dirección</p>
 							<a 
-								href="https://maps.app.goo.gl/XwcVqy64qceAJigcA" 
+								href="https://www.google.com/maps/search/?api=1&query=10013+Tulare+Ln,+Fort+Worth,+TX+76166" 
 								target="_blank" 
 								rel="noopener noreferrer"
 								className="contact_text"
 							>
-								Calle 4 N. 16, Las Carolinas<br />
-								La Vega, República Dominicana
+								10013 Tulare Ln<br />
+								Fort Worth, TX 76166
 							</a>
 						</div>
 					</div>
@@ -73,9 +73,8 @@ function Footer() {
 					<div className="contact_item">
 						<IoCallOutline className="contact_icon" />
 						<div>
-							<p className="contact_label">Teléfonos</p>
+							<p className="contact_label">Teléfono</p>
 						<div className="phone_links">
-							<a href="https://wa.me/18298890579" target="_blank" rel="noopener noreferrer" className="contact_text">829-889-0579 <IoLogoWhatsapp /></a>
 							<a href="https://wa.me/16825602093" target="_blank" rel="noopener noreferrer" className="contact_text">682-560-2093 <IoLogoWhatsapp /></a>
 						</div>
 						</div>

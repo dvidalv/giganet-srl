@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   providers: [
     Credentials({
       // You can specify which fields should be submitted, by adding keys to the `credentials` object.

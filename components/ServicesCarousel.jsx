@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   FaCloud,
@@ -97,14 +97,28 @@ const AUTO_PLAY_INTERVAL = 4000;
 const VISIBLE_COUNT = 3;
 
 export default function ServicesCarousel() {
+  const viewportRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [slideWidth, setSlideWidth] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
   const maxIndex = Math.max(0, services.length - VISIBLE_COUNT);
 
+  const updateSlideWidth = useCallback(() => {
+    if (viewportRef.current) {
+      setSlideWidth(viewportRef.current.offsetWidth / VISIBLE_COUNT);
+    }
+  }, []);
+
   const goToNext = useCallback(() => {
     setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
   }, [maxIndex]);
+
+  useEffect(() => {
+    updateSlideWidth();
+    window.addEventListener("resize", updateSlideWidth);
+    return () => window.removeEventListener("resize", updateSlideWidth);
+  }, [updateSlideWidth]);
 
   useEffect(() => {
     if (isPaused) return;
@@ -112,8 +126,6 @@ export default function ServicesCarousel() {
     const interval = setInterval(goToNext, AUTO_PLAY_INTERVAL);
     return () => clearInterval(interval);
   }, [goToNext, isPaused]);
-
-  const slideOffset = (currentIndex * 100) / services.length;
 
   return (
     <div
@@ -123,20 +135,25 @@ export default function ServicesCarousel() {
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
     >
-      <div className={styles.carouselViewport}>
+      <div ref={viewportRef} className={styles.carouselViewport}>
         <div
           className={styles.carouselTrack}
           style={{
-            "--total-slides": services.length,
-            "--visible-count": VISIBLE_COUNT,
-            transform: `translateX(-${slideOffset}%)`,
+            width: slideWidth ? slideWidth * services.length : "100%",
+            transform: slideWidth
+              ? `translateX(-${currentIndex * slideWidth}px)`
+              : undefined,
           }}
         >
           {services.map((service, index) => {
             const Icon = service.icon;
 
             return (
-              <div key={index} className={styles.slide}>
+              <div
+                key={index}
+                className={styles.slide}
+                style={{ width: slideWidth || `${100 / VISIBLE_COUNT}%` }}
+              >
                 <div className={styles.cardContainer}>
                   <div className={styles.card}>
                     <div className={styles.cardFront}>

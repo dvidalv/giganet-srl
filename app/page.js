@@ -1,7 +1,8 @@
 import styles from "./page.module.css";
 import Link from "next/link";
 import Image from "next/image";
-import { FaCloud, FaFolder, FaLaptopCode, FaFileInvoice, FaArrowRight } from "react-icons/fa";
+import { FaArrowRight } from "react-icons/fa";
+import ServicesCarousel from "@/components/ServicesCarousel";
 
 export default async function Home() {
   const clients = [
@@ -28,61 +29,6 @@ export default async function Home() {
       name: "Tienda La Época",
       description: "Desarrollo completo de un sistema de gestión para Tienda La Época, incluyendo ventas, inventario y facturación. Se integró facturación electrónica DGII, permitiendo automatizar procesos y mejorar la eficiencia operativa del negocio.",
       website: "https://tiendalaepoca.com/"
-    }
-  ];
-
-  const services = [
-    {
-      icon: <FaCloud />,
-      title: "Nube",
-      description: "Potencie el crecimiento de su negocio mediante servicios y aplicaciones en la nube estratégicamente diseñados, respaldados por una infraestructura escalable y rentable.",
-      backTitle: "Servicios en la Nube",
-      backContent: [
-        "Migración a la nube",
-        "Optimización de costos",
-        "Seguridad y cumplimiento",
-        "Arquitectura cloud-native",
-        "Soporte 24/7"
-      ]
-    },
-    {
-      icon: <FaFolder />,
-      title: "FileMaker",
-      description: "FileMaker es una plataforma de desarrollo de bases de datos relacionales que permite crear aplicaciones personalizadas para la gestión de datos.",
-      backTitle: "Servicios de FileMaker",
-      backContent: [
-        "Creación de bases de datos",
-        "Desarrollo de aplicaciones personalizadas",
-        "Consultoría y asesoría",
-        "Migración de datos",
-        "Optimización de rendimiento"
-      ]
-    },
-    {
-      icon: <FaLaptopCode />,
-      title: "Aplicaciones Web",
-      description: "Dale vida a tu negocio con aplicaciones web personalizadas que mejoran la eficiencia y la experiencia del usuario.",
-      backTitle: "Servicios de Desarrollo Web",
-      backContent: [
-        "Desarrollo de aplicaciones web personalizadas",
-        "Integración de APIs",
-        "Mantenimiento y soporte",
-        "Optimización para SEO",
-        "Desarrollo de aplicaciones móviles"
-      ]
-    },
-    {
-      icon: <FaFileInvoice />,
-      title: "Facturación Electrónica DGII",
-      description: "Somos expertos en integración de software con la facturación electrónica de la DGII.",
-      backTitle: "Integración DGII",
-      backContent: [
-        "Emisión de comprobantes e-CF",
-        "Integración con ERPs",
-        "Cumplimiento normativa DGII",
-        "Firma Digital segura",
-        "Asesoría en implementación"
-      ]
     }
   ];
 
@@ -120,41 +66,7 @@ export default async function Home() {
 
       <section id="servicios" className={styles.servicesSection}>
         <h2 className={styles.servicesTitle}>Nuestros Servicios</h2>
-        <div className={styles.servicesGrid}>
-          {services.map((service, index) => (
-            <div key={index} className={styles.cardContainer}>
-              <div className={styles.card}>
-                {/* Front of card */}
-                <div className={styles.cardFront}>
-                  <div className={styles.iconWrapper}>
-                    {service.icon}
-                  </div>
-                  <h3 className={styles.serviceTitle}>{service.title}</h3>
-                  <p className={styles.serviceDescription}>{service.description}</p>
-                </div>
-                
-                {/* Back of card */}
-                <div className={styles.cardBack}>
-                  <h3 className={styles.backTitle}>{service.backTitle}</h3>
-                  <p className={styles.backSubtitle}>
-                    {service.backTitle === "Servicios de FileMaker" 
-                      ? "Nuestros servicios de FileMaker incluyen:"
-                      : service.backTitle === "Servicios en la Nube"
-                      ? "Nuestros servicios en la nube incluyen:"
-                      : service.backTitle === "Servicios de Desarrollo Web"
-                      ? "Nuestros servicios de desarrollo web incluyen:"
-                      : "Soluciones completas de facturación electrónica:"}
-                  </p>
-                  <ul className={styles.backList}>
-                    {service.backContent.map((item, i) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ServicesCarousel />
       </section>
 
       <section id="clientes" className={styles.clientsSection}>

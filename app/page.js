@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FaArrowRight } from "react-icons/fa";
 import ServicesCarousel from "@/components/ServicesCarousel";
+import AppsShowcase from "@/components/AppsShowcase";
 
 export default async function Home() {
   const clients = [
@@ -67,6 +68,14 @@ export default async function Home() {
       <section id="servicios" className={styles.servicesSection}>
         <h2 className={styles.servicesTitle}>Nuestros Servicios</h2>
         <ServicesCarousel />
+      </section>
+
+      <section id="aplicaciones" className={styles.appsSection}>
+        <h2 className={styles.appsTitle}>Nuestras Aplicaciones</h2>
+        <p className={styles.appsSubtitle}>
+          Soluciones reales desarrolladas a la medida para empresas de distintos sectores.
+        </p>
+        <AppsShowcase />
       </section>
 
       <section id="clientes" className={styles.clientsSection}>

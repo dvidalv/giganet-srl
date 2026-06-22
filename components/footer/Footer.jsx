@@ -45,6 +45,7 @@ function Footer() {
 					<ul className="footer_links">
 						<li><Link href="/#hero">Inicio</Link></li>
 						<li><Link href="/#servicios">Servicios</Link></li>
+						<li><Link href="/#aplicaciones">Aplicaciones</Link></li>
 						<li><Link href="/#clientes">Clientes</Link></li>
 						<li><Link href="/dashboard">Dashboard</Link></li>
 						<li><Link href="/login">Login</Link></li>

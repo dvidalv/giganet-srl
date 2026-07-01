@@ -222,15 +222,32 @@ export default function SecuenciaForm({ onSuccess, tipoPreseleccionado }) {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setMessage({ type: "error", text: data.error || "Error al crear la secuencia" });
-        if (data.details) setErrors((prev) => ({ ...prev, _form: data.details }));
+        const detailTf =
+          data.theFactorySync?.message != null
+            ? ` ${data.theFactorySync.message}`
+            : data.details
+              ? ` ${data.details}`
+              : "";
+        setMessage({
+          type: "error",
+          text: (data.error || "Error al crear la secuencia") + detailTf,
+        });
+        if (data.details && !data.theFactorySync) {
+          setErrors((prev) => ({ ...prev, _form: data.details }));
+        }
         return;
       }
       let successText = data.message || "Secuencia creada correctamente";
       if (data.theFactorySync && !data.theFactorySync.ok) {
-        successText += ` · Aviso The Factory: ${data.theFactorySync.message || "no se pudo crear la serie en el emisor."}`;
+        setMessage({
+          type: "warning",
+          text:
+            successText +
+            ` · The Factory: ${data.theFactorySync.message || "no se pudo crear la serie en el emisor."}`,
+        });
+      } else {
+        setMessage({ type: "success", text: successText });
       }
-      setMessage({ type: "success", text: successText });
       const nextForm = { ...getInitialForm(), razon_social: empresa.razonSocial || "" };
       setForm(nextForm);
       refNumeroInicial.current = nextForm.numero_inicial;
@@ -265,7 +282,13 @@ export default function SecuenciaForm({ onSuccess, tipoPreseleccionado }) {
       )}
       {message && (
         <div
-          className={message.type === "success" ? styles.alertSuccess : styles.alertError}
+          className={
+            message.type === "success"
+              ? styles.alertSuccess
+              : message.type === "warning"
+                ? styles.alertWarning
+                : styles.alertError
+          }
           role="alert"
         >
           {message.text}

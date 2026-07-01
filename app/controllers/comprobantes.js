@@ -3148,13 +3148,19 @@ export async function listarSeriesTheFactoryLogic(body, options = {}) {
       codigo === undefined ||
       codigo === null;
     if (!codigoOk) {
+      const mensajeTf = String(data.mensaje ?? "").trim();
+      const sinSeriesEnTf =
+        /no tiene series/i.test(mensajeTf) ||
+        /sin series/i.test(mensajeTf);
       return {
         status: httpStatus.BAD_REQUEST,
         data: {
           status: "error",
           message:
-            data.mensaje ||
-            "The Factory no devolvió las series correctamente.",
+            mensajeTf || "The Factory no devolvió las series correctamente.",
+          hint: sinSeriesEnTf
+            ? "La autenticación con The Factory fue exitosa, pero en el ambiente activo (demo o producción) este RNC no tiene series de NCF registradas. Cree o autorice las series en el portal de The Factory HKA para ese ambiente, o cambie el ambiente en Mi empresa si las series están solo en pruebas."
+            : undefined,
           details: { codigo, respuesta: data },
         },
       };
@@ -3279,13 +3285,25 @@ function comprobanteDocToSeriePayload(doc) {
     fechaStr = "31-12-2099";
   }
 
+  const valorMinimo = Number(doc.numero_inicial);
+  const valorMaximo = Number(doc.numero_final);
+  const utilizados = Number(doc.numeros_utilizados ?? 0) || 0;
+  // The Factory exige correlativo dentro de [valorMinimo, valorMaximo] (próximo NCF a emitir).
+  let correlativo = valorMinimo + utilizados;
+  if (!Number.isFinite(correlativo) || correlativo < valorMinimo) {
+    correlativo = valorMinimo;
+  }
+  if (Number.isFinite(valorMaximo) && correlativo > valorMaximo) {
+    correlativo = valorMaximo;
+  }
+
   return {
     serie,
     tipoDocumento: tipo,
     fechaVencimientoSecuencia: fechaStr,
-    correlativo: Number(doc.numeros_utilizados ?? 0),
-    valorMinimo: Number(doc.numero_inicial),
-    valorMaximo: Number(doc.numero_final),
+    correlativo,
+    valorMinimo,
+    valorMaximo,
     codigoSucursal,
   };
 }
@@ -3316,6 +3334,123 @@ function pickSerieFromFactoryList(factoryRows, doc) {
     }
   }
   return null;
+}
+
+/** Primera serie en TF para el tipo (p. ej. FC0001 ya existe pero el rango nuevo no solapa al listado). */
+function findFactorySerieRowByTipo(factoryRows, tipoComprobante) {
+  if (!Array.isArray(factoryRows) || factoryRows.length === 0) return null;
+  const tipo = String(tipoComprobante ?? "").trim();
+  for (const row of factoryRows) {
+    const td = String(row.tipoDocumento ?? row.tipo_documento ?? "").trim();
+    if (td !== tipo) continue;
+    const serie = String(row.serie ?? "").trim();
+    if (!serie) continue;
+    return {
+      serie,
+      codigoSucursal: String(
+        row.codigoSucursal ?? row.codigo_sucursal ?? "0001"
+      ).trim(),
+    };
+  }
+  return null;
+}
+
+function getFactorySerieRowByName(factoryRows, serieName) {
+  if (!Array.isArray(factoryRows) || !serieName) return null;
+  const want = String(serieName).trim();
+  for (const row of factoryRows) {
+    if (String(row.serie ?? "").trim() === want) return row;
+  }
+  return null;
+}
+
+/** ¿Hace falta llamar ActualizarSerie respecto a lo que ya tiene The Factory? */
+function comprobanteNeedsTfSeriesUpdate(factoryRow, doc) {
+  if (!factoryRow) return true;
+  const ni = Number(doc.numero_inicial);
+  const nf = Number(doc.numero_final);
+  const vmin = Number(factoryRow.valorMinimo ?? factoryRow.valor_minimo);
+  const vmax = Number(factoryRow.valorMaximo ?? factoryRow.valor_maximo);
+  if (vmin !== ni || vmax !== nf) return true;
+  const utilizados = Number(doc.numeros_utilizados ?? 0) || 0;
+  const expectedCorr = ni + utilizados;
+  const corr = Number(factoryRow.correlativo);
+  if (Number.isFinite(corr) && corr !== expectedCorr) return true;
+  return false;
+}
+
+function enrichedSerieFromFactoryMatch(matched, doc) {
+  const payload = comprobanteDocToSeriePayload(doc);
+  return matched
+    ? {
+        serie: matched.serie,
+        codigoSucursal: matched.codigoSucursal || payload.codigoSucursal,
+      }
+    : { serie: payload.serie, codigoSucursal: payload.codigoSucursal };
+}
+
+async function syncTheFactoryActualizarSeriesWithRetry(doc, userId, maxAttempts = 2) {
+  /** @type {{ ok: boolean; message?: string; details?: unknown } | null} */
+  let last = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 11000));
+    }
+    last = await syncTheFactoryActualizarSeriesFromComprobante(doc, userId);
+    if (last.ok) return last;
+    const codigo = last.details && typeof last.details === "object" ? /** @type {{ codigo?: number }} */ (last.details).codigo : undefined;
+    const msg = String(last.message ?? "");
+    const throttled = codigo === 99 || /previamente enviada/i.test(msg);
+    if (!throttled || attempt + 1 >= maxAttempts) break;
+  }
+  return last ?? { ok: false, message: "No se pudo actualizar la serie en The Factory." };
+}
+
+/**
+ * Si CrearSerie responde que la serie ya existe: vincular o actualizar en TF.
+ */
+async function syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc) {
+  const rows = await fetchFactorySeriesRows(userId, rnc);
+  const matched =
+    pickSerieFromFactoryList(rows, doc) ||
+    findFactorySerieRowByTipo(rows, doc.tipo_comprobante);
+  if (!matched?.serie) {
+    return {
+      ok: false,
+      message:
+        "The Factory indica que la serie ya existe, pero no aparece en el listado de series del RNC.",
+    };
+  }
+
+  const factoryRow = getFactorySerieRowByName(rows, matched.serie);
+  if (!comprobanteNeedsTfSeriesUpdate(factoryRow, doc)) {
+    return {
+      ok: true,
+      message:
+        "La serie ya existía en The Factory con el mismo rango; vinculada en Giganet.",
+      enrichedSerie: enrichedSerieFromFactoryMatch(matched, doc),
+      linkedExisting: true,
+    };
+  }
+
+  const updateRes = await syncTheFactoryActualizarSeriesWithRetry(doc, userId);
+  if (!updateRes.ok) {
+    return updateRes;
+  }
+
+  const rowsAfter = await fetchFactorySeriesRows(userId, rnc);
+  const matchedAfter =
+    pickSerieFromFactoryList(rowsAfter, doc) ||
+    findFactorySerieRowByTipo(rowsAfter, doc.tipo_comprobante) ||
+    matched;
+
+  return {
+    ok: true,
+    message: `La serie ya existía en The Factory; se actualizó el rango.${updateRes.message ? ` ${updateRes.message}` : ""}`.trim(),
+    details: updateRes.details,
+    enrichedSerie: enrichedSerieFromFactoryMatch(matchedAfter, doc),
+    updatedExisting: true,
+  };
 }
 
 async function fetchFactorySeriesRows(userId, rnc) {
@@ -3360,10 +3495,22 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
 
     const data = response.data ?? {};
     if (!theFactorySerieCodigoOk(data)) {
+      const mensajeTf = String(data.mensaje ?? "").trim();
+      if (/ya existe una serie/i.test(mensajeTf)) {
+        const linkOrUpdate = await syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc);
+        if (linkOrUpdate.ok) {
+          return linkOrUpdate;
+        }
+        return {
+          ok: false,
+          message: linkOrUpdate.message || mensajeTf,
+          details: linkOrUpdate.details ?? data,
+        };
+      }
       return {
         ok: false,
         message:
-          data.mensaje ||
+          mensajeTf ||
           "The Factory rechazó CrearSeries (código distinto de éxito).",
         details: data,
       };
@@ -3424,7 +3571,9 @@ export async function syncTheFactoryActualizarSeriesFromComprobante(doc, userId)
 
     const rows = await fetchFactorySeriesRows(userId, rnc);
     let payload = comprobanteDocToSeriePayload(doc);
-    const matched = pickSerieFromFactoryList(rows, doc);
+    const matched =
+      pickSerieFromFactoryList(rows, doc) ||
+      findFactorySerieRowByTipo(rows, doc.tipo_comprobante);
     if (matched?.serie && !String(doc.tf_serie ?? "").trim()) {
       payload = { ...payload, serie: matched.serie, codigoSucursal: matched.codigoSucursal || payload.codigoSucursal };
     }
@@ -3474,17 +3623,33 @@ export async function syncTheFactoryBorrarSeriesFromComprobante(doc, userId) {
       return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
     }
 
+    const rows = await fetchFactorySeriesRows(userId, rnc);
+    const matched = pickSerieFromFactoryList(rows, doc);
+    const hasTfSerie = Boolean(String(doc.tf_serie ?? "").trim());
+
+    // Secuencia solo en Giganet (nunca creada o no localizable en TF para este RNC).
+    if (!matched && !hasTfSerie) {
+      return {
+        ok: true,
+        skipped: true,
+        message:
+          "La secuencia no está registrada en The Factory para este RNC; se eliminará solo en Giganet.",
+      };
+    }
+
     const urls = await resolveTheFactoryUrlsForUser(userId);
     const token = await obtenerTokenTheFactory(rnc, {
       userId,
       theFactoryUrls: urls,
     });
 
-    const rows = await fetchFactorySeriesRows(userId, rnc);
     let payload = comprobanteDocToSeriePayload(doc);
-    const matched = pickSerieFromFactoryList(rows, doc);
-    if (matched?.serie && !String(doc.tf_serie ?? "").trim()) {
-      payload = { ...payload, serie: matched.serie, codigoSucursal: matched.codigoSucursal || payload.codigoSucursal };
+    if (matched?.serie) {
+      payload = {
+        ...payload,
+        serie: matched.serie,
+        codigoSucursal: matched.codigoSucursal || payload.codigoSucursal,
+      };
     }
 
     const response = await axios.post(
@@ -3498,10 +3663,23 @@ export async function syncTheFactoryBorrarSeriesFromComprobante(doc, userId) {
 
     const data = response.data ?? {};
     if (!theFactorySerieCodigoOk(data)) {
+      const mensajeTf = String(data.mensaje ?? "").trim();
+      const serieInexistente =
+        /no existe|no encontr|no tiene series|no está registrad/i.test(mensajeTf);
+      if (serieInexistente) {
+        return {
+          ok: true,
+          skipped: true,
+          message:
+            mensajeTf ||
+            "The Factory no tenía esa serie; se eliminará solo en Giganet.",
+          details: data,
+        };
+      }
       return {
         ok: false,
         message:
-          data.mensaje ||
+          mensajeTf ||
           "The Factory rechazó BorrarSeries (código distinto de éxito).",
         details: data,
       };
@@ -3511,6 +3689,14 @@ export async function syncTheFactoryBorrarSeriesFromComprobante(doc, userId) {
   } catch (error) {
     console.error("syncTheFactoryBorrarSeriesFromComprobante:", error);
     const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    if (/no existe|no encontr|no tiene series/i.test(String(msg))) {
+      return {
+        ok: true,
+        skipped: true,
+        message: msg,
+        details: error?.response?.data ?? null,
+      };
+    }
     return {
       ok: false,
       message: msg,

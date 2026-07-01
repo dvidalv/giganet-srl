@@ -672,6 +672,24 @@
   color: #0f172a;
 }
 
+.modalDangerNote {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+}
+
+.modalConfirmHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .modalIconAnular {
   display: flex;
   align-items: center;

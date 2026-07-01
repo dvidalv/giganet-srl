@@ -7,7 +7,8 @@ import { FaFileCircleMinus } from "react-icons/fa6";
 import styles from "./ComprobantesList.module.css";
 
 const MENSAJE_CONFIRMAR_ELIMINAR =
-  "¿Está seguro de que desea eliminar esta secuencia? Esta acción no se puede deshacer.";
+  "Esta acción elimina la secuencia en Giganet y, si existe, en The Factory. No se puede deshacer.";
+const DELETE_CONFIRM_WORD = "ELIMINAR";
 
 function formatRango(inicial, final) {
   return `${Number(inicial).toLocaleString("es-DO")} - ${Number(
@@ -123,12 +124,14 @@ export default function ComprobantesList() {
   const [filterEstado, setFilterEstado] = useState("activos");
   const [deletingId, setDeletingId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [pendingAnular, setPendingAnular] = useState(null);
   const [anulandoId, setAnulandoId] = useState(null);
   const [anularNcfDesde, setAnularNcfDesde] = useState("");
   const [anularNcfHasta, setAnularNcfHasta] = useState("");
   const [tfSeriesLoading, setTfSeriesLoading] = useState(true);
   const [tfSeriesError, setTfSeriesError] = useState(null);
+  const [tfSeriesErrorHint, setTfSeriesErrorHint] = useState(null);
   const [tfSeriesPayload, setTfSeriesPayload] = useState(null);
   const [tfPanelOpen, setTfPanelOpen] = useState(false);
 
@@ -156,6 +159,7 @@ export default function ComprobantesList() {
   const fetchTheFactorySeries = useCallback(async () => {
     setTfSeriesLoading(true);
     setTfSeriesError(null);
+    setTfSeriesErrorHint(null);
     setTfSeriesPayload(null);
     try {
       const res = await fetch("/api/comprobantes/thefactory-series");
@@ -165,6 +169,9 @@ export default function ComprobantesList() {
           json.message ??
             json.error ??
             "No se pudieron obtener las series de The Factory."
+        );
+        setTfSeriesErrorHint(
+          typeof json.hint === "string" && json.hint.trim() ? json.hint.trim() : null
         );
         return;
       }
@@ -192,12 +199,19 @@ export default function ComprobantesList() {
   }, [fetchComprobantes, fetchTheFactorySeries]);
 
   const openDeleteModal = useCallback((c) => {
+    setDeleteConfirmInput("");
     setPendingDelete(c);
   }, []);
 
   const closeDeleteModal = useCallback(() => {
-    if (!deletingId) setPendingDelete(null);
+    if (!deletingId) {
+      setPendingDelete(null);
+      setDeleteConfirmInput("");
+    }
   }, [deletingId]);
+
+  const deleteConfirmOk =
+    deleteConfirmInput.trim().toUpperCase() === DELETE_CONFIRM_WORD;
 
   const openAnularModal = useCallback((c) => {
     setPendingAnular(c);
@@ -283,7 +297,7 @@ export default function ComprobantesList() {
   ]);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !deleteConfirmOk) return;
     const id = pendingDelete.id ?? pendingDelete._id;
     if (!id) return;
     setDeletingId(id);
@@ -299,19 +313,24 @@ export default function ComprobantesList() {
         return;
       }
       setPendingDelete(null);
+      setDeleteConfirmInput("");
       await fetchComprobantes();
     } catch (err) {
       setPendingDelete(null);
+      setDeleteConfirmInput("");
       alert("Error de conexión al eliminar");
     } finally {
       setDeletingId(null);
     }
-  }, [pendingDelete, fetchComprobantes]);
+  }, [pendingDelete, deleteConfirmOk, fetchComprobantes]);
 
   useEffect(() => {
     const onEscape = (e) => {
       if (e.key !== "Escape") return;
-      if (pendingDelete && !deletingId) setPendingDelete(null);
+      if (pendingDelete && !deletingId) {
+        setPendingDelete(null);
+        setDeleteConfirmInput("");
+      }
       if (pendingAnular && !anulandoId) {
         setPendingAnular(null);
         setAnularNcfDesde("");
@@ -384,10 +403,64 @@ export default function ComprobantesList() {
               <p className={styles.modalDetail}>
                 <strong>{pendingDelete.titulo}</strong>
                 {pendingDelete.tipo_comprobante && (
-                  <> — Tipo {pendingDelete.tipo_comprobante}</>
+                  <> — Tipo E{pendingDelete.tipo_comprobante}</>
                 )}
               </p>
             )}
+            {(pendingDelete.razon_social || pendingDelete.rnc) && (
+              <p className={styles.modalDetail}>
+                {pendingDelete.razon_social ? (
+                  <>
+                    <strong>{pendingDelete.razon_social}</strong>
+                    {pendingDelete.rnc ? <> · RNC {pendingDelete.rnc}</> : null}
+                  </>
+                ) : (
+                  <>RNC {pendingDelete.rnc}</>
+                )}
+              </p>
+            )}
+            {pendingDelete.numero_inicial != null && pendingDelete.numero_final != null && (
+              <p className={styles.modalDetail}>
+                Rango:{" "}
+                <strong>
+                  {formatRango(pendingDelete.numero_inicial, pendingDelete.numero_final)}
+                </strong>
+              </p>
+            )}
+            {(Number(pendingDelete.utilizados ?? pendingDelete.numeros_utilizados) || 0) > 0 && (
+              <p className={styles.modalDangerNote} role="alert">
+                Esta secuencia tiene{" "}
+                <strong>
+                  {Number(pendingDelete.utilizados ?? pendingDelete.numeros_utilizados)}
+                </strong>{" "}
+                número(s) ya utilizados. Eliminarla puede afectar el historial de numeración en
+                Giganet.
+              </p>
+            )}
+            <div className={styles.modalForm}>
+              <label htmlFor="delete-confirm-input" className={styles.modalLabel}>
+                Escriba <strong>{DELETE_CONFIRM_WORD}</strong> para confirmar
+              </label>
+              <input
+                id="delete-confirm-input"
+                type="text"
+                className={styles.modalInput}
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                placeholder={DELETE_CONFIRM_WORD}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                disabled={!!deletingId}
+                aria-describedby="delete-confirm-hint"
+                autoFocus
+              />
+              <p id="delete-confirm-hint" className={styles.modalConfirmHint}>
+                {deleteConfirmOk
+                  ? "Confirmación válida. Puede eliminar la secuencia."
+                  : `Debe escribir exactamente la palabra ${DELETE_CONFIRM_WORD}.`}
+              </p>
+            </div>
             <div className={styles.modalActions}>
               <button
                 type="button"
@@ -400,8 +473,9 @@ export default function ComprobantesList() {
                 type="button"
                 className={styles.modalConfirm}
                 onClick={handleConfirmDelete}
-                disabled={!!deletingId}>
-                {deletingId ? "Eliminando..." : "Eliminar"}
+                disabled={!!deletingId || !deleteConfirmOk}
+                aria-disabled={!!deletingId || !deleteConfirmOk}>
+                {deletingId ? "Eliminando..." : "Eliminar definitivamente"}
               </button>
             </div>
           </div>
@@ -572,8 +646,8 @@ export default function ComprobantesList() {
               <div className={styles.tfSeriesError} role="alert">
                 <p className={styles.tfSeriesErrorText}>{tfSeriesError}</p>
                 <p className={styles.tfSeriesErrorHint}>
-                  Compruebe RNC, usuario y clave de The Factory, y que el ambiente
-                  (demo/producción) coincida con su cuenta.
+                  {tfSeriesErrorHint ??
+                    "Compruebe RNC, usuario y clave de The Factory, y que el ambiente (demo/producción) coincida con su cuenta."}
                 </p>
               </div>
             )}

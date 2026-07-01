@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { syncTheFactoryCrearSeriesFromComprobante } from "@/app/controllers/comprobantes";
-import { getComprobanteModelForUserId } from "@/lib/comprobantesStore";
+import {
+  getComprobanteModelForUserId,
+  userUsesComprobantesDevMongo,
+} from "@/lib/comprobantesStore";
 
 /** GET /api/comprobantes - Listar secuencias del usuario actual */
 export async function GET(request) {
@@ -106,6 +109,7 @@ export async function POST(request) {
 
   try {
     const Comprobante = await getComprobanteModelForUserId(session.user.id);
+    const useDemoStorage = await userUsesComprobantesDevMongo(session.user.id);
     const rango = await Comprobante.create(rangoData);
     let created = rango.toObject ? rango.toObject() : rango;
 
@@ -114,7 +118,20 @@ export async function POST(request) {
       session.user.id
     );
 
-    if (theFactorySync.ok && theFactorySync.enrichedSerie?.serie) {
+    if (!theFactorySync.ok) {
+      if (!useDemoStorage) {
+        await Comprobante.deleteOne({ _id: rango._id });
+        return NextResponse.json(
+          {
+            error:
+              "The Factory no registró la serie. La secuencia no se guardó en Giganet (producción exige sincronización con el emisor).",
+            details: theFactorySync.message,
+            theFactorySync,
+          },
+          { status: 502 },
+        );
+      }
+    } else if (theFactorySync.enrichedSerie?.serie) {
       await Comprobante.updateOne(
         { _id: rango._id },
         {
@@ -131,7 +148,13 @@ export async function POST(request) {
 
     return NextResponse.json({
       status: "success",
-      message: "Secuencia creada correctamente",
+      message: theFactorySync.ok
+        ? theFactorySync.linkedExisting
+          ? "Secuencia registrada en Giganet; serie ya existente en The Factory (vinculada)"
+          : theFactorySync.updatedExisting
+            ? "Secuencia registrada en Giganet; serie existente actualizada en The Factory"
+            : "Secuencia creada en Giganet y The Factory"
+        : "Secuencia creada solo en Giganet (ambiente demo; The Factory no respondió OK).",
       data: created,
       theFactorySync,
     });

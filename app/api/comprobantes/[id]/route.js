@@ -167,7 +167,9 @@ export async function DELETE(request, { params }) {
     await Comprobante.deleteOne({ _id: id, usuario: session.user.id });
 
     return NextResponse.json({
-      message: "Secuencia eliminada correctamente en Giganet y The Factory",
+      message: theFactorySync.skipped
+        ? "Secuencia eliminada en Giganet (no existía en The Factory para este RNC)."
+        : "Secuencia eliminada correctamente en Giganet y The Factory",
       theFactorySync,
     });
   } catch (err) {

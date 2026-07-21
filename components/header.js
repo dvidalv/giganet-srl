@@ -7,7 +7,7 @@ import HeaderNav from "./HeaderNav";
 
 export default async function Header() {
     const session = await auth();
-    const isLoggedIn = !!session?.user;
+    const user = session?.user ?? null;
 
     return (
         <header className={styles.header}>
@@ -16,7 +16,7 @@ export default async function Header() {
                     <Image src={logo} alt="Logo Giganet" width={120} height={60} className={styles.logo} priority loading="eager" />
                 </Link>
             </div>
-            <HeaderNav isLoggedIn={isLoggedIn} />
+            <HeaderNav user={user} />
         </header>
     );
 }

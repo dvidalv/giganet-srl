@@ -4,9 +4,19 @@ import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import styles from "./header.module.css";
 
-export default function HeaderNav({ isLoggedIn }) {
-    const pathname = usePathname();
+function roleLabel(role) {
+    if (role === "admin") return "Admin";
+    if (role) return "Usuario";
+    return "";
+}
 
+export default function HeaderNav({ user }) {
+    const pathname = usePathname();
+    const isLoggedIn = Boolean(user);
+    const displayName = user?.name?.trim() || "Usuario";
+    const displayEmail = user?.email?.trim() || "";
+    const displayRole = roleLabel(user?.role);
+    const initial = displayName.charAt(0).toUpperCase() || "U";
 
     const navItems = [
         { label: "Inicio", href: "/" },
@@ -25,23 +35,43 @@ export default function HeaderNav({ isLoggedIn }) {
             <ul className={styles.navList}>
                 {navItems.map((item) => (
                     <li key={item.label} className={styles.navItem}>
-                        <Link 
-                            href={item.href} 
-                            className={`${styles.navLink} ${isActive(item.href) ? styles.active : ''}`}
+                        <Link
+                            href={item.href}
+                            className={`${styles.navLink} ${isActive(item.href) ? styles.active : ""}`}
                         >
                             {item.label}
                         </Link>
                     </li>
                 ))}
-                
+
                 {isLoggedIn ? (
                     <>
                         <li className={styles.navItem}>
-                            <Link 
-                                href="/dashboard" 
-                                className={`${styles.navLink} ${isActive("/dashboard") ? styles.active : ''}`}
+                            <Link
+                                href="/dashboard"
+                                className={`${styles.navLink} ${isActive("/dashboard") ? styles.active : ""}`}
                             >
                                 Dashboard
+                            </Link>
+                        </li>
+                        <li className={styles.navItem}>
+                            <Link
+                                href="/dashboard"
+                                className={styles.userChip}
+                                title={displayEmail || displayName}
+                                aria-label={`Sesión de ${displayName}`}
+                            >
+                                <span className={styles.userAvatar} aria-hidden>
+                                    {initial}
+                                </span>
+                                <span className={styles.userMeta}>
+                                    <span className={styles.userName}>{displayName}</span>
+                                    <span className={styles.userSub}>
+                                        {displayRole}
+                                        {displayRole && displayEmail ? " · " : ""}
+                                        {displayEmail}
+                                    </span>
+                                </span>
                             </Link>
                         </li>
                         <li className={styles.navItem}>
@@ -50,9 +80,9 @@ export default function HeaderNav({ isLoggedIn }) {
                     </>
                 ) : (
                     <li className={styles.navItem}>
-                        <Link 
-                            href="/login" 
-                            className={`${styles.navLink} ${isActive("/login") ? styles.active : ''}`}
+                        <Link
+                            href="/login"
+                            className={`${styles.navLink} ${isActive("/login") ? styles.active : ""}`}
                         >
                             Login
                         </Link>

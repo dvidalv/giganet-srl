@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FaSignOutAlt } from "react-icons/fa";
 import { signOutAction } from "@/actions/signout-action";
 import styles from "./header.module.css";
 
@@ -21,12 +22,15 @@ export default function LogoutButton() {
     };
 
     return (
-        <button 
+        <button
+            type="button"
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className={`${styles.navLink} ${styles.logoutButton}`}
+            className={styles.logoutButton}
+            aria-label={isSigningOut ? "Cerrando sesión" : "Cerrar sesión"}
+            title={isSigningOut ? "Cerrando sesión…" : "Cerrar sesión"}
         >
-            {isSigningOut ? "Cerrando..." : "Logout"}
+            <FaSignOutAlt aria-hidden className={styles.logoutIcon} />
         </button>
     );
 }

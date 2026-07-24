@@ -1,0 +1,232 @@
+.carousel {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.carouselShell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.carouselViewport {
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+}
+
+.carouselTrack {
+  display: flex;
+  transition: transform 0.6s ease-in-out;
+}
+
+.slide {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0 12px;
+}
+
+.clientCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-height: 420px;
+  padding: 40px 30px;
+  text-align: center;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.clientCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.clientLogo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 75px;
+  margin-bottom: 25px;
+}
+
+.logoImage {
+  object-fit: contain;
+}
+
+.clientName {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  margin: 0 0 15px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.clientDescription {
+  flex-grow: 1;
+  margin: 0 0 25px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #666;
+}
+
+.visitButton,
+.visitButtonDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+}
+
+.visitButton {
+  color: white;
+  text-decoration: none;
+  background: #ff6b35;
+}
+
+.visitButton:hover {
+  gap: 12px;
+  background: #ff8555;
+  transform: translateX(5px);
+}
+
+.visitButtonDisabled {
+  color: #9ca3af;
+  background: #f3f4f6;
+  cursor: default;
+}
+
+.navBtn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.navBtn:hover {
+  color: #fff;
+  background: #ff6b35;
+  border-color: #ff6b35;
+}
+
+.navBtn:focus-visible {
+  outline: 2px solid #ff6b35;
+  outline-offset: 2px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  cursor: pointer;
+  background: #666;
+  border: none;
+  border-radius: 50%;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.dot:hover {
+  background: #ff6b35;
+}
+
+.dotActive {
+  background: #ff6b35;
+  transform: scale(1.2);
+}
+
+@media (max-width: 1024px) {
+  .slide {
+    padding: 0 10px;
+  }
+
+  .clientCard {
+    min-height: 400px;
+    padding: 32px 24px;
+  }
+
+  .clientName {
+    font-size: 18px;
+    min-height: 44px;
+  }
+
+  .clientDescription {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .carouselShell {
+    gap: 0.25rem;
+  }
+
+  .navBtn {
+    width: 2.15rem;
+    height: 2.15rem;
+  }
+
+  .slide {
+    padding: 0 8px;
+  }
+
+  .clientCard {
+    min-height: 380px;
+    padding: 28px 20px;
+  }
+
+  .clientName {
+    font-size: 17px;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navBtn {
+    display: none;
+  }
+
+  .slide {
+    padding: 0 4px;
+  }
+
+  .clientCard {
+    min-height: 360px;
+    padding: 24px 16px;
+  }
+
+  .clientDescription {
+    font-size: 13px;
+  }
+
+  .visitButton,
+  .visitButtonDisabled {
+    padding: 10px 22px;
+    font-size: 13px;
+  }
+}

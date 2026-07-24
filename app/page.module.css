@@ -452,90 +452,7 @@
   letter-spacing: -0.5px;
 }
 
-.clientsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.clientCard {
-  background: white;
-  border-radius: 16px;
-  padding: 40px 30px;
-  text-align: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.clientCard:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-}
-
-.clientLogo {
-  width: 100%;
-  height: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 25px;
-}
-
-.logoImage {
-  object-fit: contain;
-}
-
-.clientName {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 15px 0;
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.clientDescription {
-  font-size: 15px;
-  color: #666;
-  line-height: 1.7;
-  margin: 0 0 25px 0;
-  flex-grow: 1;
-}
-
-.visitButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 28px;
-  background: #ff6b35;
-  color: white;
-  font-weight: 600;
-  font-size: 14px;
-  text-decoration: none;
-  border-radius: 25px;
-  transition: all 0.3s ease;
-}
-
-.visitButton:hover {
-  background: #ff8555;
-  transform: translateX(5px);
-  gap: 12px;
-}
-
-/* Responsive Clients Section */
 @media (max-width: 1024px) {
-  .clientsGrid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 25px;
-  }
-
   .clientsTitle {
     font-size: 38px;
   }
@@ -550,36 +467,10 @@
     font-size: 32px;
     margin-bottom: 40px;
   }
-
-  .clientsGrid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .clientCard {
-    padding: 30px 25px;
-  }
-
-  .clientName {
-    font-size: 18px;
-    min-height: 40px;
-  }
-
-  .clientDescription {
-    font-size: 14px;
-  }
 }
 
 @media (max-width: 480px) {
   .clientsTitle {
     font-size: 28px;
-  }
-
-  .clientCard {
-    padding: 25px 20px;
-  }
-
-  .clientLogo {
-    height: 80px;
   }
 }

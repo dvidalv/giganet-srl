@@ -1664,23 +1664,65 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   };
 
   /**
-   * Precio unitario (string) tal que Cantidad × PU ≈ monto línea (2 decimales en monto).
+   * DGII `PrecioUnitarioItem` = Decimal20D1or4 (1–4 decimales). TheFactory 0102 si hay más.
+   * Devuelve PU ≤4 d.p. y Monto = round(Cantidad × PU, 2) coherentes (obs. 2394).
    * @param {number} montoLinea
    * @param {unknown} cantidadDisplay
+   * @returns {{ PrecioUnitario: string; Monto: string }}
    */
-  const precioUnitarioDesdeMontoYCantidad = (montoLinea, cantidadDisplay) => {
+  const precioUnitarioYMontoCoherentes = (montoLinea, cantidadDisplay) => {
     const m = Math.round(parseFloat(String(montoLinea)) * 100) / 100;
     const cantRaw = String(cantidadDisplay ?? "1").trim().replace(/,/g, ".");
     const cant = parseFloat(cantRaw);
-    if (!Number.isFinite(cant) || cant <= 0) return m.toFixed(2);
-    const ideal = m / cant;
-    for (let d = 2; d <= 10; d += 1) {
-      const pu = Math.round(ideal * 10 ** d) / 10 ** d;
-      const prod = Math.round(cant * pu * 100) / 100;
-      if (Math.abs(prod - m) < 0.005) return pu.toFixed(d);
+    if (!Number.isFinite(cant) || cant <= 0) {
+      return { PrecioUnitario: m.toFixed(2), Monto: m.toFixed(2) };
     }
-    return ideal.toFixed(8);
+    const ideal = m / cant;
+    /** @type {{ pu: number; prod: number; err: number; d: number } | null} */
+    let best = null;
+    for (let d = 2; d <= 4; d += 1) {
+      const scale = 10 ** d;
+      const candidates = [
+        Math.round(ideal * scale) / scale,
+        Math.floor(ideal * scale + 1e-12) / scale,
+        Math.ceil(ideal * scale - 1e-12) / scale,
+      ];
+      for (const pu of candidates) {
+        if (!Number.isFinite(pu) || pu < 0) continue;
+        const prod = Math.round(cant * pu * 100) / 100;
+        const err = Math.abs(prod - m);
+        if (
+          !best ||
+          err < best.err - 1e-12 ||
+          (Math.abs(err - best.err) < 1e-12 && d < best.d)
+        ) {
+          best = { pu, prod, err, d };
+        }
+        if (err < 0.005) {
+          return { PrecioUnitario: pu.toFixed(d), Monto: prod.toFixed(2) };
+        }
+      }
+    }
+    const pu = best
+      ? best.pu
+      : Math.round(ideal * 10000) / 10000;
+    const d = best ? best.d : 4;
+    const prod = Math.round(cant * pu * 100) / 100;
+    if (Math.abs(prod - m) >= 0.005) {
+      console.log(
+        `⚠️ PrecioUnitario ≤4 dec. DGII: línea ${m.toFixed(2)} ÷ ${cant} → PU ${pu.toFixed(d)}, Monto ${prod.toFixed(2)} (Δ ${(prod - m).toFixed(2)})`
+      );
+    }
+    return { PrecioUnitario: pu.toFixed(d), Monto: prod.toFixed(2) };
   };
+
+  /**
+   * Precio unitario (string) tal que Cantidad × PU ≈ monto línea (máx. 4 decimales DGII).
+   * @param {number} montoLinea
+   * @param {unknown} cantidadDisplay
+   */
+  const precioUnitarioDesdeMontoYCantidad = (montoLinea, cantidadDisplay) =>
+    precioUnitarioYMontoCoherentes(montoLinea, cantidadDisplay).PrecioUnitario;
 
   /**
    * La Época envía `precio` = **monto base de la línea** (sin ITBIS), no precio unitario.
@@ -1691,10 +1733,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   const precioUnitarioYMontoDesdePrecioLinea = (item) => {
     const montoLinea = Math.round(parsearMonto(item.precio) * 100) / 100;
     const cantDisp = item.cantidad || "1.00";
-    return {
-      PrecioUnitario: precioUnitarioDesdeMontoYCantidad(montoLinea, cantDisp),
-      Monto: montoLinea.toFixed(2),
-    };
+    return precioUnitarioYMontoCoherentes(montoLinea, cantDisp);
   };
 
   /** Base por línea neto de `descuentoLineaBase` (La Época POS / otros clientes). */
@@ -2262,9 +2301,38 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   detallesItems.forEach((linea) => {
     const m = Math.round(parseFloat(String(linea.Monto)) * 100) / 100;
-    linea.Monto = m.toFixed(2);
-    linea.PrecioUnitario = precioUnitarioDesdeMontoYCantidad(m, linea.Cantidad);
+    const aligned = precioUnitarioYMontoCoherentes(m, linea.Cantidad);
+    linea.Monto = aligned.Monto;
+    linea.PrecioUnitario = aligned.PrecioUnitario;
   });
+
+  // Tras alinear PU≤4d / Monto, refrescar sumas de detalle usadas en Totales (p. ej. E45).
+  sumaItemsGravados = sumaDetallePorIndicador("1");
+  sumaItemsExentos = sumaDetallePorIndicador("4");
+  {
+    const gravDetalle = parseFloat(sumaItemsGravados);
+    const exDetalle = parseFloat(sumaItemsExentos);
+    if (Math.abs(gravDetalle - parseFloat(String(montoGravadoConDescuentos))) <= 0.05) {
+      montoGravadoConDescuentos = gravDetalle;
+    }
+    if (Math.abs(exDetalle - parseFloat(String(montoExentoConDescuentos))) <= 0.05) {
+      montoExentoConDescuentos = exDetalle;
+    }
+    // Si el ITBIS va fuera de línea (indicador 0), cuadrar MontoTotal con bases+ITBIS tras el ajuste de centavos.
+    if (String(indicadorMontoGravado) === "0" && montoGravadoConDescuentos > 0.0001) {
+      const totalFromBases =
+        Math.round(
+          (montoExentoConDescuentos + montoGravadoConDescuentos * 1.18) * 100
+        ) / 100;
+      const deltaTotal = Math.abs(totalFromBases - montoTotalConDescuentos);
+      if (deltaTotal > 0.005 && deltaTotal <= 0.05) {
+        console.log(
+          `⚠️ MontoTotal alineado a bases+ITBIS tras PU≤4d: ${montoTotalConDescuentos.toFixed(2)} → ${totalFromBases.toFixed(2)}`
+        );
+        montoTotalConDescuentos = totalFromBases;
+      }
+    }
+  }
 
   if (facturaAdaptada.tipo === "43") {
     const sumaDetalle = detallesItems.reduce(

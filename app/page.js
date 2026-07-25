@@ -12,7 +12,6 @@ import {
   FaCode,
   FaCreditCard,
   FaDatabase,
-  FaFileInvoice,
   FaLaptopCode,
   FaNodeJs,
   FaPlayCircle,
@@ -223,8 +222,14 @@ export default async function Home() {
               </h2>
 
               <article className={styles.dgiiCard}>
-                <div className={styles.specialtyIconOrange}>
-                  <FaFileInvoice aria-hidden />
+                <div className={styles.specialtyIconDgii}>
+                  <Image
+                    src="/images/dgii-icon.png"
+                    alt="Logo DGII"
+                    width={40}
+                    height={40}
+                    className={styles.dgiiLogo}
+                  />
                 </div>
                 <div>
                   <h3 className={styles.specialtyTitle}>Facturación Electrónica DGII</h3>

@@ -1,23 +1,26 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 30px;
-  max-width: 1400px;
-  margin: 0 auto;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
 }
 
 .card {
-  background: #1a1a1a;
-  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 2rem;
   overflow: hidden;
-  border: 1px solid #333;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.35s ease, border-color 0.35s ease, background 0.35s ease;
 }
 
 .card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-  border-color: #ff6b35;
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 77, 0, 0.3);
 }
 
 .imageWrapper {
@@ -30,59 +33,61 @@
 .image {
   object-fit: cover;
   object-position: top center;
-  transition: transform 0.4s ease;
+  transition: transform 0.5s ease;
 }
 
 .card:hover .image {
-  transform: scale(1.03);
+  transform: scale(1.06);
 }
 
 .cardBody {
-  padding: 24px 28px 28px;
+  padding: 1.5rem 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
 
 .category {
   display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
+  width: fit-content;
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #ff6b35;
-  margin-bottom: 10px;
+  letter-spacing: 0.06em;
+  color: #ff8a5c;
+  background: rgba(255, 77, 0, 0.1);
+  border: 1px solid rgba(255, 77, 0, 0.2);
+  border-radius: 999px;
 }
 
 .appName {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
   color: #fff;
-  margin: 0 0 10px 0;
+  margin: 0 0 0.5rem;
+  transition: color 0.25s ease;
+}
+
+.card:hover .appName {
+  color: #ff4d00;
 }
 
 .description {
-  font-size: 14px;
-  color: #aaa;
+  font-size: 0.875rem;
+  color: #6b7280;
   line-height: 1.7;
   margin: 0;
-}
-
-@media (max-width: 1024px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-  }
 }
 
 @media (max-width: 768px) {
   .grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 1.25rem;
   }
 
   .cardBody {
-    padding: 20px 22px 24px;
-  }
-
-  .appName {
-    font-size: 18px;
+    padding: 1.25rem;
   }
 }

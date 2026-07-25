@@ -1,5 +1,5 @@
 .footer_modern {
-	background-color: #111;
+	background-color: #050505;
 	color: #fff;
 	padding: 60px 0 0 0;
 	width: 100%;
@@ -9,6 +9,7 @@
 	flex-direction: column;
 	justify-content: flex-start;
 	overflow: hidden;
+	border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .footer_container {
@@ -31,10 +32,12 @@
 
 /* Titles */
 .footer_column h3 {
-	font-size: 1.2rem;
+	font-size: 0.75rem;
 	font-weight: 700;
 	color: #fff;
 	margin-bottom: 20px;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
 	position: relative;
 	display: inline-block;
 }
@@ -45,8 +48,8 @@
 	left: 0;
 	bottom: -5px;
 	width: 40px;
-	height: 3px;
-	background-color: var(--color-primary);
+	height: 2px;
+	background: linear-gradient(90deg, #ff4d00, #ff8a5c);
 	border-radius: 2px;
 }
 
@@ -57,7 +60,7 @@
 }
 
 .footer_description {
-	color: #aaa;
+	color: #6b7280;
 	font-size: 0.95rem;
 	line-height: 1.6;
 	margin-bottom: 25px;
@@ -75,7 +78,8 @@
 	justify-content: center;
 	width: 40px;
 	height: 40px;
-	background-color: rgba(255, 255, 255, 0.1);
+	background-color: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-radius: 50%;
 	color: #fff;
 	font-size: 1.2rem;
@@ -83,7 +87,8 @@
 }
 
 .footer_socials a:hover {
-	background-color: var(--color-primary);
+	background-color: #ff4d00;
+	border-color: #ff4d00;
 	transform: translateY(-3px);
 }
 
@@ -99,15 +104,15 @@
 }
 
 .footer_links a {
-	color: #aaa;
+	color: #6b7280;
 	text-decoration: none;
-	font-size: 1rem;
+	font-size: 0.95rem;
 	transition: color 0.3s ease, padding-left 0.3s ease;
 	display: inline-block;
 }
 
 .footer_links a:hover {
-	color: var(--color-primary);
+	color: #fff;
 	padding-left: 5px;
 }
 
@@ -120,7 +125,7 @@
 }
 
 .contact_icon {
-	color: var(--color-primary);
+	color: #ff4d00;
 	font-size: 1.4rem;
 	margin-top: 3px;
 	flex-shrink: 0;
@@ -134,7 +139,7 @@
 }
 
 .contact_text {
-	color: #aaa;
+	color: #6b7280;
 	text-decoration: none;
 	font-size: 0.95rem;
 	line-height: 1.5;
@@ -154,7 +159,7 @@
 
 /* Footer Bottom — altura y tipografía fijas (alineado con vista dashboard) */
 .footer_bottom {
-	background-color: #080808;
+	background-color: #050505;
 	flex: 0 0 auto;
 	box-sizing: border-box;
 	min-height: var(--footer-copyright-min-height);
@@ -163,7 +168,7 @@
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	color: #777;
+	color: #4b5563;
 	font-size: var(--footer-copyright-font-size);
 	line-height: 1.35;
 	border-top: 1px solid rgba(255, 255, 255, 0.05);

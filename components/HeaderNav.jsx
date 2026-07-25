@@ -19,11 +19,16 @@ export default function HeaderNav({ user }) {
     const initial = displayName.charAt(0).toUpperCase() || "U";
 
     const navItems = [
-        { label: "Inicio", href: "/" },
-        { label: "Contacto", href: "/contacto" },
+        { label: "Servicios", href: "/#servicios" },
+        { label: "Especialidades", href: "/#especialidades" },
+        { label: "Aplicaciones", href: "/#aplicaciones" },
+        { label: "Clientes", href: "/#clientes" },
     ];
 
     const isActive = (href) => {
+        if (href.startsWith("/#")) {
+            return false;
+        }
         if (href === "/") {
             return pathname === "/";
         }
@@ -79,14 +84,24 @@ export default function HeaderNav({ user }) {
                         </li>
                     </>
                 ) : (
-                    <li className={styles.navItem}>
-                        <Link
-                            href="/login"
-                            className={`${styles.navLink} ${isActive("/login") ? styles.active : ""}`}
-                        >
-                            Login
-                        </Link>
-                    </li>
+                    <>
+                        <li className={styles.navItem}>
+                            <Link
+                                href="/login"
+                                className={`${styles.navLink} ${isActive("/login") ? styles.active : ""}`}
+                            >
+                                Login
+                            </Link>
+                        </li>
+                        <li className={styles.navItem}>
+                            <Link
+                                href="/contacto"
+                                className={`${styles.navLink} ${styles.ctaNav} ${isActive("/contacto") ? styles.active : ""}`}
+                            >
+                                Solicitar Consulta
+                            </Link>
+                        </li>
+                    </>
                 )}
             </ul>
         </nav>

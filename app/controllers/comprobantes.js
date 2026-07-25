@@ -2682,44 +2682,76 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   return documentoCompleto;
 };
 
+function escapeHtmlEmail(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Función auxiliar para enviar factura original a soporte cuando hay errores
 const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
   try {
+    const emisorNombre =
+      (facturaOriginal?.emisor?.razonSocial &&
+        String(facturaOriginal.emisor.razonSocial).trim()) ||
+      "Emisor no indicado";
+    const emisorRnc =
+      (facturaOriginal?.emisor?.rnc != null &&
+        String(facturaOriginal.emisor.rnc).trim()) ||
+      "N/A";
+    const ncf =
+      (facturaOriginal?.factura?.ncf &&
+        String(facturaOriginal.factura.ncf).trim()) ||
+      "NCF No Disponible";
+    const fechaHora = new Date().toLocaleString("es-DO", {
+      timeZone: "America/Santo_Domingo",
+    });
+    const tipoError = errorInfo.tipo || "Error desconocido";
+    const mensajeError = errorInfo.mensaje || "N/A";
+
+    const soporteTo =
+      process.env.FACTURA_ERROR_TO_EMAIL ||
+      process.env.CONTACT_FORM_TO_EMAIL ||
+      process.env.BREVO_FROM_EMAIL ||
+      process.env.EMAIL_FROM ||
+      "dvidalv@giganet-srl.com";
+
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #003366 0%, #0056b3 100%); padding: 30px; text-align: center; color: white;">
           <h1>⚠️ Error en Envío de Factura Electrónica</h1>
-          <p>Lab Contreras - Sistema de Gestión</p>
+          <p>Giganet - Facturación electrónica</p>
+          <p style="margin: 12px 0 0; font-size: 18px; font-weight: bold;">${escapeHtmlEmail(emisorNombre)}</p>
+          <p style="margin: 4px 0 0; opacity: 0.9;">RNC ${escapeHtmlEmail(emisorRnc)} · ${escapeHtmlEmail(ncf)}</p>
         </div>
         <div style="padding: 30px; background-color: #f8f9fa;">
           <h2 style="color: #dc3545;">Información del Error</h2>
           <div style="background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #dc3545;">
-            <p><strong>Fecha y Hora:</strong> ${new Date().toLocaleString(
-              "es-DO",
-              { timeZone: "America/Santo_Domingo" }
-            )}</p>
-            <p><strong>Tipo de Error:</strong> ${
-              errorInfo.tipo || "Error desconocido"
-            }</p>
-            <p><strong>Mensaje:</strong> ${errorInfo.mensaje || "N/A"}</p>
+            <p><strong>Cliente / Emisor:</strong> ${escapeHtmlEmail(emisorNombre)}</p>
+            <p><strong>RNC:</strong> ${escapeHtmlEmail(emisorRnc)}</p>
+            <p><strong>NCF:</strong> ${escapeHtmlEmail(ncf)}</p>
+            <p><strong>Fecha y Hora:</strong> ${escapeHtmlEmail(fechaHora)}</p>
+            <p><strong>Tipo de Error:</strong> ${escapeHtmlEmail(tipoError)}</p>
+            <p><strong>Mensaje:</strong> ${escapeHtmlEmail(mensajeError)}</p>
             ${
               errorInfo.codigo
-                ? `<p><strong>Código de Error:</strong> ${errorInfo.codigo}</p>`
+                ? `<p><strong>Código de Error:</strong> ${escapeHtmlEmail(errorInfo.codigo)}</p>`
                 : ""
             }
             ${
               errorInfo.statusCode
-                ? `<p><strong>Status HTTP:</strong> ${errorInfo.statusCode}</p>`
+                ? `<p><strong>Status HTTP:</strong> ${escapeHtmlEmail(errorInfo.statusCode)}</p>`
                 : ""
             }
           </div>
           
           <h2 style="color: #333; margin-top: 30px;">Factura Original (JSON)</h2>
           <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0; overflow-x: auto;">
-            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${JSON.stringify(
-              facturaOriginal,
-              null,
-              2
+            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${escapeHtmlEmail(
+              JSON.stringify(facturaOriginal, null, 2)
             )}</pre>
           </div>
           
@@ -2728,10 +2760,8 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
               ? `
           <h2 style="color: #333; margin-top: 30px;">Respuesta de TheFactory</h2>
           <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${JSON.stringify(
-              errorInfo.respuestaTheFactory,
-              null,
-              2
+            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${escapeHtmlEmail(
+              JSON.stringify(errorInfo.respuestaTheFactory, null, 2)
             )}</pre>
           </div>
           `
@@ -2740,47 +2770,46 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
           
           <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-top: 30px;">
             <p style="margin: 0; font-size: 12px; color: #6c757d;">
-              Este email fue generado automáticamente por el sistema cuando se detectó un error en el envío de factura electrónica a TheFactoryHKA.
+              Este email fue generado automáticamente por Giganet cuando se detectó un error en el envío de factura electrónica a TheFactoryHKA.
             </p>
           </div>
         </div>
         <div style="padding: 20px; text-align: center; background-color: #003366; color: white;">
-          <p style="margin: 0; font-size: 12px;">© Lab Contreras - Sistema de Gestión</p>
+          <p style="margin: 0; font-size: 12px;">© Giganet - Soluciones Tecnológicas</p>
         </div>
       </div>
     `;
 
     await sendEmail({
-      to: "soporte@contrerasrobledo.com.do",
-      subject: `Error en Envío de Factura Electrónica - ${
-        facturaOriginal.factura?.ncf || "NCF No Disponible"
-      }`,
+      to: soporteTo,
+      subject: `Error factura electrónica — ${emisorNombre} — ${ncf}`,
       htmlContent,
       textContent: `Error en Envío de Factura Electrónica
 
-      Fecha: ${new Date().toLocaleString("es-DO", {
-        timeZone: "America/Santo_Domingo",
-      })}
-      Tipo de Error: ${errorInfo.tipo || "Error desconocido"}
-      Mensaje: ${errorInfo.mensaje || "N/A"}
-      Código de Error: ${errorInfo.codigo || "N/A"}
-      Status HTTP: ${errorInfo.statusCode || "N/A"}
+Cliente / Emisor: ${emisorNombre}
+RNC: ${emisorRnc}
+NCF: ${ncf}
+Fecha: ${fechaHora}
+Tipo de Error: ${tipoError}
+Mensaje: ${mensajeError}
+Código de Error: ${errorInfo.codigo || "N/A"}
+Status HTTP: ${errorInfo.statusCode || "N/A"}
 
-      Factura Original:
-      ${JSON.stringify(facturaOriginal, null, 2)}
+Factura Original:
+${JSON.stringify(facturaOriginal, null, 2)}
 
-      ${
-        errorInfo.respuestaTheFactory
-          ? `Respuesta de TheFactory:\n${JSON.stringify(
-              errorInfo.respuestaTheFactory,
-              null,
-              2
-            )}`
-          : ""
-      }`,
+${
+  errorInfo.respuestaTheFactory
+    ? `Respuesta de TheFactory:\n${JSON.stringify(
+        errorInfo.respuestaTheFactory,
+        null,
+        2
+      )}`
+    : ""
+}`,
     });
 
-    console.log("✅ Email de error enviado a soporte@contrerasrobledo.com.do");
+    console.log(`✅ Email de error de factura enviado a ${soporteTo} (${emisorNombre} / ${ncf})`);
   } catch (emailError) {
     console.error("❌ Error al enviar email a soporte:", emailError);
     // No lanzamos el error para no interrumpir el flujo principal

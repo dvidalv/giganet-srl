@@ -29,6 +29,7 @@ import {
   generateDGIIQRUrlFromEnvioResponse,
   normalizeExternalDgiiQrUrl,
   normalizeFechaEmisionDdMmYyyy,
+  montoTotalFirmadoFromDocumento,
   resolveAmbienteQrParaGenerarQr,
 } from "@/lib/dgiiConsultaTimbreUrl";
 
@@ -309,12 +310,13 @@ const esFechaVencimientoObligatoria = (tipoDocumento) => {
   return esObligatorio;
 };
 
-const generarUrlQR = (responseData, facturaOriginal, theFactoryAmbienteKey) => {
+const generarUrlQR = (responseData, facturaOriginal, theFactoryAmbienteKey, montoTotalFirmado = null) => {
   try {
     const r = generateDGIIQRUrlFromEnvioResponse({
       responseData,
       facturaOriginal,
       theFactoryAmbienteKey,
+      montoTotalFirmado,
     });
     if (!r.ok) {
       console.error("[DGII] generarUrlQR:", r.message);
@@ -2974,7 +2976,13 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       rnc,
       { ...options, theFactoryUrls: urls }
     );
-    const urlQR = generarUrlQR(response.data, body, urls.ambienteKey);
+    const montoTotalFirmado = montoTotalFirmadoFromDocumento(facturaCompleta);
+    const urlQR = generarUrlQR(
+      response.data,
+      body,
+      urls.ambienteKey,
+      montoTotalFirmado
+    );
 
     // Generar QR (imagen base64) con los datos de la factura aprobada
     let qrCode = null;
@@ -2985,7 +2993,8 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       codigo: response.data.codigoSeguridad,
       fecha: response.data.fechaEmision || body.factura?.fecha,
       fechaFirma: response.data.fechaFirma || response.data.fechaEmision,
-      monto: body.factura?.total,
+      // ConsultaTimbre exige el MontoTotal del e-CF firmado (puede diferir 0.01 del total POS).
+      monto: montoTotalFirmado ?? body.factura?.total,
       tipo: body.factura?.tipo,
       ambiente: body.ambiente,
       formato: "png",
@@ -3025,6 +3034,8 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
           xmlBase64: response.data.xmlBase64,
           urlQR,
           qrCode,
+          /** MontoTotal del documento firmado (usar en ConsultaTimbre / QR). */
+          montoTotalFirmado: montoTotalFirmado ?? null,
           estatusInicial: estatusConsulta,
         },
       },

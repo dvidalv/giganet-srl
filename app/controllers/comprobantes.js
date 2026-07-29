@@ -532,17 +532,36 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
   const observaciones = Array.isArray(datosCompletos?.observaciones)
     ? datosCompletos.observaciones
     : [];
+  /**
+   * Códigos TheFactory/DGII de rechazo real (no observaciones de aceptación condicional).
+   * ❌ No usar `cod >= 200`: obs. DGII como 11105 (MontoTotal) son 5 dígitos y marcan
+   * «Aceptado Condicional», no rechazo — eso desincronizaba Estatus=RECHAZADA vs DGII.
+   */
+  const CODIGOS_OBS_RECHAZO = new Set([200, 201, 202, 203, 613, 634]);
   const tieneObservacionRechazo = observaciones.some((o) => {
     const cod = Number(o?.codigo);
     const msg = String(o?.mensaje ?? "").toUpperCase();
     return (
-      (Number.isFinite(cod) && (cod >= 200 || cod === 613 || cod === 634)) ||
-      msg.includes("RECHAZ") ||
-      msg.includes("NO COINCIDE")
+      (Number.isFinite(cod) && CODIGOS_OBS_RECHAZO.has(Math.trunc(cod))) ||
+      msg.includes("RECHAZ")
     );
   });
+  const esAceptadoCondicional =
+    estado.includes("CONDICIONAL") ||
+    mensajeUpper.includes("CONDICIONAL") ||
+    (Number(datosCompletos?.codigo) === 4 &&
+      (estado.includes("ACEPT") || mensajeUpper.includes("ACEPT")));
 
-  // PRIORIDAD 0: si el texto/observaciones dicen rechazo, siempre devolver RECHAZADA
+  // PRIORIDAD 0a: Aceptado Condicional (válido fiscalmente, con observaciones) — no es rechazo
+  if (esAceptadoCondicional && !estado.includes("RECHAZ") && !mensajeUpper.includes("RECHAZ")) {
+    console.log("✅ Aceptado Condicional DGII (con observaciones)");
+    console.log(
+      `🔄 ==================== FIN NORMALIZACIÓN: ACEPTADO_CONDICIONAL ====================\n`
+    );
+    return "ACEPTADO_CONDICIONAL";
+  }
+
+  // PRIORIDAD 0b: si el texto/observaciones dicen rechazo, siempre devolver RECHAZADA
   if (
     estado.includes("RECHAZ") ||
     mensajeUpper.includes("RECHAZ") ||

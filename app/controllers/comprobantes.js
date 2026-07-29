@@ -1819,13 +1819,15 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
    * DGII: IndicadorMontoGravado 1 = montos gravados en línea incluyen ITBIS; 0 = no incluyen.
    * Si `factura.total` cuadra con bases+ITBIS pero no con solo bases, los ítems vienen sin ITBIS → "0".
    * Forzar "1" cuando total cuadra con suma de bases (ítems ya con ITBIS incluido).
+   * Tolerancia 0.05: redondeo PU≤4d + descuentos por línea puede dejar Δ≈0.03 (p. ej. obs. DGII 11105).
    */
+  const TOL_TOTAL_ITBIS = 0.05;
   const indicadorMontoGravado =
     gravNum <= 0.0001
       ? "0"
-      : Math.abs(declaradoNum - totalConItbisEsperado) <= 0.02
+      : Math.abs(declaradoNum - totalConItbisEsperado) <= TOL_TOTAL_ITBIS
         ? "0"
-        : Math.abs(declaradoNum - basesSumNum) <= 0.02
+        : Math.abs(declaradoNum - basesSumNum) <= TOL_TOTAL_ITBIS
           ? "1"
           : declaradoNum > basesSumNum + 0.01
             ? "0"
@@ -1834,10 +1836,21 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   let montoTotalCorregido = montoTotal;
   const diffBases = Math.abs(basesSumNum - declaradoNum);
   const diffConItbis = Math.abs(totalConItbisEsperado - declaradoNum);
-  if (diffBases > 0.01 && diffConItbis <= 0.02) {
-    // Total declarado es el a pagar (incluye ITBIS); no reemplazar por suma de bases — evita error DGII 3205 en Totales.MontoTotal.
+  if (diffBases > 0.01 && diffConItbis <= TOL_TOTAL_ITBIS) {
+    // Total declarado es el a pagar (incluye ITBIS); no reemplazar por suma de bases — evita error DGII 3205 / 11105 en Totales.MontoTotal.
     console.log(
       `✅ Total declarado (${montoTotalDeclarado}) coincide con bases+ITBIS (${totalConItbisEsperado.toFixed(2)}); se conserva para Encabezado/Totales.`
+    );
+  } else if (diffBases > 0.01 && String(indicadorMontoGravado) === "0" && gravNum > 0.0001) {
+    // Ítems en base sin ITBIS: MontoTotal NUNCA puede ser solo la suma de bases (aceptación condicional DGII 11105).
+    const usarDeclarado =
+      declaradoNum > basesSumNum + 0.01 &&
+      (diffConItbis <= 1 || declaradoNum >= totalConItbisEsperado - 1);
+    montoTotalCorregido = usarDeclarado
+      ? montoTotalDeclarado
+      : totalConItbisEsperado.toFixed(2);
+    console.log(
+      `⚠️ Total declarado (${montoTotalDeclarado}) vs bases (${montoTotalCalculado}) / bases+ITBIS (${totalConItbisEsperado.toFixed(2)}): se usa ${montoTotalCorregido} (con ITBIS) para Encabezado/Totales.`
     );
   } else if (diffBases > 0.01) {
     console.log(`⚠️ INCONSISTENCIA EN MONTO TOTAL:`);
@@ -2321,13 +2334,18 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       montoExentoConDescuentos = exDetalle;
     }
     // Si el ITBIS va fuera de línea (indicador 0), cuadrar MontoTotal con bases+ITBIS tras el ajuste de centavos.
+    // También corrige el caso donde MontoTotal quedó = solo bases (sin ITBIS) → DGII obs. 11105 aceptación condicional.
     if (String(indicadorMontoGravado) === "0" && montoGravadoConDescuentos > 0.0001) {
+      const basesNetas = montoExentoConDescuentos + montoGravadoConDescuentos;
       const totalFromBases =
         Math.round(
           (montoExentoConDescuentos + montoGravadoConDescuentos * 1.18) * 100
         ) / 100;
       const deltaTotal = Math.abs(totalFromBases - montoTotalConDescuentos);
-      if (deltaTotal > 0.005 && deltaTotal <= 0.05) {
+      const pareceSinItbis =
+        Math.abs(montoTotalConDescuentos - basesNetas) <= 0.05 &&
+        Math.abs(totalFromBases - montoTotalConDescuentos) > 0.05;
+      if ((deltaTotal > 0.005 && deltaTotal <= 0.05) || pareceSinItbis) {
         console.log(
           `⚠️ MontoTotal alineado a bases+ITBIS tras PU≤4d: ${montoTotalConDescuentos.toFixed(2)} → ${totalFromBases.toFixed(2)}`
         );

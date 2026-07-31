@@ -23,6 +23,19 @@
   border-color: rgba(255, 77, 0, 0.3);
 }
 
+.imageButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
 .imageWrapper {
   position: relative;
   aspect-ratio: 16 / 10;
@@ -36,8 +49,42 @@
   transition: transform 0.5s ease;
 }
 
-.card:hover .image {
+.card:hover .image,
+.imageButton:focus-visible .image {
   transform: scale(1.06);
+}
+
+.zoomHint {
+  position: absolute;
+  left: 50%;
+  bottom: 0.85rem;
+  transform: translateX(-50%) translateY(8px);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.card:hover .zoomHint,
+.imageButton:focus-visible .zoomHint {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.imageButton:focus-visible {
+  outline: none;
+}
+
+.imageButton:focus-visible .imageWrapper {
+  box-shadow: inset 0 0 0 2px #ff4d00;
 }
 
 .cardBody {
@@ -81,6 +128,117 @@
   margin: 0;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modalContent {
+  position: relative;
+  width: min(1100px, 100%);
+  max-height: min(92vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  animation: scaleIn 0.22s ease;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 0.75rem;
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  margin: 0.5rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.modalClose {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.modalClose:hover {
+  background: rgba(255, 77, 0, 0.2);
+  border-color: rgba(255, 77, 0, 0.45);
+}
+
+.modalImageWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 1rem;
+  background: #0a0a0a;
+}
+
+.modalImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.modalDescription {
+  margin: 0;
+  padding: 0.9rem 1.25rem 1.15rem;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  line-height: 1.6;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 768px) {
   .grid {
     grid-template-columns: 1fr;
@@ -89,5 +247,36 @@
 
   .cardBody {
     padding: 1.25rem;
+  }
+
+  .modalOverlay {
+    padding: 0.75rem;
+  }
+
+  .modalContent {
+    max-height: 94vh;
+    border-radius: 1rem;
+  }
+
+  .modalHeader {
+    padding: 0.9rem 0.9rem 0.6rem;
+  }
+
+  .modalTitle {
+    font-size: 1rem;
+  }
+
+  .modalImageWrap {
+    padding: 0 0.65rem;
+  }
+
+  .modalDescription {
+    padding: 0.75rem 0.9rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .zoomHint {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }

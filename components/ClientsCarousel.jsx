@@ -58,6 +58,7 @@ export default function ClientsCarousel() {
   const [slideWidth, setSlideWidth] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
   const [isPaused, setIsPaused] = useState(false);
+  const [enableTransition, setEnableTransition] = useState(true);
 
   const maxIndex = Math.max(0, clients.length - visibleCount);
 
@@ -69,13 +70,35 @@ export default function ClientsCarousel() {
     setSlideWidth(width / nextVisible);
   }, []);
 
+  const goToIndex = useCallback(
+    (nextIndex) => {
+      const wraps = nextIndex !== currentIndex && (
+        (currentIndex === maxIndex && nextIndex === 0) ||
+        (currentIndex === 0 && nextIndex === maxIndex)
+      );
+
+      if (wraps) {
+        setEnableTransition(false);
+        setCurrentIndex(nextIndex);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setEnableTransition(true));
+        });
+        return;
+      }
+
+      setEnableTransition(true);
+      setCurrentIndex(nextIndex);
+    },
+    [currentIndex, maxIndex]
+  );
+
   const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
-  }, [maxIndex]);
+    goToIndex(currentIndex >= maxIndex ? 0 : currentIndex + 1);
+  }, [currentIndex, goToIndex, maxIndex]);
 
   const goToPrev = useCallback(() => {
-    setCurrentIndex((prev) => (prev <= 0 ? maxIndex : prev - 1));
-  }, [maxIndex]);
+    goToIndex(currentIndex <= 0 ? maxIndex : currentIndex - 1);
+  }, [currentIndex, goToIndex, maxIndex]);
 
   useEffect(() => {
     updateLayout();
@@ -115,15 +138,17 @@ export default function ClientsCarousel() {
 
         <div ref={viewportRef} className={styles.carouselViewport}>
           <div
-            className={styles.carouselTrack}
+            className={`${styles.carouselTrack} ${
+              enableTransition ? styles.carouselTrackAnimated : ""
+            }`}
             style={{
               width: slideWidth ? slideWidth * clients.length : "100%",
               transform: slideWidth
-                ? `translateX(-${currentIndex * slideWidth}px)`
+                ? `translate3d(-${currentIndex * slideWidth}px, 0, 0)`
                 : undefined,
             }}
           >
-            {clients.map((client) => {
+            {clients.map((client, index) => {
               const hasWebsite = Boolean(client.website && client.website !== "#");
 
               return (
@@ -142,6 +167,7 @@ export default function ClientsCarousel() {
                         width={150}
                         height={75}
                         className={styles.logoImage}
+                        priority={index < 2}
                       />
                     </div>
                     <h3 className={styles.clientName}>{client.name}</h3>
@@ -187,7 +213,7 @@ export default function ClientsCarousel() {
               type="button"
               className={`${styles.dot} ${index === currentIndex ? styles.dotActive : ""}`}
               aria-label={`Ir al grupo de clientes ${index + 1}`}
-              onClick={() => setCurrentIndex(index)}
+              onClick={() => goToIndex(index)}
             />
           ))}
         </div>

@@ -15,7 +15,7 @@ function Footer() {
 
 	return (
 		<footer className="footer_modern">
-			<div className="contenedor footer_container">
+			<div className="footer_container">
 				{/* Column 1: Brand & About */}
 				<div className="footer_column brand_column">
 					<Image 

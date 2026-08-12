@@ -125,8 +125,10 @@
 /* ----- Grid de tarjetas (estilo referencia HTML/Tailwind) ----- */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 2rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .card {
@@ -140,6 +142,10 @@
   flex-direction: column;
   justify-content: space-between;
   min-height: 100%;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   transition: box-shadow 0.3s, transform 0.3s, border-color 0.3s;
 }
 
@@ -1035,12 +1041,74 @@
 }
 
 @media (max-width: 640px) {
+  .filtersRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .filterSelect {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .searchWrap {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+
   .grid {
     grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+
+  .cardHeader {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .cardTitle {
+    font-size: 1.0625rem;
+  }
+
+  .cardBody {
+    gap: 1rem;
+    font-size: 0.9375rem;
   }
 
   .cardGrid2,
   .cardEstadoRow {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .cardDivider {
+    margin-bottom: 1.25rem;
+  }
+
+  .cardActionsFooter {
+    margin-top: 1.5rem;
+    flex-direction: column;
+  }
+
+  .cardBtnDetalles,
+  .cardBtnGenerar {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tfSeriesPanelBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tfSeriesRefresh {
+    width: 100%;
   }
 }

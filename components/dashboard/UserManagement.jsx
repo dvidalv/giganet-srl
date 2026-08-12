@@ -160,7 +160,11 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
             )}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className={styles.form}>
+          <form
+            onSubmit={handleSubmit}
+            className={styles.form}
+            autoComplete="off"
+          >
             {error && <div className={styles.formError}>{error}</div>}
             <div className={styles.formGroup}>
               <label htmlFor="um-name">Nombre</label>
@@ -174,6 +178,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                 minLength={3}
                 maxLength={50}
                 placeholder="Nombre completo"
+                autoComplete="off"
               />
             </div>
             <div className={styles.formGroup}>
@@ -187,6 +192,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                 }
                 required
                 placeholder="correo@ejemplo.com"
+                autoComplete="off"
               />
             </div>
             <div className={styles.formGroup}>
@@ -201,8 +207,9 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                   setForm((f) => ({ ...f, password: e.target.value }))
                 }
                 required={isCreate}
-                minLength={isCreate ? 8 : 0}
+                minLength={isCreate ? 8 : undefined}
                 placeholder={isCreate ? "Mínimo 8 caracteres" : "••••••••"}
+                autoComplete="new-password"
               />
             </div>
             <div className={styles.formGroup}>

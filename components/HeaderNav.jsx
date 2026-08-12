@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
@@ -18,6 +19,7 @@ export default function HeaderNav({ user }) {
   const isLoggedIn = Boolean(user);
   const displayName = user?.name?.trim() || "Usuario";
   const displayEmail = user?.email?.trim() || "";
+  const displayImage = user?.image?.trim() || "";
   const displayRole = roleLabel(user?.role);
   const initial = displayName.charAt(0).toUpperCase() || "U";
 
@@ -106,22 +108,47 @@ export default function HeaderNav({ user }) {
             <li className={styles.navItem}>
               <Link
                 href="/dashboard"
-                className={`${styles.navLink} ${isActive("/dashboard") ? styles.active : ""}`}
+                className={`${styles.navLink} ${
+                  isActive("/dashboard") && !pathname.startsWith("/dashboard/perfil")
+                    ? styles.active
+                    : ""
+                }`}
                 onClick={closeMenu}
               >
                 Dashboard
               </Link>
             </li>
+            <li className={styles.navItem}>
+              <Link
+                href="/dashboard/perfil"
+                className={`${styles.navLink} ${
+                  isActive("/dashboard/perfil") ? styles.active : ""
+                }`}
+                onClick={closeMenu}
+              >
+                Mi perfil
+              </Link>
+            </li>
             <li className={`${styles.navItem} ${styles.userNavItem}`}>
               <Link
-                href="/dashboard"
+                href="/dashboard/perfil"
                 className={styles.userChip}
                 title={displayEmail || displayName}
-                aria-label={`Sesión de ${displayName}`}
+                aria-label={`Perfil de ${displayName}`}
                 onClick={closeMenu}
               >
                 <span className={styles.userAvatar} aria-hidden>
-                  {initial}
+                  {displayImage ? (
+                    <Image
+                      src={displayImage}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className={styles.userAvatarImage}
+                    />
+                  ) : (
+                    initial
+                  )}
                 </span>
                 <span className={styles.userMeta}>
                   <span className={styles.userName}>{displayName}</span>
@@ -151,7 +178,9 @@ export default function HeaderNav({ user }) {
             <li className={styles.navItem}>
               <Link
                 href="/contacto"
-                className={`${styles.navLink} ${styles.ctaNav} ${isActive("/contacto") ? styles.active : ""}`}
+                className={`${styles.navLink} ${styles.ctaNav} ${
+                  isActive("/contacto") ? styles.active : ""
+                }`}
                 onClick={closeMenu}
               >
                 Solicitar Consulta

@@ -31,6 +31,9 @@ export async function getCloudinary() {
 /** Transformación eager para logo: recorte cuadrado optimizado. */
 const LOGO_EAGER = "c_fill,g_auto,w_256,h_256,q_auto,f_auto";
 
+/** Transformación eager para avatar: recorte centrado en rostros. */
+const AVATAR_EAGER = "c_fill,g_face,w_256,h_256,q_auto,f_auto";
+
 /**
  * Sube una imagen como logo de empresa (recorte y optimización para logo).
  * @param {string} dataUri - Imagen en data URI (data:image/...;base64,...)
@@ -43,6 +46,25 @@ export async function uploadLogoEmpresa(dataUri, publicId) {
     folder: "empresa-logos",
     resource_type: "image",
     eager: [LOGO_EAGER],
+    public_id: publicId,
+    overwrite: true,
+  });
+  const url = result.eager?.[0]?.secure_url || result.secure_url;
+  return { url };
+}
+
+/**
+ * Sube una imagen como avatar de usuario.
+ * @param {string} dataUri - Imagen en data URI (data:image/...;base64,...)
+ * @param {string} publicId - ID público del recurso (ej: avatar_userId_timestamp)
+ * @returns {Promise<{ url: string }>} - URL de la versión optimizada
+ */
+export async function uploadAvatarUsuario(dataUri, publicId) {
+  const cloudinary = await getCloudinary();
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: "user-avatars",
+    resource_type: "image",
+    eager: [AVATAR_EAGER],
     public_id: publicId,
     overwrite: true,
   });

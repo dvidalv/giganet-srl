@@ -36,6 +36,10 @@ const userSchema = new Schema(
       minlength: [3, "Name must be at least 3 characters long"],
       maxlength: [50, "Name must be less than 50 characters long"],
     },
+    image: {
+      type: String,
+      default: "",
+    },
     role: {
       type: String,
       enum: ["user", "admin"],

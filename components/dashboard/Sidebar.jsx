@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
 import { RiHome9Fill } from "react-icons/ri";
@@ -10,13 +11,15 @@ import { FcDataConfiguration } from "react-icons/fc";
 import { IoKeySharp } from "react-icons/io5";
 import { IoBarChartSharp } from "react-icons/io5";
 import { MdOutlinePoll } from "react-icons/md";
+import { FaUserCircle } from "react-icons/fa";
 
 export default function Sidebar({ user }) {
-  const { name, email, role } = user;
+  const { name, email, role, image } = user;
   const pathname = usePathname();
-  
+
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: <RiHome9Fill /> },
+    { label: "Mi perfil", href: "/dashboard/perfil", icon: <FaUserCircle /> },
     ...(role === "admin"
       ? [
           { label: "Usuarios", href: "/dashboard/usuarios", icon: <IoPeopleCircle /> },
@@ -43,7 +46,6 @@ export default function Sidebar({ user }) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.sidebarContent}>
-        {/* Navigation */}
         <nav className={styles.nav}>
           <ul className={styles.navList}>
             {navItems.map((item) => {
@@ -56,7 +58,8 @@ export default function Sidebar({ user }) {
                     href={item.href}
                     className={`${styles.navLink} ${isActive ? styles.active : ""}`}
                     title={item.label}
-                    aria-label={item.label}>
+                    aria-label={item.label}
+                  >
                     <span className={styles.icon}>{item.icon}</span>
                     <span className={styles.label}>{item.label}</span>
                   </Link>
@@ -66,18 +69,30 @@ export default function Sidebar({ user }) {
           </ul>
         </nav>
 
-        {/* User Info */}
-        <div className={styles.userInfo}>
+        <Link
+          href="/dashboard/perfil"
+          className={styles.userInfo}
+          title="Ir a Mi perfil"
+          aria-label="Ir a Mi perfil"
+        >
           <div className={styles.userAvatar}>
-            {name?.charAt(0).toUpperCase() || "U"}
+            {image ? (
+              <Image
+                src={image}
+                alt=""
+                width={45}
+                height={45}
+                className={styles.userAvatarImage}
+              />
+            ) : (
+              name?.charAt(0).toUpperCase() || "U"
+            )}
           </div>
           <div className={styles.userDetails}>
             <div className={styles.userName}>{name || "Usuario"}</div>
-            <div className={styles.userRole}>
-              {email || "email@ejemplo.com"}
-            </div>
+            <div className={styles.userRole}>{email || "email@ejemplo.com"}</div>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

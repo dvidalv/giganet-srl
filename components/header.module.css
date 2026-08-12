@@ -1,285 +1,441 @@
 .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 3rem;
-    background: rgba(5, 5, 5, 0.82);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: none;
-    height: var(--headerHeight);
-    z-index: 1000;
-    transition: background 0.3s ease, border-color 0.3s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 3rem;
+  background: rgba(5, 5, 5, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: none;
+  height: var(--headerHeight);
+  z-index: 1000;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .logoContainer {
-    display: flex;
-    align-items: center;
-    min-width: 120px;
-    height: 100%;
+  display: flex;
+  align-items: center;
+  min-width: 120px;
+  height: 100%;
+  z-index: 1002;
 }
 
 .logo {
-    width: 100%;
-    max-width: 120px;
-    height: auto;
-    object-fit: contain;
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  object-fit: contain;
 }
 
 .nav {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+}
+
+.menuToggle {
+  display: none;
+  position: relative;
+  z-index: 1002;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+}
+
+.menuBar {
+  display: block;
+  width: 1.15rem;
+  height: 2px;
+  background: #f3f4f6;
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+
+.menuToggleOpen .menuBar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.menuToggleOpen .menuBar:nth-child(2) {
+  opacity: 0;
+}
+
+.menuToggleOpen .menuBar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.menuBackdrop {
+  display: none;
 }
 
 .navList {
-    display: flex;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    gap: 1.75rem;
-    align-items: center;
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 1.75rem;
+  align-items: center;
 }
 
 .navItem {
-    margin: 0;
+  margin: 0;
 }
 
 .navLink {
-    text-decoration: none;
-    color: #9ca3af;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: color 0.2s ease;
-    position: relative;
-    padding-bottom: 4px;
+  text-decoration: none;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  position: relative;
+  padding-bottom: 4px;
 }
 
 .navLink:hover {
-    color: #fff;
+  color: #fff;
 }
 
 .navLink.active {
-    color: #ff4d00;
-    font-weight: 600;
+  color: #ff4d00;
+  font-weight: 600;
 }
 
 .navLink.active::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #ff4d00 0%, #ff8a5c 100%);
-    border-radius: 2px;
-    animation: slideIn 0.3s ease;
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ff4d00 0%, #ff8a5c 100%);
+  border-radius: 2px;
+  animation: slideIn 0.3s ease;
 }
 
 @keyframes slideIn {
-    from {
-        transform: scaleX(0);
-    }
-    to {
-        transform: scaleX(1);
-    }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .ctaNav {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.6rem 1.25rem;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #ff4d00, #ff7a3d);
-    color: #fff !important;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    text-decoration: none;
-    box-shadow: 0 4px 20px rgba(255, 77, 0, 0.3);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4d00, #ff7a3d);
+  color: #fff !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(255, 77, 0, 0.3);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .ctaNav:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 28px rgba(255, 77, 0, 0.45);
-    color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(255, 77, 0, 0.45);
+  color: #fff !important;
 }
 
 .ctaNav.active::after {
-    display: none;
+  display: none;
 }
 
 .logoutButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    color: #9ca3af;
-    cursor: pointer;
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    font-family: inherit;
-    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  color: #9ca3af;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .logoutButton:hover:not(:disabled) {
-    color: #ff4d00;
-    background: rgba(255, 77, 0, 0.1);
-    border-color: rgba(255, 77, 0, 0.25);
+  color: #ff4d00;
+  background: rgba(255, 77, 0, 0.1);
+  border-color: rgba(255, 77, 0, 0.25);
 }
 
 .logoutButton:focus-visible {
-    outline: 2px solid #ff4d00;
-    outline-offset: 2px;
+  outline: 2px solid #ff4d00;
+  outline-offset: 2px;
 }
 
 .logoutButton:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .logoutIcon {
-    width: 1.1rem;
-    height: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.logoutLabel {
+  display: none;
 }
 
 .userChip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    max-width: 16rem;
-    padding: 0.25rem 0.75rem 0.25rem 0.25rem;
-    text-decoration: none;
-    color: inherit;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 999px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 16rem;
+  padding: 0.25rem 0.75rem 0.25rem 0.25rem;
+  text-decoration: none;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .userChip:hover {
-    border-color: rgba(255, 77, 0, 0.45);
-    box-shadow: 0 2px 12px rgba(255, 77, 0, 0.15);
+  border-color: rgba(255, 77, 0, 0.45);
+  box-shadow: 0 2px 12px rgba(255, 77, 0, 0.15);
 }
 
 .userAvatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    flex-shrink: 0;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #fff;
-    background: linear-gradient(135deg, #ff4d00 0%, #ff8a5c 100%);
-    border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #ff4d00 0%, #ff8a5c 100%);
+  border-radius: 999px;
 }
 
 .userMeta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
 }
 
 .userName {
-    overflow: hidden;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #f3f4f6;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userSub {
-    overflow: hidden;
-    font-size: 0.7rem;
-    color: #9ca3af;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  overflow: hidden;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 1024px) {
-    .header {
-        padding: 1rem 2rem;
-        height: var(--headerHeightTablet);
-    }
+  .header {
+    padding: 1rem 2rem;
+    height: var(--headerHeightTablet);
+  }
 
-    .navList {
-        gap: 1.1rem;
-    }
+  .navList {
+    gap: 1.1rem;
+  }
 
-    .navLink {
-        font-size: 0.8125rem;
-    }
+  .navLink {
+    font-size: 0.8125rem;
+  }
 
-    .ctaNav {
-        padding: 0.5rem 1rem;
-        font-size: 0.7rem;
-    }
+  .ctaNav {
+    padding: 0.5rem 1rem;
+    font-size: 0.7rem;
+  }
 }
 
-@media (max-width: 768px) {
-    .header {
-        padding: 1rem 1.5rem;
-        height: var(--headerHeightMobile);
-        min-height: 0;
-    }
+@media (max-width: 900px) {
+  .header {
+    padding: 0.85rem 1.25rem;
+    height: var(--headerHeightMobile);
+    min-height: 0;
+  }
 
-    .navList {
-        gap: 0.65rem;
-        justify-content: center;
-    }
+  .logo {
+    max-width: 100px;
+  }
 
-    .navLink {
-        font-size: 0.8rem;
-    }
+  .menuToggle {
+    display: inline-flex;
+  }
 
-    .userMeta {
-        display: none;
-    }
+  .menuBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.55);
+    -webkit-tap-highlight-color: transparent;
+  }
 
-    .userChip {
-        padding: 0.2rem;
-        max-width: none;
-    }
+  .navList {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1001;
+    width: min(20rem, 86vw);
+    height: 100dvh;
+    height: 100vh;
+    margin: 0;
+    padding: calc(var(--headerHeightMobile) + 1rem) 1.25rem 1.5rem;
+    gap: 0.15rem;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: #0d0d0d;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: -16px 0 48px rgba(0, 0, 0, 0.45);
+    transform: translateX(105%);
+    visibility: hidden;
+    transition: transform 0.28s ease, visibility 0.28s ease;
+  }
 
-    .ctaNav {
-        display: none;
-    }
+  .navListOpen {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .navItem {
+    width: 100%;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .navLink {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 1rem 0.35rem;
+    font-size: 1rem;
+    color: #e5e7eb;
+  }
+
+  .navLink.active {
+    color: #ff4d00;
+  }
+
+  .navLink.active::after {
+    display: none;
+  }
+
+  .ctaNav {
+    display: inline-flex;
+    width: 100%;
+    margin: 0.85rem 0 0.35rem;
+    padding: 0.9rem 1rem;
+    font-size: 0.8rem;
+    box-sizing: border-box;
+  }
+
+  .userNavItem {
+    border-bottom: none;
+    margin-top: 0.75rem;
+  }
+
+  .userChip {
+    width: 100%;
+    max-width: none;
+    padding: 0.65rem 0.85rem 0.65rem 0.35rem;
+    box-sizing: border-box;
+  }
+
+  .userMeta {
+    display: flex;
+  }
+
+  .userName {
+    font-size: 0.95rem;
+  }
+
+  .userSub {
+    font-size: 0.75rem;
+  }
+
+  .logoutNavItem {
+    display: flex;
+    align-items: center;
+    border-bottom: none;
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+  }
+
+  .logoutButton {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: #e5e7eb;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .logoutButtonLabeled {
+    width: 100%;
+    justify-content: flex-start;
+    height: auto;
+    gap: 0.65rem;
+    padding: 0.55rem 0.85rem;
+    color: #e5e7eb;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .logoutButtonLabeled .logoutLabel {
+    display: inline;
+    font-size: 0.95rem;
+    color: inherit;
+  }
 }
 
 @media (max-width: 500px) {
-    .header {
-        flex-direction: row;
-        padding: 1rem;
-        gap: 1rem;
-        height: var(--headerHeightMobile);
-        min-height: 0;
-    }
+  .header {
+    padding: 0.75rem 1rem;
+  }
 
-    .navList {
-        gap: 0;
-        width: 100%;
-        text-align: center;
-    }
+  .logo {
+    max-width: 90px;
+  }
 
-    .navLink {
-        display: block;
-        padding: 0.5rem;
-    }
+  .navList {
+    width: min(100vw, 20rem);
+  }
 }

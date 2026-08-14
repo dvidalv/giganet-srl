@@ -25,6 +25,7 @@ function buildTheFactoryUrls(baseUrl) {
     authUrl: `${b}/Autenticacion`,
     enviarUrl: `${b}/Enviar`,
     estatusUrl: `${b}/EstatusDocumento`,
+    consultaRncUrl: `${b}/ConsultaRNC`,
     emailUrl: `${b}/EnvioCorreo`,
     anulacionUrl: `${b}/Anulacion`,
     descargaUrl: `${b}/DescargaArchivo`,

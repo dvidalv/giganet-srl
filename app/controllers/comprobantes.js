@@ -3981,6 +3981,97 @@ export async function consultarEstatusDocumentoLogic(body, options = {}) {
   }
 }
 
+/**
+ * Consulta un contribuyente registrado en TheFactoryHKA por RNC.
+ * @param {{ rncConsultar?: unknown, rnc?: unknown }} body
+ * @param {{ userId?: string | null }} [options]
+ * @returns {Promise<{ status: number, data: object }>}
+ */
+export async function consultarRncLogic(body, options = {}) {
+  const rncConsultar = String(body?.rncConsultar ?? "").replace(/\D/g, "");
+  if (rncConsultar.length !== 9 && rncConsultar.length !== 11) {
+    return {
+      status: httpStatus.BAD_REQUEST,
+      data: {
+        ok: false,
+        message: "El RNC a consultar debe tener 9 u 11 dígitos.",
+      },
+    };
+  }
+
+  try {
+    let rncEmisor = String(body?.rnc ?? "").replace(/\D/g, "");
+    if (!rncEmisor && options.userId) {
+      const owner = await User.findById(options.userId).select("empresa.rnc").lean();
+      rncEmisor = String(owner?.empresa?.rnc ?? "").replace(/\D/g, "");
+    }
+    if (rncEmisor.length !== 9 && rncEmisor.length !== 11) {
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          ok: false,
+          message: "No se encontró un RNC emisor válido para consultar TheFactory.",
+        },
+      };
+    }
+
+    const urls = await resolveTheFactoryUrlsForUser(options.userId);
+    const token = await obtenerTokenTheFactory(rncEmisor, {
+      ...options,
+      theFactoryUrls: urls,
+    });
+    const response = await axios.post(
+      urls.consultaRncUrl,
+      {
+        token,
+        rnc: rncEmisor,
+        rncConsultar,
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 15000,
+      },
+    );
+
+    const source = response.data && typeof response.data === "object" ? response.data : {};
+    const code = Number(source.codigo);
+    const ok = code === 0;
+    const message = String(source.mensaje ?? (ok ? "RNC consultado correctamente." : "No se encontró el RNC.")).trim();
+
+    return {
+      status: ok ? httpStatus.OK : httpStatus.NOT_FOUND,
+      data: {
+        ok,
+        rnc: String(source.rnc ?? rncConsultar).replace(/\D/g, ""),
+        razonSocial: String(source.razonSocial ?? "").trim(),
+        nombreComercial: String(source.nombreComercial ?? "").trim(),
+        fechaIncorporacion: String(source.fechaIncorporacion ?? "").trim(),
+        estado: String(source.estado ?? "").trim(),
+        regimen: String(source.regimen ?? "").trim(),
+        mensaje: message,
+      },
+    };
+  } catch (error) {
+    const responseStatus = Number(error?.response?.status);
+    const source = error?.response?.data;
+    const message =
+      typeof source?.mensaje === "string"
+        ? source.mensaje
+        : error instanceof Error
+          ? error.message
+          : "No se pudo consultar el RNC en TheFactory.";
+    console.error("[comprobantes] ConsultaRNC:", message);
+    return {
+      status: Number.isInteger(responseStatus) && responseStatus >= 400 ? responseStatus : httpStatus.BAD_GATEWAY,
+      data: {
+        ok: false,
+        message: "No se pudo consultar el RNC en TheFactory.",
+        detalle: String(message).slice(0, 500),
+      },
+    };
+  }
+}
+
 // 🔍 Endpoint independiente para consultar estatus de documento (modo Express)
 const consultarEstatusDocumento = async (req, res) => {
   const result = await consultarEstatusDocumentoLogic(req.body, {

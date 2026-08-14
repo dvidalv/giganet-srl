@@ -100,7 +100,7 @@ export async function PATCH(request) {
   const updates = {};
   if (nombre !== undefined) updates["empresa.nombre"] = String(nombre).trim().slice(0, 100);
   if (logo !== undefined) updates["empresa.logo"] = String(logo).trim();
-  if (rnc !== undefined) updates["empresa.rnc"] = String(rnc).trim().slice(0, 10);
+  if (rnc !== undefined) updates["empresa.rnc"] = String(rnc).trim().slice(0, 11);
   if (razonSocial !== undefined) updates["empresa.razonSocial"] = String(razonSocial).trim().slice(0, 100);
   if (direccion !== undefined) updates["empresa.direccion"] = String(direccion).trim();
   if (ciudad !== undefined) updates["empresa.ciudad"] = String(ciudad).trim();

@@ -19,12 +19,14 @@ import {
   FaReact,
   FaRocket,
 } from "react-icons/fa";
+import { SiMongodb } from "react-icons/si";
 
 const techTags = [
   { label: "React", icon: FaReact, className: styles.techReact },
   { label: "Node.js", icon: FaNodeJs, className: styles.techNode },
   { label: "Python", icon: FaPython, className: styles.techPython },
   { label: "SQL / NoSQL", icon: FaDatabase, className: styles.techDb },
+  { label: "MongoDB", icon: SiMongodb, className: styles.techMongo },
   { label: "AWS", icon: FaAws, className: styles.techAws },
 ];
 

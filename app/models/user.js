@@ -69,7 +69,7 @@ const userSchema = new Schema(
       rnc: {
         type: String,
         default: "",
-        maxlength: [10, "El RNC no puede exceder 10 caracteres"],
+        maxlength: [11, "El RNC/cédula no puede exceder 11 caracteres"],
       },
       razonSocial: {
         type: String,
@@ -163,13 +163,19 @@ const userSchema = new Schema(
 // En desarrollo, si el modelo ya existe pero no contiene campos nuevos
 // (por hot-reload), lo recompilamos para evitar que Mongoose ignore updates.
 const existingUserModel = models.User;
+const rncMaxlengthOpt = existingUserModel?.schema?.path("empresa.rnc")?.options
+  ?.maxlength;
+const rncMaxlength = Array.isArray(rncMaxlengthOpt)
+  ? rncMaxlengthOpt[0]
+  : rncMaxlengthOpt;
 const needsUserModelRecompile =
   !!existingUserModel &&
   (
     !existingUserModel.schema.path("empresa.theFactoryUsuarioDemo") ||
     !existingUserModel.schema.path("empresa.theFactoryClaveDemoEnc") ||
     !existingUserModel.schema.path("empresa.theFactoryUsuarioProduction") ||
-    !existingUserModel.schema.path("empresa.theFactoryClaveProductionEnc")
+    !existingUserModel.schema.path("empresa.theFactoryClaveProductionEnc") ||
+    (typeof rncMaxlength === "number" && rncMaxlength < 11)
   );
 
 if (needsUserModelRecompile) {

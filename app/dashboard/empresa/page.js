@@ -177,8 +177,8 @@ export default function MiEmpresa() {
     if (empresa.email && !/^\S+@\S+\.\S+$/.test(empresa.email)) {
       newErrors.email = "Email inválido";
     }
-    if (empresa.rnc && empresa.rnc.length > 10) {
-      newErrors.rnc = "El RNC no puede exceder 10 caracteres";
+    if (empresa.rnc && empresa.rnc.length > 11) {
+      newErrors.rnc = "El RNC/cédula no puede exceder 11 caracteres";
     }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -190,7 +190,7 @@ export default function MiEmpresa() {
       const payload = {
         nombre: empresa.nombre || "",
         logo: empresa.logo || "",
-        rnc: (empresa.rnc || "").replace(/\D/g, "").slice(0, 10),
+        rnc: (empresa.rnc || "").replace(/\D/g, "").slice(0, 11),
         razonSocial: empresa.razonSocial || "",
         direccion: empresa.direccion || "",
         ciudad: empresa.ciudad || "",
@@ -204,7 +204,15 @@ export default function MiEmpresa() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ type: "error", text: data.error || "Error al actualizar" });
+        const detailText = Array.isArray(data.details)
+          ? data.details.filter(Boolean).join(" ")
+          : "";
+        setMessage({
+          type: "error",
+          text: detailText
+            ? `${data.error || "Error al actualizar"}: ${detailText}`
+            : data.error || "Error al actualizar",
+        });
         if (data.details) setErrors((prev) => ({ ...prev, _form: data.details }));
         return;
       }
@@ -341,10 +349,10 @@ export default function MiEmpresa() {
                   <input
                     type="text"
                     value={empresa.rnc}
-                    onChange={(e) => handleChange("rnc", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    onChange={(e) => handleChange("rnc", e.target.value.replace(/\D/g, "").slice(0, 11))}
                     placeholder="Ej: 12345678901"
                     className={`${styles.input} ${errors.rnc ? styles.inputError : ""}`}
-                    maxLength={10}
+                    maxLength={11}
                   />
                 </div>
                 {errors.rnc && (
@@ -402,16 +410,6 @@ export default function MiEmpresa() {
                 <p className={styles.logoHint}>
                   JPEG, PNG, GIF o WebP. Máx. 5 MB. Se recortará y optimizará para logo.
                 </p>
-                <div className={styles.inputWrap}>
-                  <span className={styles.inputIcon}><IconLink /></span>
-                  <input
-                    type="url"
-                    value={empresa.logo}
-                    onChange={(e) => handleChange("logo", e.target.value)}
-                    placeholder="O pega aquí la URL del logo"
-                    className={styles.input}
-                  />
-                </div>
               </div>
             </div>
           </div>

@@ -22,6 +22,7 @@ import mongoose from "mongoose";
 import User from "@/app/models/user";
 import { getComprobanteModelForUserId } from "@/lib/comprobantesStore";
 import { hashApiKey } from "@/utils/apiKey";
+import { enriquecerDatosEstatusObservaciones } from "@/utils/ecfObservacionMensajes";
 import axios from "axios";
 import QRCode from "qrcode";
 import {
@@ -537,13 +538,14 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
    * ❌ No usar `cod >= 200`: obs. DGII como 11105 (MontoTotal) son 5 dígitos y marcan
    * «Aceptado Condicional», no rechazo — eso desincronizaba Estatus=RECHAZADA vs DGII.
    */
-  const CODIGOS_OBS_RECHAZO = new Set([200, 201, 202, 203, 613, 634]);
+  const CODIGOS_OBS_RECHAZO = new Set([200, 201, 202, 203, 613, 634, 7777]);
   const tieneObservacionRechazo = observaciones.some((o) => {
     const cod = Number(o?.codigo);
     const msg = String(o?.mensaje ?? "").toUpperCase();
     return (
       (Number.isFinite(cod) && CODIGOS_OBS_RECHAZO.has(Math.trunc(cod))) ||
-      msg.includes("RECHAZ")
+      msg.includes("RECHAZ") ||
+      msg.includes("SECUENCIA REUTILIZABLE")
     );
   });
   const esAceptadoCondicional =
@@ -842,7 +844,7 @@ const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
 
     return {
       consultaExitosa: true,
-      datosEstatus: response.data,
+      datosEstatus: enriquecerDatosEstatusObservaciones(response.data),
       timestamp: new Date().toISOString(),
     };
   } catch (error) {

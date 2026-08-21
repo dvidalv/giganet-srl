@@ -1,9 +1,7 @@
 import { after, NextResponse } from "next/server";
-import { sendWhatsAppTextMessage } from "@/lib/whatsapp";
+import { handleWhatsAppBotText } from "@/lib/whatsappBot";
 
 const EXPECTED_PHONE_NUMBER_ID = "1196990906839969";
-const AUTO_REPLY_TEXT =
-  "¡Hola! 👋 Hemos recibido tu mensaje correctamente.";
 const MAX_PROCESSED_MESSAGE_IDS = 500;
 
 /** @type {Set<string>} */
@@ -113,7 +111,16 @@ async function maybeAutoReply(message) {
     return;
   }
 
-  await sendWhatsAppTextMessage(message.from, AUTO_REPLY_TEXT);
+  const text = message.text?.body ?? "";
+  console.log(
+    `WHATSAPP BOT handling text from ${message.from}: ${JSON.stringify(text)}`,
+  );
+
+  try {
+    await handleWhatsAppBotText(message.from, text);
+  } catch (error) {
+    console.error("WHATSAPP BOT error:", error);
+  }
 }
 
 function logMetadata(metadata) {

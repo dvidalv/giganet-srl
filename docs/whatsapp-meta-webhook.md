@@ -30,16 +30,21 @@ WHATSAPP_BOT_RNC_EMISOR=
 
 `1196990906839969`
 
-## Bot Fase A — consulta por NCF + RNC (sin API key)
+## Bot Fase A — flujo interactivo (sin API key)
 
 El usuario de WhatsApp **no** envía API key ni registra su teléfono.
 
-| Mensaje | Qué hace |
-|---------|----------|
-| `ESTADO E320000000001 131098193` | Busca usuario con `empresa.rnc = 131098193` → usa sus credenciales TheFactory (igual que tras resolver un API key) |
-| `RNC 101609921` | Consulta contribuyente (opcional; requiere cuenta de servicio `WHATSAPP_BOT_*`) |
-| `HOLA` / `MENU` | Menú |
+### Consulta de estatus (recomendado)
 
-Si no hay empresa Giganet con ese RNC emisor, responde que no está registrada.
+1. Escribe `ESTADO`
+2. El bot pide el *RNC emisor*
+3. Luego pide el *NCF*
+4. Responde el estatus
 
-Deduplicación en memoria por `message.id` (máx. 500).
+También vale el atajo en un solo mensaje: `ESTADO E320000000001 131098193`
+
+Sesión conversacional en Mongo (`whatsapp_sessions`), TTL ~15 min. `CANCELAR` / `MENU` limpia el flujo.
+
+Si no hay empresa Giganet con ese RNC emisor, avisa que no está registrada.
+
+Deduplicación de webhooks por `message.id` (máx. 500).

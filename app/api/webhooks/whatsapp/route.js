@@ -1,6 +1,13 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { sendWhatsAppTextMessage } from "@/lib/whatsapp";
 
 const EXPECTED_PHONE_NUMBER_ID = "1196990906839969";
+const AUTO_REPLY_TEXT =
+  "¡Hola! 👋 Hemos recibido tu mensaje correctamente.";
+const MAX_PROCESSED_MESSAGE_IDS = 500;
+
+/** @type {Set<string>} */
+const processedMessageIds = new Set();
 
 /**
  * Verificación del webhook de Meta WhatsApp Cloud API.
@@ -25,7 +32,7 @@ export async function GET(request) {
 
 /**
  * Recepción de eventos (estados de entrega y mensajes entrantes).
- * Responde 200 de inmediato; en esta fase solo registra en consola.
+ * Responde 200 de inmediato; el auto-reply corre en after() para no bloquear a Meta.
  * POST /api/webhooks/whatsapp
  */
 export async function POST(request) {
@@ -39,16 +46,18 @@ export async function POST(request) {
 
   console.log("WHATSAPP WEBHOOK:", JSON.stringify(body, null, 2));
 
-  try {
-    processWebhookPayload(body);
-  } catch (error) {
-    console.error("WHATSAPP WEBHOOK processing error:", error);
-  }
+  after(async () => {
+    try {
+      await processWebhookPayload(body);
+    } catch (error) {
+      console.error("WHATSAPP WEBHOOK processing error:", error);
+    }
+  });
 
   return NextResponse.json({ success: true }, { status: 200 });
 }
 
-function processWebhookPayload(body) {
+async function processWebhookPayload(body) {
   const entries = Array.isArray(body?.entry) ? body.entry : [];
 
   for (const entry of entries) {
@@ -69,10 +78,42 @@ function processWebhookPayload(body) {
       if (Array.isArray(value.messages)) {
         for (const message of value.messages) {
           logIncomingMessage(message);
+          await maybeAutoReply(message);
         }
       }
     }
   }
+}
+
+/**
+ * @param {string | undefined | null} messageId
+ * @returns {boolean} true si ya estaba procesado (omitir)
+ */
+function wasAlreadyProcessed(messageId) {
+  if (!messageId) return false;
+  if (processedMessageIds.has(messageId)) return true;
+
+  processedMessageIds.add(messageId);
+  if (processedMessageIds.size > MAX_PROCESSED_MESSAGE_IDS) {
+    const oldest = processedMessageIds.values().next().value;
+    if (oldest !== undefined) processedMessageIds.delete(oldest);
+  }
+  return false;
+}
+
+async function maybeAutoReply(message) {
+  if (!message || typeof message !== "object") return;
+  if (message.type !== "text") return;
+  if (!message.from) return;
+
+  if (wasAlreadyProcessed(message.id)) {
+    console.log(
+      `WHATSAPP AUTO-REPLY skipped (duplicate message id): ${message.id}`,
+    );
+    return;
+  }
+
+  await sendWhatsAppTextMessage(message.from, AUTO_REPLY_TEXT);
 }
 
 function logMetadata(metadata) {

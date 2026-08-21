@@ -4,17 +4,21 @@ Endpoint: `GET|POST /api/webhooks/whatsapp`
 
 Archivo: `app/api/webhooks/whatsapp/route.js`
 
-## Variable de entorno
+## Variables de entorno
 
 En `.env.local` (y en Vercel → Environment Variables):
 
 ```env
 WHATSAPP_VERIFY_TOKEN=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=1196990906839969
 ```
 
-Elige un string secreto largo. Debe coincidir exactamente con el **Token de verificación** configurado en Meta (App → WhatsApp → Configuration → Webhook).
+- `WHATSAPP_VERIFY_TOKEN`: string secreto largo. Debe coincidir con el **Token de verificación** en Meta (App → WhatsApp → Configuration → Webhook).
+- `WHATSAPP_ACCESS_TOKEN`: token de la Graph API (Bearer) para enviar mensajes. No hardcodearlo.
+- `WHATSAPP_PHONE_NUMBER_ID`: Phone Number ID de Cloud API. Si falta, el código usa `1196990906839969` como fallback.
 
-No hardcodees el token en el código. `.env*` ya está en `.gitignore`.
+`.env*` ya está en `.gitignore`.
 
 ## Phone Number ID esperado
 
@@ -22,6 +26,6 @@ Los eventos deberían reportar `metadata.phone_number_id`:
 
 `1196990906839969`
 
-## Nota
+## Auto-reply
 
-En esta fase el webhook solo verifica la suscripción y registra en consola estados (`sent` / `delivered` / `read` / `failed`) y mensajes entrantes. No responde automáticamente ni conecta OpenAI.
+Ante mensajes entrantes `type === "text"`, responde con texto fijo (ventana 24h, sin plantilla). No usa OpenAI todavía. Deduplicación en memoria por `message.id` (máx. 500).

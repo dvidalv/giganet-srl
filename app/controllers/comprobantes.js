@@ -33,6 +33,7 @@ import {
   montoTotalFirmadoFromDocumento,
   resolveAmbienteQrParaGenerarQr,
 } from "@/lib/dgiiConsultaTimbreUrl";
+import ComprobanteEnvio from "@/app/models/comprobanteEnvio";
 
 
 const TIPOS_COMPROBANTE = ["31", "32", "33", "34", "41", "43", "44", "45"];
@@ -2926,6 +2927,90 @@ ${
 };
 
 /**
+ * Guarda un registro del envío de comprobante (exitoso o con error) en MongoDB.
+ * @param {Object} params
+ * @param {string} params.ncf - Número de comprobante fiscal
+ * @param {string} params.rnc - RNC del emisor
+ * @param {string} params.tipoComprobante - Tipo de comprobante (31, 32, etc.)
+ * @param {boolean} params.exitoso - Si el envío fue exitoso
+ * @param {Object} params.respuesta - Respuesta completa de TheFactory
+ * @param {string} [params.userId] - ID del usuario que realizó el envío
+ * @param {string} [params.ambiente] - Ambiente (demo/production)
+ * @param {string} [params.ip] - IP del cliente
+ */
+async function guardarRegistroEnvio({
+  ncf,
+  rnc,
+  tipoComprobante,
+  exitoso,
+  respuesta,
+  userId,
+  ambiente = 'production',
+  ip = null,
+  montoTotal = null,
+  fechaEmision = null,
+}) {
+  if (!userId) {
+    console.warn('⚠️ No se guardará registro de envío: falta userId');
+    return;
+  }
+
+  try {
+    const registro = {
+      ncf: String(ncf || '').toUpperCase().trim(),
+      rnc: String(rnc || '').replace(/\D/g, '').trim(),
+      tipoComprobante: String(tipoComprobante || '').trim(),
+      exitoso: Boolean(exitoso),
+      usuario: userId,
+      ambiente,
+      ip,
+      fechaCreacion: new Date(),
+    };
+
+    if (respuesta) {
+      registro.codigoRespuesta = respuesta.codigo ?? null;
+      registro.mensajeRespuesta = String(respuesta.mensaje || '').slice(0, 2000);
+      registro.respuestaCompleta = respuesta;
+      
+      if (respuesta.codigoSeguridad) {
+        registro.codigoSeguridad = String(respuesta.codigoSeguridad).trim();
+      }
+    }
+
+    if (montoTotal != null) {
+      registro.montoTotal = Number(montoTotal);
+    }
+
+    if (fechaEmision) {
+      registro.fechaEmision = new Date(fechaEmision);
+    }
+
+    if (!exitoso && respuesta) {
+      if (respuesta.codigo === 401 || respuesta.codigo === 403) {
+        registro.tipoError = 'autenticacion';
+      } else if (respuesta.codigo === 108 || respuesta.codigo === 109 || respuesta.codigo === 110 || respuesta.codigo === 111) {
+        registro.tipoError = 'negocio';
+      } else if (respuesta.codigo >= 500) {
+        registro.tipoError = 'tecnico';
+      } else if (respuesta.codigo >= 400 && respuesta.codigo < 500) {
+        registro.tipoError = 'validacion';
+      }
+
+      registro.detallesError = {
+        codigo: respuesta.codigo,
+        mensaje: respuesta.mensaje,
+        observaciones: respuesta.observaciones || [],
+      };
+    }
+
+    await ComprobanteEnvio.create(registro);
+    console.log(`📝 Registro de envío guardado: NCF=${ncf} exitoso=${exitoso}`);
+  } catch (error) {
+    console.error('❌ Error al guardar registro de envío en MongoDB:', error);
+  }
+}
+
+/**
  * Lógica de negocio para enviar factura a TheFactoryHKA.
  * Devuelve { status, data } para uso directo con NextResponse.
  * @param {Object} body - Body de la petición (emisor, comprador, factura, items, etc.)
@@ -2993,6 +3078,18 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
         respuestaTheFactory: response.data,
       });
 
+      await guardarRegistroEnvio({
+        ncf: body.factura?.ncf,
+        rnc: rnc,
+        tipoComprobante: body.factura?.tipo,
+        exitoso: false,
+        respuesta: response.data,
+        userId: options.userId,
+        ambiente: urls.ambienteKey,
+        montoTotal: body.factura?.total,
+        fechaEmision: body.factura?.fecha,
+      });
+
       return {
         status: httpStatus.BAD_REQUEST,
         data: {
@@ -3058,6 +3155,18 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
         qrCode = qrFallback.data.data.qrCode;
       }
     }
+
+    await guardarRegistroEnvio({
+      ncf: body.factura?.ncf,
+      rnc: rnc,
+      tipoComprobante: body.factura?.tipo,
+      exitoso: true,
+      respuesta: response.data,
+      userId: options.userId,
+      ambiente: urls.ambienteKey,
+      montoTotal: montoTotalFirmado ?? body.factura?.total,
+      fechaEmision: response.data.fechaEmision || body.factura?.fecha,
+    });
 
     return {
       status: httpStatus.OK,

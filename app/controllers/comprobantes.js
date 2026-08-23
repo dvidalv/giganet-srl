@@ -34,6 +34,11 @@ import {
   resolveAmbienteQrParaGenerarQr,
 } from "@/lib/dgiiConsultaTimbreUrl";
 import ComprobanteEnvio from "@/app/models/comprobanteEnvio";
+import {
+  normalizeTheFactoryError,
+  logTheFactoryError,
+  buildErrorTextForAI,
+} from "@/utils/theFactoryErrorHandler";
 
 
 const TIPOS_COMPROBANTE = ["31", "32", "33", "34", "41", "43", "44", "45"];
@@ -247,41 +252,20 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
     return tokenCache.token;
   } catch (error) {
     console.error("Error al obtener token de TheFactoryHKA:", error);
-    console.error("Código de error:", error.code);
-    console.error("Mensaje:", error.message);
 
+    // Normalizar el error
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+
+    // Si hay respuesta HTTP, preservar la información completa
     if (error.response) {
       throw new Error(
-        `Error ${error.response.status}: ${JSON.stringify(error.response.data)}`
+        `Error ${error.response.status} de The Factory: ${normalizedError.message}`
       );
     }
 
-    const msg = error instanceof Error ? error.message : String(error);
-
-    // Detectar si el servidor está caído
-    if (error.code === "ECONNREFUSED") {
-      throw new Error(
-        "SERVIDOR_CAIDO: El servidor de TheFactoryHKA rechazó la conexión. El servidor puede estar caído o inaccesible."
-      );
-    }
-
-    if (error.code === "ENOTFOUND") {
-      throw new Error(
-        "SERVIDOR_NO_ENCONTRADO: No se puede resolver el dominio de TheFactoryHKA. Verifica la configuración de DNS."
-      );
-    }
-
-    if (error.code === "ETIMEDOUT" || error.code === "ECONNABORTED") {
-      throw new Error("Timeout al conectar con el servicio de autenticación");
-    }
-
-    if (error.code === "ECONNRESET") {
-      throw new Error(
-        "SERVIDOR_RESETEO: El servidor de TheFactoryHKA cerró la conexión abruptamente. Puede estar sobrecargado o caído."
-      );
-    }
-
-    throw new Error(`Fallo al autenticar con The Factory: ${msg}`);
+    // Errores de red
+    throw new Error(normalizedError.message);
   }
 };
 
@@ -849,11 +833,13 @@ const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error("❌ Error al consultar estatus (no crítico):", error.message);
+    const normalizedError = normalizeTheFactoryError(error);
+    
+    console.error("❌ Error al consultar estatus (no crítico):", normalizedError.message);
     if (error.response) {
-      console.error("📥 Respuesta de error de TheFactoryHKA:");
-      console.error(JSON.stringify(error.response.data, null, 2));
-      console.error(`📊 Status HTTP de error: ${error.response.status}`);
+      console.error("📥 Respuesta normalizada de TheFactoryHKA:");
+      console.error(JSON.stringify(normalizedError, null, 2));
+      console.error(`📊 Status HTTP de error: ${normalizedError.httpStatus}`);
     }
     console.log(
       `🔍 ==================== FIN CONSULTA ESTATUS (ERROR) ====================\n`
@@ -862,7 +848,8 @@ const consultarEstatusInmediato = async (ncf, rnc, options = {}) => {
     // No lanzamos error, solo devolvemos información de que falló
     return {
       consultaExitosa: false,
-      error: error.message,
+      error: normalizedError.message,
+      errorDetails: normalizedError,
       timestamp: new Date().toISOString(),
     };
   }
@@ -3191,6 +3178,27 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
   } catch (error) {
     console.error("Error al enviar factura electrónica:", error);
 
+    // Normalizar el error de The Factory
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+
+    // Guardar el registro del error con información completa
+    await guardarRegistroEnvio({
+      ncf: body.factura?.ncf,
+      rnc,
+      tipoComprobante: body.factura?.tipo,
+      exitoso: false,
+      respuesta: normalizedError.rawResponseData || {
+        mensaje: normalizedError.message,
+        codigo: normalizedError.codigo,
+      },
+      userId: options.userId,
+      ambiente: urls?.ambienteKey || 'production',
+      montoTotal: body.factura?.total,
+      fechaEmision: body.factura?.fecha,
+    });
+
+    // Casos especiales: credenciales
     if (
       typeof error?.message === "string" &&
       error.message.includes("CREDENCIALES_THEFACTORY_")
@@ -3205,20 +3213,21 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       };
     }
 
+    // Casos especiales: autenticación
     if (
       error.message.includes("Error de autenticación") ||
       error.message.includes("token") ||
       error.message.includes("expirado") ||
       error.message.includes("expired") ||
-      (error.response &&
-        (error.response.status === 401 || error.response.status === 403))
+      normalizedError.httpStatus === 401 ||
+      normalizedError.httpStatus === 403
     ) {
       console.log("🔄 Error de autenticación detectado, limpiando cache...");
       limpiarCacheToken();
       await enviarFacturaASoporte(body, {
         tipo: "Error de autenticación",
         mensaje: "Token expirado o inválido",
-        statusCode: error.response?.status || 401,
+        statusCode: normalizedError.httpStatus || 401,
       });
       return {
         status: httpStatus.UNAUTHORIZED,
@@ -3233,104 +3242,77 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       };
     }
 
+    // Error con respuesta HTTP de The Factory (el caso más importante)
     if (error.response) {
-      console.log("respuesta del TheFactoryHKA:", error.response.data);
-      console.error("❌ Respuesta de error de TheFactoryHKA:", error.response.status);
-      let detallesValidacion = error.response.data;
-      if (error.response.data?.errors) {
-        detallesValidacion = {
-          ...error.response.data,
-          erroresDetallados: error.response.data.errors,
-        };
-      }
+      console.log("respuesta del TheFactoryHKA (normalizada):", normalizedError);
+
       await enviarFacturaASoporte(body, {
-        tipo: "Error de respuesta HTTP de TheFactoryHKA",
-        mensaje: error.message || "Error en el envío a TheFactoryHKA",
-        statusCode: error.response.status,
-        respuestaTheFactory: error.response.data,
+        tipo: normalizedError.type || "Error de respuesta HTTP de TheFactoryHKA",
+        mensaje: normalizedError.message,
+        statusCode: normalizedError.httpStatus,
+        respuestaTheFactory: normalizedError.rawResponseData,
       });
+
+      // Construir respuesta con información completa y normalizada
+      const responseData = {
+        status: "error",
+        message: normalizedError.message,
+        errorType: normalizedError.type,
+        httpStatus: normalizedError.httpStatus,
+      };
+
+      // Agregar información específica según el tipo de error
+      if (normalizedError.validationErrors && normalizedError.validationErrors.length > 0) {
+        responseData.validationErrors = normalizedError.validationErrors;
+        responseData.details = "Errores de validación encontrados. Ver validationErrors para detalles.";
+      } else if (normalizedError.rawResponseData) {
+        responseData.details = normalizedError.rawResponseData;
+      }
+
+      // Agregar campos útiles
+      if (normalizedError.codigo) responseData.codigo = normalizedError.codigo;
+      if (normalizedError.traceId) responseData.traceId = normalizedError.traceId;
+      if (normalizedError.observaciones) responseData.observaciones = normalizedError.observaciones;
+
       return {
         status: httpStatus.BAD_REQUEST,
-        data: {
-          status: "error",
-          message: "Error en el envío a TheFactoryHKA",
-          details: detallesValidacion,
-          statusCode: error.response.status,
-        },
+        data: responseData,
       };
     }
 
-    if (error.code === "ECONNABORTED") {
-      console.warn("⏰ TIMEOUT TheFactoryHKA");
+    // Errores de red (timeout, conexión, etc.)
+    if (normalizedError.networkError) {
       await enviarFacturaASoporte(body, {
-        tipo: "Timeout en TheFactoryHKA",
-        mensaje: "TheFactoryHKA tardó más de 60 segundos en responder",
+        tipo: normalizedError.type,
+        mensaje: normalizedError.message,
         ncf: body.factura?.ncf || null,
       });
+
+      let httpStatusCode = httpStatus.SERVICE_UNAVAILABLE;
+      if (normalizedError.type === 'THE_FACTORY_TIMEOUT') {
+        httpStatusCode = httpStatus.REQUEST_TIMEOUT;
+      }
+
       return {
-        status: httpStatus.REQUEST_TIMEOUT,
+        status: httpStatusCode,
         data: {
           status: "error",
-          message: "Timeout: TheFactoryHKA tardó más de 60 segundos en responder",
-          details:
-            "El servicio está experimentando lentitud. Consulte el estatus del documento.",
+          message: normalizedError.message,
+          errorType: normalizedError.type,
           ncf: body.factura?.ncf || null,
-          sugerencia: "Usar el endpoint /consultar-estatus para verificar",
+          sugerencia: normalizedError.type === 'THE_FACTORY_TIMEOUT' 
+            ? "Usar el endpoint /consultar-estatus para verificar si el comprobante se procesó"
+            : "Verifica el estado del servidor o contacta con soporte",
         },
       };
     }
 
-    if (error.message.includes("Faltan datos obligatorios")) {
-      await enviarFacturaASoporte(body, {
-        tipo: "Error de validación",
-        mensaje: error.message,
-      });
-      return {
-        status: httpStatus.BAD_REQUEST,
-        data: { status: "error", message: error.message },
-      };
-    }
-
-    if (error.message.includes("Timeout al conectar con el servicio de autenticación")) {
-      await enviarFacturaASoporte(body, {
-        tipo: "Timeout en autenticación",
-        mensaje: "Timeout al conectar con TheFactoryHKA",
-      });
-      return {
-        status: httpStatus.REQUEST_TIMEOUT,
-        data: {
-          status: "error",
-          message: "Timeout en la autenticación con TheFactoryHKA",
-        },
-      };
-    }
-
-    if (
-      error.message.includes("SERVIDOR_CAIDO") ||
-      error.message.includes("SERVIDOR_NO_ENCONTRADO") ||
-      error.message.includes("SERVIDOR_RESETEO")
-    ) {
-      console.error("🚨 SERVIDOR DE THEFACTORY CAÍDO O INACCESIBLE");
-      await enviarFacturaASoporte(body, {
-        tipo: "Servidor de TheFactoryHKA caído o inaccesible",
-        mensaje: error.message,
-      });
-      return {
-        status: httpStatus.SERVICE_UNAVAILABLE,
-        data: {
-          status: "error",
-          message: "El servidor de TheFactoryHKA está caído o inaccesible",
-          details: error.message,
-          sugerencia:
-            "Verifica el estado del servidor o contacta con soporte",
-        },
-      };
-    }
-
+    // Error genérico (no esperado)
     await enviarFacturaASoporte(body, {
       tipo: "Error interno del servidor",
       mensaje: error.message || "Error desconocido al procesar la factura electrónica",
     });
+
     return {
       status: httpStatus.INTERNAL_SERVER_ERROR,
       data: {
@@ -3433,8 +3415,12 @@ export async function listarSeriesTheFactoryLogic(body, options = {}) {
       },
     };
   } catch (error) {
-    console.error("❌ Error al listar series The Factory:", error?.message ?? error);
-    const msg = error?.message ?? String(error);
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+    
+    console.error("❌ Error al listar series The Factory:", normalizedError.message);
+    
+    const msg = normalizedError.message;
     if (msg.includes("Usuario y/o contraseña incorrectos")) {
       return {
         status: httpStatus.BAD_REQUEST,
@@ -3443,6 +3429,7 @@ export async function listarSeriesTheFactoryLogic(body, options = {}) {
           message:
             "The Factory rechazó usuario o clave para este ambiente (demo/producción). Compruebe en Gestión de empresas que la pare usuario + password demo (o producción) coincida con el portal de The Factory correspondiente.",
           details: msg.slice(0, 500),
+          errorType: normalizedError.type,
         },
       };
     }
@@ -3786,22 +3773,29 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
 
     return { ok: true, message: data.mensaje, details: data, enrichedSerie };
   } catch (error) {
-    const status = error?.response?.status;
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+    
+    const status = normalizedError.httpStatus;
     const reqUrl = error?.config?.url || urls?.crearSeriesUrl || null;
+    
     console.error("syncTheFactoryCrearSeriesFromComprobante:", {
-      message: error?.message,
+      message: normalizedError.message,
       status,
       requestUrl: reqUrl,
-      responseData: error?.response?.data,
+      errorType: normalizedError.type,
     });
+    
     const msg =
       status === 404
         ? `The Factory respondió 404 en ${reqUrl}. Revise la base URL en .env; las rutas de series deben ser /api/Series/CrearSerie (Swagger: …/swagger/index.html), no el path antiguo /api/CrearSeries del wiki.`
-        : error?.response?.data?.mensaje || error?.message || String(error);
+        : normalizedError.message;
+    
     return {
       ok: false,
       message: msg,
-      details: error?.response?.data ?? null,
+      details: normalizedError.rawResponseData ?? null,
+      errorType: normalizedError.type,
     };
   }
 }
@@ -3856,12 +3850,16 @@ export async function syncTheFactoryActualizarSeriesFromComprobante(doc, userId)
 
     return { ok: true, message: data.mensaje, details: data };
   } catch (error) {
-    console.error("syncTheFactoryActualizarSeriesFromComprobante:", error);
-    const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+    
+    console.error("syncTheFactoryActualizarSeriesFromComprobante:", normalizedError.message);
+    
     return {
       ok: false,
-      message: msg,
-      details: error?.response?.data ?? null,
+      message: normalizedError.message,
+      details: normalizedError.rawResponseData ?? null,
+      errorType: normalizedError.type,
     };
   }
 }
@@ -3943,20 +3941,25 @@ export async function syncTheFactoryBorrarSeriesFromComprobante(doc, userId) {
 
     return { ok: true, message: data.mensaje, details: data };
   } catch (error) {
-    console.error("syncTheFactoryBorrarSeriesFromComprobante:", error);
-    const msg = error?.response?.data?.mensaje || error?.message || String(error);
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+    
+    console.error("syncTheFactoryBorrarSeriesFromComprobante:", normalizedError.message);
+    
+    const msg = normalizedError.message;
     if (/no existe|no encontr|no tiene series/i.test(String(msg))) {
       return {
         ok: true,
         skipped: true,
         message: msg,
-        details: error?.response?.data ?? null,
+        details: normalizedError.rawResponseData ?? null,
       };
     }
     return {
       ok: false,
       message: msg,
-      details: error?.response?.data ?? null,
+      details: normalizedError.rawResponseData ?? null,
+      errorType: normalizedError.type,
     };
   }
 }
@@ -4161,21 +4164,21 @@ export async function consultarRncLogic(body, options = {}) {
       },
     };
   } catch (error) {
-    const responseStatus = Number(error?.response?.status);
-    const source = error?.response?.data;
-    const message =
-      typeof source?.mensaje === "string"
-        ? source.mensaje
-        : error instanceof Error
-          ? error.message
-          : "No se pudo consultar el RNC en TheFactory.";
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+    
+    const responseStatus = normalizedError.httpStatus || httpStatus.BAD_GATEWAY;
+    const message = normalizedError.message || "No se pudo consultar el RNC en TheFactory.";
+    
     console.error("[comprobantes] ConsultaRNC:", message);
+    
     return {
       status: Number.isInteger(responseStatus) && responseStatus >= 400 ? responseStatus : httpStatus.BAD_GATEWAY,
       data: {
         ok: false,
         message: "No se pudo consultar el RNC en TheFactory.",
         detalle: String(message).slice(0, 500),
+        errorType: normalizedError.type,
       },
     };
   }
@@ -4575,27 +4578,38 @@ export async function anularComprobantesLogic(body, options = {}) {
   } catch (error) {
     console.error("❌ Error al anular comprobantes:", error);
 
-    // Manejo de errores de axios
+    // Normalizar el error
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+
+    // Manejo de errores de axios con respuesta HTTP
     if (error.response) {
       return {
         status: httpStatus.INTERNAL_SERVER_ERROR,
         data: {
           status: "error",
-          message: "Error en la respuesta de TheFactoryHKA",
-          details: {
-            status: error.response.status,
-            data: error.response.data,
-          },
+          message: normalizedError.message,
+          errorType: normalizedError.type,
+          details: normalizedError.rawResponseData || {},
+          httpStatus: normalizedError.httpStatus,
+          validationErrors: normalizedError.validationErrors,
         },
       };
     }
 
-    if (error.code === "ECONNABORTED") {
+    // Errores de red (timeout, etc.)
+    if (normalizedError.networkError) {
+      let statusCode = httpStatus.SERVICE_UNAVAILABLE;
+      if (normalizedError.type === 'THE_FACTORY_TIMEOUT') {
+        statusCode = httpStatus.REQUEST_TIMEOUT;
+      }
+
       return {
-        status: httpStatus.REQUEST_TIMEOUT,
+        status: statusCode,
         data: {
           status: "error",
-          message: "Timeout al conectar con TheFactoryHKA",
+          message: normalizedError.message,
+          errorType: normalizedError.type,
         },
       };
     }
@@ -4605,7 +4619,7 @@ export async function anularComprobantesLogic(body, options = {}) {
       status: httpStatus.INTERNAL_SERVER_ERROR,
       data: {
         status: "error",
-        message: "Error interno al procesar la anulación",
+        message: "Error al anular comprobantes",
         details: error.message,
       },
     };
@@ -4750,26 +4764,35 @@ export async function descargarArchivoLogic(body, options = {}) {
   } catch (error) {
     console.error("❌ Error al descargar archivo:", error);
 
+    // Normalizar el error
+    const normalizedError = normalizeTheFactoryError(error);
+    logTheFactoryError(error, normalizedError);
+
     if (error.response) {
       return {
         status: httpStatus.INTERNAL_SERVER_ERROR,
         data: {
           status: "error",
-          message: "Error en la respuesta de TheFactoryHKA",
-          details: {
-            status: error.response.status,
-            data: error.response.data,
-          },
+          message: normalizedError.message,
+          errorType: normalizedError.type,
+          details: normalizedError.rawResponseData || {},
+          httpStatus: normalizedError.httpStatus,
         },
       };
     }
 
-    if (error.code === "ECONNABORTED") {
+    if (normalizedError.networkError) {
+      let statusCode = httpStatus.SERVICE_UNAVAILABLE;
+      if (normalizedError.type === 'THE_FACTORY_TIMEOUT') {
+        statusCode = httpStatus.REQUEST_TIMEOUT;
+      }
+
       return {
-        status: httpStatus.REQUEST_TIMEOUT,
+        status: statusCode,
         data: {
           status: "error",
-          message: "Timeout al conectar con TheFactoryHKA",
+          message: normalizedError.message,
+          errorType: normalizedError.type,
         },
       };
     }

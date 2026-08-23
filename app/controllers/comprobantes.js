@@ -2920,7 +2920,7 @@ ${
  * @param {string} params.rnc - RNC del emisor
  * @param {string} params.tipoComprobante - Tipo de comprobante (31, 32, etc.)
  * @param {boolean} params.exitoso - Si el envío fue exitoso
- * @param {Object} params.respuesta - Respuesta completa de TheFactory
+ * @param {Object} params.respuesta - Respuesta completa de TheFactory (puede ser normalizedError o rawResponseData)
  * @param {string} [params.userId] - ID del usuario que realizó el envío
  * @param {string} [params.ambiente] - Ambiente (demo/production)
  * @param {string} [params.ip] - IP del cliente
@@ -2955,9 +2955,28 @@ async function guardarRegistroEnvio({
     };
 
     if (respuesta) {
-      registro.codigoRespuesta = respuesta.codigo ?? null;
-      registro.mensajeRespuesta = String(respuesta.mensaje || '').slice(0, 2000);
-      registro.respuestaCompleta = respuesta;
+      // Si respuesta es un error normalizado (tiene type, httpStatus, etc.)
+      // guardamos la estructura completa
+      if (respuesta.rawResponseData) {
+        // Es un normalizedError, usar rawResponseData
+        registro.respuestaCompleta = respuesta.rawResponseData;
+        registro.codigoRespuesta = respuesta.httpStatus || respuesta.codigo || null;
+        registro.mensajeRespuesta = String(respuesta.message || respuesta.mensaje || '').slice(0, 2000);
+        
+        // Guardar también el error normalizado para referencia
+        registro.errorNormalizado = {
+          type: respuesta.type,
+          httpStatus: respuesta.httpStatus,
+          message: respuesta.message,
+          validationErrors: respuesta.validationErrors,
+          codigo: respuesta.codigo,
+        };
+      } else {
+        // Es una respuesta directa (rawResponseData o respuesta simple)
+        registro.codigoRespuesta = respuesta.codigo ?? respuesta.status ?? null;
+        registro.mensajeRespuesta = String(respuesta.mensaje || respuesta.message || '').slice(0, 2000);
+        registro.respuestaCompleta = respuesta;
+      }
       
       if (respuesta.codigoSeguridad) {
         registro.codigoSeguridad = String(respuesta.codigoSeguridad).trim();
@@ -2973,25 +2992,29 @@ async function guardarRegistroEnvio({
     }
 
     if (!exitoso && respuesta) {
-      if (respuesta.codigo === 401 || respuesta.codigo === 403) {
+      const codigo = respuesta.codigo ?? respuesta.httpStatus ?? respuesta.status;
+      
+      if (codigo === 401 || codigo === 403) {
         registro.tipoError = 'autenticacion';
-      } else if (respuesta.codigo === 108 || respuesta.codigo === 109 || respuesta.codigo === 110 || respuesta.codigo === 111) {
+      } else if (codigo === 108 || codigo === 109 || codigo === 110 || codigo === 111) {
         registro.tipoError = 'negocio';
-      } else if (respuesta.codigo >= 500) {
+      } else if (codigo >= 500) {
         registro.tipoError = 'tecnico';
-      } else if (respuesta.codigo >= 400 && respuesta.codigo < 500) {
+      } else if (codigo >= 400 && codigo < 500) {
         registro.tipoError = 'validacion';
       }
 
       registro.detallesError = {
-        codigo: respuesta.codigo,
-        mensaje: respuesta.mensaje,
+        codigo: codigo,
+        mensaje: respuesta.mensaje || respuesta.message,
         observaciones: respuesta.observaciones || [],
+        validationErrors: respuesta.validationErrors || [],
+        type: respuesta.type,
       };
     }
 
     await ComprobanteEnvio.create(registro);
-    console.log(`📝 Registro de envío guardado: NCF=${ncf} exitoso=${exitoso}`);
+    console.log(`📝 Registro de envío guardado: NCF=${ncf} exitoso=${exitoso} tipo=${registro.tipoError || 'N/A'}`);
   } catch (error) {
     console.error('❌ Error al guardar registro de envío en MongoDB:', error);
   }
@@ -3188,10 +3211,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       rnc,
       tipoComprobante: body.factura?.tipo,
       exitoso: false,
-      respuesta: normalizedError.rawResponseData || {
-        mensaje: normalizedError.message,
-        codigo: normalizedError.codigo,
-      },
+      respuesta: normalizedError, // Pasar el objeto completo normalizedError
       userId: options.userId,
       ambiente: urls?.ambienteKey || 'production',
       montoTotal: body.factura?.total,

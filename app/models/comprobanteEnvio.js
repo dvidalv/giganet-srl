@@ -76,6 +76,12 @@ const comprobanteEnvioSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     required: false,
   },
+  
+  // Error normalizado (estructura procesada de theFactoryErrorHandler)
+  errorNormalizado: {
+    type: mongoose.Schema.Types.Mixed,
+    required: false,
+  },
 
   // Datos adicionales para contexto
   codigoSeguridad: {

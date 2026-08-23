@@ -313,6 +313,37 @@ Encontré dos datos que debes corregir antes de volver a enviar el comprobante:
 8. **No se expone información sensible:** Sí, logs en producción limitados
 9. **Traducciones de campos técnicos:** Sí, función `translateFieldPath()`
 10. **Logs estructurados:** Sí, función `logTheFactoryError()`
+11. **Campo errorNormalizado en MongoDB:** Sí, guardado en comprobanteEnvio
+12. **Priorización de errorNormalizado:** Sí, se usa antes que respuestaCompleta
+13. **Prompt sin lenguaje técnico:** Sí, reglas explícitas para evitar "status code", "API", etc.
+14. **Detección de errores genéricos:** Sí, regla 9 del prompt detecta "Request failed with status code"
+
+### 🔄 Mejoras Recientes (2024-08-23):
+
+1. **Modificación de `guardarRegistroEnvio()`:**
+   - Ahora detecta si `respuesta` es un `normalizedError` completo
+   - Guarda `rawResponseData` en `respuestaCompleta`
+   - Guarda estructura normalizada en nuevo campo `errorNormalizado`
+   - Maneja ambos formatos (normalizedError y respuesta simple)
+
+2. **Schema de `comprobanteEnvio`:**
+   - Agregado campo `errorNormalizado` de tipo Mixed
+   - Permite guardar la estructura completa procesada por `theFactoryErrorHandler`
+
+3. **Función `explicarErrorConAI()`:**
+   - Prioridad 1: Usa `errorNormalizado` si existe (más rápido)
+   - Prioridad 2: Normaliza `respuestaCompleta` si `errorNormalizado` no existe (retrocompatibilidad)
+   - Logs de debugging para rastrear flujo de normalización
+
+4. **Mejoras al Prompt de IA:**
+   - Regla 5 ampliada: Instrucciones específicas para errores HTTP genéricos
+   - Regla 9 nueva: Detección explícita de "Request failed with status code X"
+   - Ejemplos negativos ampliados: "solicitud", "cliente", "servidor", etc.
+   - Ejemplo positivo para errores sin información específica
+
+5. **Llamada a `guardarRegistroEnvio()` desde `enviarFacturaElectronicaLogic()`:**
+   - Ahora pasa `normalizedError` completo en lugar de solo `rawResponseData`
+   - Permite que `guardarRegistroEnvio()` detecte y procese correctamente
 
 ## Testing
 

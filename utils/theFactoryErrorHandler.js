@@ -400,6 +400,25 @@ export function normalizeErrorPayloadFromText(text) {
 }
 
 /**
+ * Género gramatical del nombre del campo (para el/la, corrígelo/corrígela).
+ * @param {string} campoLabel
+ * @returns {"m"|"f"}
+ */
+function generoCampo(campoLabel) {
+  const c = String(campoLabel || "").toLowerCase();
+  // Femeninos habituales en e-CF
+  if (
+    /\b(direcci[oó]n|raz[oó]n social|fecha|descripci[oó]n|cantidad|forma de pago|secuencia)\b/.test(
+      c,
+    )
+  ) {
+    return "f";
+  }
+  // Masculinos: correo, rnc, teléfono, monto, ncf, etc.
+  return "m";
+}
+
+/**
  * Explicación corta y determinística a partir de errores de validación.
  * @param {object} normalizedError
  * @returns {string|null}
@@ -413,12 +432,17 @@ export function explicarValidacionCorta(normalizedError) {
     const campo = translateFieldPath(err.field);
     const msg = String(err.message || "").trim() || "dato inválido";
     const lower = msg.toLowerCase();
+    const fem = generoCampo(campo) === "f";
+    const art = fem ? "La" : "El";
+    const corrige = fem ? "Corrígela" : "Corrígelo";
+    const acorta = fem ? "Acórtala" : "Acórtalo";
+    const larga = fem ? "larga" : "largo";
 
     if (lower.includes("excede la longitud")) {
-      return `La *${campo}* es demasiado larga. Acórtala y vuelve a enviar el comprobante.`;
+      return `${art} *${campo}* es demasiado ${larga}. ${acorta} y vuelve a enviar el comprobante.`;
     }
     if (lower.includes("formato")) {
-      return `La *${campo}* tiene un formato incorrecto. Corrígela y vuelve a enviar.`;
+      return `${art} *${campo}* tiene un formato incorrecto. ${corrige} y vuelve a enviar.`;
     }
     return `Problema en *${campo}*: ${msg}. Corrige ese dato y vuelve a enviar.`;
   }

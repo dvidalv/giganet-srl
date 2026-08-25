@@ -313,9 +313,129 @@ export function buildErrorTextForAI(normalizedError) {
 }
 
 /**
+ * Intenta extraer un objeto JSON de un texto (mensaje WhatsApp pegado).
+ * @param {string} text
+ * @returns {object|null}
+ */
+export function tryParseJsonObject(text) {
+  const raw = String(text ?? "").trim();
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    // seguir con extracción parcial
+  }
+
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      const parsed = JSON.parse(raw.slice(start, end + 1));
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      // ignore
+    }
+  }
+
+  return null;
+}
+
+/**
+ * ¿Parece un payload de error de The Factory / ASP.NET validation?
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function looksLikeTheFactoryErrorPayload(text) {
+  const raw = String(text ?? "");
+  if (tryParseJsonObject(raw)?.errors) return true;
+  return (
+    /DocumentoElectronico\./i.test(raw) ||
+    /"errors"\s*:\s*\{/i.test(raw) ||
+    /validation errors occurred/i.test(raw) ||
+    /\b0107\|/i.test(raw) ||
+    /excede la longitud permitida/i.test(raw)
+  );
+}
+
+/**
+ * Normaliza un texto/JSON pegado por el usuario como error de The Factory.
+ * @param {string} text
+ * @returns {object|null}
+ */
+export function normalizeErrorPayloadFromText(text) {
+  const parsed = tryParseJsonObject(text);
+  if (parsed) {
+    return normalizeTheFactoryError({
+      response: {
+        status: parsed.status || parsed.codigo || 400,
+        data: parsed,
+      },
+      message: parsed.mensaje || parsed.message || parsed.title || "Error",
+    });
+  }
+
+  // Texto no-JSON pero con pista clara del error 0107 / Dirección
+  const raw = String(text ?? "");
+  if (/Direccion|dirección/i.test(raw) && /excede la longitud/i.test(raw)) {
+    return normalizeTheFactoryError({
+      response: {
+        status: 400,
+        data: {
+          title: "One or more validation errors occurred.",
+          status: 400,
+          errors: {
+            "DocumentoElectronico.Encabezado.Comprador.Direccion": [
+              "0107|El campo excede la longitud permitida",
+            ],
+          },
+        },
+      },
+      message: "validation error",
+    });
+  }
+
+  return null;
+}
+
+/**
+ * Explicación corta y determinística a partir de errores de validación.
+ * @param {object} normalizedError
+ * @returns {string|null}
+ */
+export function explicarValidacionCorta(normalizedError) {
+  const list = normalizedError?.validationErrors;
+  if (!Array.isArray(list) || list.length === 0) return null;
+
+  if (list.length === 1) {
+    const err = list[0];
+    const campo = translateFieldPath(err.field);
+    const msg = String(err.message || "").trim() || "dato inválido";
+    const lower = msg.toLowerCase();
+
+    if (lower.includes("excede la longitud")) {
+      return `La *${campo}* es demasiado larga. Acórtala y vuelve a enviar el comprobante.`;
+    }
+    if (lower.includes("formato")) {
+      return `La *${campo}* tiene un formato incorrecto. Corrígela y vuelve a enviar.`;
+    }
+    return `Problema en *${campo}*: ${msg}. Corrige ese dato y vuelve a enviar.`;
+  }
+
+  return list
+    .map((err, i) => {
+      const campo = translateFieldPath(err.field);
+      const msg = String(err.message || "dato inválido").trim();
+      return `${i + 1}. *${campo}*: ${msg}`;
+    })
+    .join("\n");
+}
+
+/**
  * Logs de desarrollo para debugging.
  * Solo se muestran en desarrollo o cuando NODE_ENV no es production.
- * 
+ *
  * @param {Error} error - Error original
  * @param {Object} normalized - Error normalizado
  */

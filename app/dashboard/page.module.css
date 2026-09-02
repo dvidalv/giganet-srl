@@ -1,6 +1,6 @@
 .dashboard {
     max-width: 1400px;
-    margin: calc(var(--headerHeight)) auto 2rem;
+    margin: calc(var(--fixedTopOffset)) auto 2rem;
 
     /* @media (max-width: 768px) {
         margin: 0 auto;

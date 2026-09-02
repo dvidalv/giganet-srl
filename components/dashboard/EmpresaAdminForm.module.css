@@ -1,6 +1,6 @@
 .surveyFixedBar {
   position: fixed;
-  top: calc(var(--headerHeight, 120px) + 0.75rem);
+  top: calc(var(--fixedTopOffset, 156px) + 0.75rem);
   right: 1rem;
   z-index: 100;
   display: flex;

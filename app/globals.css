@@ -5,8 +5,10 @@
   --headerHeightMobile: 80px;
   --headerHeightTablet: 100px;
   --headerHeightDesktop: 120px;
-  /* Hero: same as fixed header for this breakpoint (min-height + optional top margin) */
-  --hero-header-offset: var(--headerHeightDesktop);
+  --announcementHeight: 36px;
+  --fixedTopOffset: calc(var(--headerHeightDesktop) + var(--announcementHeight));
+  /* Hero: fixed header + cintillo for this breakpoint (min-height + optional top margin) */
+  --hero-header-offset: var(--fixedTopOffset);
   --hero-top-margin: 0px;
   /* Reserva aprox. en layout del dashboard (el footer real usa solo la altura de su contenido) */
   --footerHeight: 470px;
@@ -32,31 +34,41 @@
 
 @media (max-width: 1024px) {
   :root {
-    --hero-header-offset: var(--headerHeightTablet);
-    --hero-top-margin: var(--headerHeightTablet);
+    --fixedTopOffset: calc(var(--headerHeightTablet) + var(--announcementHeight));
+    --hero-header-offset: var(--fixedTopOffset);
+    --hero-top-margin: var(--fixedTopOffset);
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --fixedTopOffset: calc(var(--headerHeightMobile) + var(--announcementHeight));
+    --hero-header-offset: var(--fixedTopOffset);
+    --hero-top-margin: var(--fixedTopOffset);
   }
 }
 
 @media (max-width: 768px) {
   :root {
-    --hero-header-offset: var(--headerHeightMobile);
-    --hero-top-margin: var(--headerHeightMobile);
+    --fixedTopOffset: calc(var(--headerHeightMobile) + var(--announcementHeight));
+    --hero-header-offset: var(--fixedTopOffset);
+    --hero-top-margin: var(--fixedTopOffset);
   }
 }
 
 html {
-  scroll-padding-top: var(--headerHeightDesktop);
+  scroll-padding-top: var(--fixedTopOffset);
 }
 
 @media (max-width: 1024px) {
   html {
-    scroll-padding-top: var(--headerHeightTablet);
+    scroll-padding-top: var(--fixedTopOffset);
   }
 }
 
 @media (max-width: 768px) {
   html {
-    scroll-padding-top: var(--headerHeightMobile);
+    scroll-padding-top: var(--fixedTopOffset);
   }
 }
 

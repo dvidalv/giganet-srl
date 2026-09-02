@@ -122,10 +122,8 @@ export default function ProductPage() {
 ### 2. ✅ Crear Robots.txt
 **COMPLETADO** - Archivo `app/robots.js` creado con reglas para proteger dashboard y API.
 
-### 3. ⚠️ Crear Imagen Open Graph
-- Ver instrucciones en `/public/CREAR-IMAGEN-OG.md`
-- Crear `/public/og-image.jpg` (1200x630px)
-- Diseño profesional con logo y slogan de Giganet
+### 3. ✅ Crear Imagen Open Graph
+**COMPLETADO** - Archivo `/public/og-image.jpg` creado y optimizado (1200x630px, 77KB)
 
 ### 4. ⚠️ Verificar Google Search Console
 1. Ir a https://search.google.com/search-console

@@ -10,25 +10,21 @@
 - ✅ JSON-LD (Schema.org)
 - ✅ Sitemap.xml (`app/sitemap.js`)
 - ✅ Robots.txt (`app/robots.js`)
+- ✅ Imagen Open Graph (`/public/og-image.jpg` - 1200x630px)
 
 ## Lo que TIENES que hacer ⚠️
 
-### 1. Crear Imagen Open Graph 📸
-**Prioridad: ALTA**
+### 1. ✅ Crear Imagen Open Graph 📸
+**COMPLETADO**
 
 ```
-📁 /public/og-image.jpg
-📐 1200 x 630 píxeles
-💾 Menos de 300KB
-🎨 Logo + Slogan de Giganet
+✅ /public/og-image.jpg
+✅ 1200 x 630 píxeles
+✅ 77KB (excelente tamaño)
+✅ Logo + Slogan profesional
 ```
 
-**Herramientas:**
-- Canva: https://www.canva.com/ (busca "Open Graph")
-- Figma: https://www.figma.com/
-- Adobe Express: https://www.adobe.com/express/
-
-Ver guía completa en: `/public/CREAR-IMAGEN-OG.md`
+La imagen ya está lista y optimizada para redes sociales.
 
 ---
 
@@ -148,16 +144,16 @@ Si tienes páginas de servicios, blog, sobre nosotros, etc., agrégalas en `app/
 
 ```
 ┌─────────────────────────────────────┐
-│  LO MÁS IMPORTANTE (HACER PRIMERO) │
+│  LO MÁS IMPORTANTE (HACER AHORA)   │
 └─────────────────────────────────────┘
 
-1. 📸 Crear og-image.jpg
+1. ✅ Crear og-image.jpg (COMPLETADO)
 2. 🔍 Configurar Google Search Console
 3. 🌐 Actualizar dominio y redes sociales
 4. ✅ Verificar con las herramientas
 
 ┌─────────────────────────────────────┐
-│  Tiempo estimado: 30-45 minutos    │
+│  Tiempo estimado: 20 minutos        │
 └─────────────────────────────────────┘
 ```
 

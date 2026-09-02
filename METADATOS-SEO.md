@@ -116,57 +116,73 @@ export default function ProductPage() {
 
 ## Tareas Pendientes
 
-### 1. Crear Imagen Open Graph
+### 1. ✅ Crear Sitemap.xml
+**COMPLETADO** - Archivo `app/sitemap.js` creado con las páginas públicas del sitio.
+
+### 2. ✅ Crear Robots.txt
+**COMPLETADO** - Archivo `app/robots.js` creado con reglas para proteger dashboard y API.
+
+### 3. ⚠️ Crear Imagen Open Graph
+- Ver instrucciones en `/public/CREAR-IMAGEN-OG.md`
 - Crear `/public/og-image.jpg` (1200x630px)
 - Diseño profesional con logo y slogan de Giganet
 
-### 2. Verificar Google Search Console
-- Ir a https://search.google.com/search-console
-- Agregar tu sitio
-- Copiar el código de verificación
-- Reemplazar `"tu-codigo-de-verificacion-aqui"` en `app/layout.js`
+### 4. ⚠️ Verificar Google Search Console
+1. Ir a https://search.google.com/search-console
+2. Hacer clic en "Agregar propiedad"
+3. Elegir "Prefijo de URL" e ingresar tu dominio
+4. Seleccionar método "Etiqueta HTML"
+5. Copiar el código que aparece (ejemplo: `google-site-verification=ABC123XYZ...`)
+6. Editar `app/layout.js` línea 29:
+   ```javascript
+   verification: {
+     google: "PEGAR-AQUI-TU-CODIGO",
+   },
+   ```
+7. Hacer deploy de los cambios
+8. Volver a Google Search Console y hacer clic en "Verificar"
 
-### 3. Actualizar URLs Reales
-En `app/layout.js`, reemplazar:
-- `https://giganet.com` con tu dominio real
-- URLs de redes sociales con tus perfiles reales
-- `@giganet` con tu handle real de Twitter/X
+### 5. ⚠️ Actualizar URLs Reales
+En `app/layout.js`, buscar y reemplazar:
 
-### 4. Crear Sitemap.xml
+**Línea 33 y 37**: Cambiar el dominio
 ```javascript
-// app/sitemap.js
-export default function sitemap() {
-  return [
-    {
-      url: 'https://giganet.com',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 1,
-    },
-    {
-      url: 'https://giganet.com/servicios',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    // Agregar más páginas
-  ];
-}
+url: "https://TU-DOMINIO-REAL.com",
 ```
 
-### 5. Crear Robots.txt
+**Línea 48**: Redes sociales (eliminar las que no uses)
 ```javascript
-// app/robots.js
-export default function robots() {
-  return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/dashboard/', '/api/'],
-    },
-    sitemap: 'https://giganet.com/sitemap.xml',
-  };
-}
+sameAs: [
+  "https://facebook.com/TU-PAGINA",
+  "https://twitter.com/TU-HANDLE",
+  "https://linkedin.com/company/TU-EMPRESA",
+],
+```
+
+**Línea 42**: Handle de Twitter
+```javascript
+creator: "@TU-HANDLE-TWITTER",
+```
+
+**Línea 69**: URL del logo
+```javascript
+logo: "https://TU-DOMINIO.com/logo.png",
+```
+
+**En `app/sitemap.js` línea 2** y **`app/robots.js` línea 12**: Cambiar dominio
+```javascript
+const baseUrl = 'https://TU-DOMINIO-REAL.com';
+```
+
+### 6. ⚠️ Agregar páginas adicionales al Sitemap (opcional)
+Si tienes más páginas públicas (servicios, blog, about, etc.), agrégalas en `app/sitemap.js`:
+```javascript
+{
+  url: `${baseUrl}/tu-nueva-pagina`,
+  lastModified: new Date(),
+  changeFrequency: 'monthly',
+  priority: 0.8,
+},
 ```
 
 ## Tipos de Schema.org Útiles

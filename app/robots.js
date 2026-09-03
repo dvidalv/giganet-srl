@@ -2,17 +2,17 @@ export default function robots() {
   return {
     rules: [
       {
-        userAgent: '*',
-        allow: '/',
+        userAgent: "*",
+        allow: "/",
         disallow: [
-          '/dashboard/',
-          '/api/',
-          '/encuesta/',
-          '/reset-password',
-          '/forgot-password',
+          "/dashboard/",
+          "/api/",
+          "/encuesta/",
+          "/reset-password",
+          "/forgot-password",
         ],
       },
     ],
-    sitemap: 'https://giganet.com/sitemap.xml',
+    sitemap: "https://www.giganet-srl.com/sitemap.xml",
   };
 }

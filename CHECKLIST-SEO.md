@@ -15,6 +15,7 @@
 ## Lo que TIENES que hacer ⚠️
 
 ### 1. ✅ Crear Imagen Open Graph 📸
+
 **COMPLETADO**
 
 ```
@@ -29,6 +30,7 @@ La imagen ya está lista y optimizada para redes sociales.
 ---
 
 ### 2. Google Search Console 🔍
+
 **Prioridad: ALTA**
 
 **Paso a paso:**
@@ -53,19 +55,22 @@ La imagen ya está lista y optimizada para redes sociales.
 ---
 
 ### 3. Actualizar URLs y Redes Sociales 🌐
+
 **Prioridad: ALTA**
 
 Edita el archivo **`app/layout.js`**:
 
 #### Dominio principal (aparece varias veces)
+
 ```javascript
 // Buscar y reemplazar TODO:
-"https://giganet.com" 
+"https://www.giganet-srl.com/";
 // Por:
-"https://TU-DOMINIO-REAL.com"
+"https://TU-DOMINIO-REAL.com";
 ```
 
 #### Redes sociales (línea 48-52)
+
 ```javascript
 sameAs: [
   "https://facebook.com/TU-PAGINA-REAL",
@@ -75,11 +80,13 @@ sameAs: [
 ```
 
 #### Handle de Twitter (línea 42)
+
 ```javascript
 creator: "@TU-HANDLE-REAL",
 ```
 
 #### Logo (línea 69)
+
 ```javascript
 logo: "https://TU-DOMINIO.com/logo.png",
 ```
@@ -89,11 +96,13 @@ logo: "https://TU-DOMINIO.com/logo.png",
 También actualiza estos archivos:
 
 **`app/sitemap.js`** (línea 2):
+
 ```javascript
-const baseUrl = 'https://TU-DOMINIO-REAL.com';
+const baseUrl = "https://TU-DOMINIO-REAL.com";
 ```
 
 **`app/robots.js`** (línea 12):
+
 ```javascript
 sitemap: 'https://TU-DOMINIO-REAL.com/sitemap.xml',
 ```
@@ -101,23 +110,28 @@ sitemap: 'https://TU-DOMINIO-REAL.com/sitemap.xml',
 ---
 
 ### 4. Verificar que funciona ✅
+
 **Prioridad: MEDIA**
 
 Después de hacer los cambios, verifica con estas herramientas:
 
 **Open Graph (Facebook, WhatsApp, LinkedIn):**
+
 - https://developers.facebook.com/tools/debug/
 - Ingresa tu URL y haz clic en "Depurar"
 
 **Twitter Card:**
+
 - https://cards-dev.twitter.com/validator
 - Ingresa tu URL y verifica la vista previa
 
 **Structured Data (Google):**
+
 - https://search.google.com/test/rich-results
 - Ingresa tu URL y verifica los resultados enriquecidos
 
 **Schema.org:**
+
 - https://validator.schema.org/
 - Ingresa tu URL y verifica los datos estructurados
 
@@ -126,16 +140,19 @@ Después de hacer los cambios, verifica con estas herramientas:
 ## Opcional pero recomendado 💡
 
 ### Google Analytics
+
 1. Crear cuenta en https://analytics.google.com/
 2. Obtener ID de medición (ej: `G-XXXXXXXXXX`)
 3. Agregar script en `app/layout.js`
 
 ### Google Tag Manager
+
 1. Crear cuenta en https://tagmanager.google.com/
 2. Obtener ID del contenedor (ej: `GTM-XXXXXXX`)
 3. Agregar scripts en `app/layout.js`
 
 ### Agregar más páginas al Sitemap
+
 Si tienes páginas de servicios, blog, sobre nosotros, etc., agrégalas en `app/sitemap.js`
 
 ---
@@ -162,6 +179,7 @@ Si tienes páginas de servicios, blog, sobre nosotros, etc., agrégalas en `app/
 ## ¿Necesitas ayuda?
 
 Revisa el archivo `METADATOS-SEO.md` para ver:
+
 - Ejemplos detallados
 - Más tipos de Schema.org
 - Cómo personalizar metadatos por página

@@ -48,7 +48,7 @@ export const metadata = {
   openGraph: {
     type: "website",
     locale: "es_ES",
-    url: "https://giganet.com",
+    url: "https://www.giganet-srl.com/",
     siteName: "Giganet",
     title: "Giganet - Soluciones Tecnológicas",
     description:
@@ -70,7 +70,7 @@ export const metadata = {
     images: ["/og-image.jpg"],
     creator: "@giganet",
   },
-  metadataBase: new URL("https://giganet.com"),
+  metadataBase: new URL("https://www.giganet-srl.com/"),
   alternates: {
     canonical: "/",
   },
@@ -83,15 +83,15 @@ export default function RootLayout({ children }) {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Giganet",
-    url: "https://giganet.com",
-    logo: "https://giganet.com/logo.png",
+    name: "Giganet SRL",
+    url: "https://www.giganet-srl.com/",
+    logo: "https://www.giganet-srl.com/logo.png",
     description:
       "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
     sameAs: [
-      "https://facebook.com/giganet",
-      "https://twitter.com/giganet",
-      "https://linkedin.com/company/giganet",
+      "https://facebook.com/giganet-srl",
+      "https://twitter.com/giganet-srl",
+      "https://linkedin.com/company/giganet-srl",
     ],
     contactPoint: {
       "@type": "ContactPoint",

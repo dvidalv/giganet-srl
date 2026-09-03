@@ -33,8 +33,8 @@ function Footer() {
 						Software personalizado y servicios de desarrollo para empresas y particulares.
 					</p>
 					<div className="footer_socials">
-						<a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><IoLogoFacebook /></a>
-						<a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><IoLogoInstagram /></a>
+						<a href="https://www.facebook.com/Giganet.do/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><IoLogoFacebook /></a>
+						<a href="https://www.instagram.com/giganet.do/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><IoLogoInstagram /></a>
 						<a href="https://wa.me/6825602093" target="_blank" rel="noopener noreferrer" aria-label="Whatsapp"><IoLogoWhatsapp /></a>
 					</div>
 				</div>

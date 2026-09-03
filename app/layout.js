@@ -89,9 +89,8 @@ export default function RootLayout({ children }) {
     description:
       "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
     sameAs: [
-      "https://facebook.com/giganet-srl",
-      "https://twitter.com/giganet-srl",
-      "https://linkedin.com/company/giganet-srl",
+      "https://www.facebook.com/Giganet.do/",
+      "https://www.instagram.com/giganet.do/",
     ],
     contactPoint: {
       "@type": "ContactPoint",

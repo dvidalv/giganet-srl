@@ -3045,11 +3045,17 @@ async function guardarRegistroEnvio({
  * @returns {Promise<{ status: number, data: Object }>}
  */
 export async function enviarFacturaElectronicaLogic(body, options = {}) {
+  // Fuera del try: el catch usa rnc/urls y si viven dentro del try
+  // JS lanza ReferenceError (rnc is not defined) y el cliente solo ve
+  // "Error interno al enviar factura" en vez del 400 de The Factory.
+  let rnc = null;
+  let urls = null;
+
   try {
     console.log("Datos recibidos:", JSON.stringify(body, null, 2));
 
     // RNC del emisor: siempre se toma de emisor.rnc
-    const rnc =
+    rnc =
       body.emisor?.rnc != null && String(body.emisor.rnc).trim() !== ""
         ? String(body.emisor.rnc).trim()
         : null;
@@ -3064,7 +3070,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       };
     }
 
-    const urls = await resolveTheFactoryUrlsForUser(options.userId);
+    urls = await resolveTheFactoryUrlsForUser(options.userId);
     const token = await obtenerTokenTheFactory(rnc, {
       ...options,
       theFactoryUrls: urls,
@@ -3223,18 +3229,24 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     const normalizedError = normalizeTheFactoryError(error);
     logTheFactoryError(error, normalizedError);
 
-    // Guardar el registro del error con información completa
-    await guardarRegistroEnvio({
-      ncf: body.factura?.ncf,
-      rnc,
-      tipoComprobante: body.factura?.tipo,
-      exitoso: false,
-      respuesta: normalizedError, // Pasar el objeto completo normalizedError
-      userId: options.userId,
-      ambiente: urls?.ambienteKey || 'production',
-      montoTotal: body.factura?.total,
-      fechaEmision: body.factura?.fecha,
-    });
+    try {
+      await guardarRegistroEnvio({
+        ncf: body.factura?.ncf,
+        rnc,
+        tipoComprobante: body.factura?.tipo,
+        exitoso: false,
+        respuesta: normalizedError,
+        userId: options.userId,
+        ambiente: urls?.ambienteKey || "production",
+        montoTotal: body.factura?.total,
+        fechaEmision: body.factura?.fecha,
+      });
+    } catch (auditError) {
+      console.error(
+        "No se pudo guardar el registro de envío fallido:",
+        auditError?.message || auditError,
+      );
+    }
 
     // Casos especiales: credenciales
     if (

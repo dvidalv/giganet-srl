@@ -522,17 +522,35 @@ const normalizarEstadoFactura = (estadoOriginal, datosCompletos) => {
    * Códigos TheFactory/DGII de rechazo real (no observaciones de aceptación condicional).
    * ❌ No usar `cod >= 200`: obs. DGII como 11105 (MontoTotal) son 5 dígitos y marcan
    * «Aceptado Condicional», no rechazo — eso desincronizaba Estatus=RECHAZADA vs DGII.
+   * ❌ No incluir 7777: "Secuencia reutilizable" es aviso de The Factory en código 99
+   * (SIN RESPUESTA DGII), no un rechazo de la DGII.
    */
-  const CODIGOS_OBS_RECHAZO = new Set([200, 201, 202, 203, 613, 634, 7777]);
+  const CODIGOS_OBS_RECHAZO = new Set([200, 201, 202, 203, 613, 634]);
   const tieneObservacionRechazo = observaciones.some((o) => {
     const cod = Number(o?.codigo);
     const msg = String(o?.mensaje ?? "").toUpperCase();
     return (
       (Number.isFinite(cod) && CODIGOS_OBS_RECHAZO.has(Math.trunc(cod))) ||
-      msg.includes("RECHAZ") ||
-      msg.includes("SECUENCIA REUTILIZABLE")
+      msg.includes("RECHAZ")
     );
   });
+  const esSinRespuestaDgii =
+    Number(datosCompletos?.codigo) === 99 ||
+    estado.includes("SIN RESPUESTA") ||
+    mensajeUpper.includes("SIN RESPUESTA");
+
+  // PRIORIDAD 0: The Factory código 99 / "SIN RESPUESTA DGII".
+  // El documento se envió; la DGII aún no contestó. NO es rechazo.
+  // Debe ir antes de las observaciones (7777 "secuencia reutilizable" llega
+  // pegada a este estado y no significa que DGII lo haya rechazado).
+  if (esSinRespuestaDgii) {
+    console.log("⏳ SIN RESPUESTA DGII (código 99) → EN_PROCESO");
+    console.log(
+      `🔄 ==================== FIN NORMALIZACIÓN: EN_PROCESO ====================\n`
+    );
+    return "EN_PROCESO";
+  }
+
   const esAceptadoCondicional =
     estado.includes("CONDICIONAL") ||
     mensajeUpper.includes("CONDICIONAL") ||

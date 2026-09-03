@@ -36,7 +36,7 @@ La imagen ya está lista y optimizada para redes sociales.
 1. Ve a: https://search.google.com/search-console
 2. Haz clic en **"Agregar propiedad"**
 3. Selecciona **"Prefijo de URL"**
-4. Ingresa tu dominio (ej: `https://giganet.com`)
+4. Ingresa tu dominio (ej: `https://www.giganet-srl.com/`)
 5. Elige el método **"Etiqueta HTML"**
 6. Copia el código (se ve así: `google-site-verification=AbC123XyZ...`)
 7. Abre el archivo `app/layout.js`

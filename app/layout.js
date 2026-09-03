@@ -19,10 +19,18 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: {
     default: "Giganet - Soluciones Tecnológicas",
-    template: "%s | Giganet"
+    template: "%s | Giganet",
   },
-  description: "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
-  keywords: ["desarrollo de software", "soluciones tecnológicas", "software personalizado", "desarrollo web", "aplicaciones móviles", "consultoría tecnológica"],
+  description:
+    "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
+  keywords: [
+    "desarrollo de software",
+    "soluciones tecnológicas",
+    "software personalizado",
+    "desarrollo web",
+    "aplicaciones móviles",
+    "consultoría tecnológica",
+  ],
   authors: [{ name: "Giganet" }],
   creator: "Giganet",
   publisher: "Giganet",
@@ -43,7 +51,8 @@ export const metadata = {
     url: "https://giganet.com",
     siteName: "Giganet",
     title: "Giganet - Soluciones Tecnológicas",
-    description: "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
+    description:
+      "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
     images: [
       {
         url: "/og-image.jpg",
@@ -56,7 +65,8 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Giganet - Soluciones Tecnológicas",
-    description: "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
+    description:
+      "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
     images: ["/og-image.jpg"],
     creator: "@giganet",
   },
@@ -65,7 +75,7 @@ export const metadata = {
     canonical: "/",
   },
   verification: {
-    google: "tu-codigo-de-verificacion-aqui",
+    google: "X3QKSRlCJs02tA8jT-gMzoCKs9HY0kPkW4eFpVxbfho",
   },
 };
 
@@ -76,7 +86,8 @@ export default function RootLayout({ children }) {
     name: "Giganet",
     url: "https://giganet.com",
     logo: "https://giganet.com/logo.png",
-    description: "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
+    description:
+      "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
     sameAs: [
       "https://facebook.com/giganet",
       "https://twitter.com/giganet",

@@ -61,7 +61,7 @@ export const metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Giganet - Soluciones Tecnológicas",
+        alt: "Desarrollador trabajando — Giganet Soluciones Tecnológicas",
       },
     ],
   },
@@ -71,7 +71,6 @@ export const metadata = {
     description:
       "Desarrollamos soluciones tecnológicas a tu medida. Software personalizado y servicios de desarrollo para empresas y particulares.",
     images: ["/og-image.jpg"],
-    creator: "@giganet",
   },
   metadataBase: new URL("https://www.giganet-srl.com/"),
   alternates: {

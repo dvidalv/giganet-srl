@@ -143,7 +143,8 @@ Después de hacer los cambios, verifica con estas herramientas:
 
 1. Crear cuenta en https://analytics.google.com/
 2. Obtener ID de medición (ej: `G-XXXXXXXXXX`)
-3. Agregar script en `app/layout.js`
+3. Definir `NEXT_PUBLIC_GA_MEASUREMENT_ID` en `.env.local`, `.env.production` y en Vercel
+4. Ya está integrado en `app/layout.js` con `@next/third-parties` (solo carga si hay ID)
 
 ### Google Tag Manager
 

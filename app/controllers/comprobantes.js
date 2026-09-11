@@ -45,6 +45,34 @@ const TIPOS_COMPROBANTE = ["31", "32", "33", "34", "41", "43", "44", "45"];
 const RNC_MIN = 9;
 const RNC_MAX = 11;
 
+/** Umbral DGII para exigir RNC del comprador en e-CF tipo 32 y en las 33/34 que lo modifican. */
+const UMBRAL_RNC_COMPRADOR_DOP = 250000;
+
+/** Tipo de e-CF contenido en un e-NCF: "E320000000194" → "32". */
+const tipoEcfDesdeNcf = (ncf) => {
+  const m = String(ncf ?? "")
+    .trim()
+    .toUpperCase()
+    .match(/^E(\d{2})\d{8,10}$/);
+  return m ? m[1] : "";
+};
+
+/**
+ * Formato e-CF v1.0 (nota c): en 33/34 el RNC del comprador solo es obligatorio si el e-CF
+ * modificado es un tipo 32 con monto total ≥ DOP$250,000. Debajo de ese monto es opcional,
+ * igual que en la factura de consumo original.
+ * `factura.totalNcfModificado` es el total del comprobante modificado; si no viene, se usa
+ * el total de la nota (equivalente en anulaciones totales).
+ */
+const notaSinRncCompradorObligatorio = (factura) => {
+  const tipo = String(factura?.tipo ?? "").trim();
+  if (tipo !== "33" && tipo !== "34") return false;
+  if (tipoEcfDesdeNcf(factura?.ncfModificado) !== "32") return false;
+  const raw = factura?.totalNcfModificado ?? factura?.total;
+  const monto = parseFloat(String(raw ?? "").replace(/,/g, ".")) || 0;
+  return monto < UMBRAL_RNC_COMPRADOR_DOP;
+};
+
 function getApiKeyFromRequest(req) {
   const authHeader = req.headers?.authorization;
   const bearer = authHeader?.replace(/^Bearer\s+/i, "").trim();
@@ -1584,6 +1612,11 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     // No validamos comprador.rnc para tipo 32
     console.log(
       "📋 Tipo 32 detectado - RNC comprador será null (consumidor final)"
+    );
+  } else if (notaSinRncCompradorObligatorio(facturaAdaptada)) {
+    // Nota de crédito/débito sobre una factura de consumo < DOP$250,000: RNC comprador opcional
+    console.log(
+      `📋 Tipo ${facturaAdaptada.tipo} sobre e-CF 32 menor a DOP$${UMBRAL_RNC_COMPRADOR_DOP} - RNC comprador opcional`
     );
   } else {
     // Otros tipos (31, 33, 34, 41, 43, 44, 45): RNC del comprador es obligatorio

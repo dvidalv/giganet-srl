@@ -33,6 +33,8 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -59,6 +61,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setResetMessage("");
     setSaving(true);
     try {
       const url = isCreate ? "/api/users" : `/api/users/${user.id}`;
@@ -98,6 +101,31 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
       setError("Error de conexión");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResendPassword = async () => {
+    const userId = user?.id || user?._id;
+    if (!userId) return;
+    setError("");
+    setResetMessage("");
+    setResettingPassword(true);
+    try {
+      const res = await fetch(`/api/users/${userId}/reset-password`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Error al reenviar la contraseña");
+        return;
+      }
+      setResetMessage(
+        data.message || "Se envió el enlace de restablecimiento",
+      );
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -166,6 +194,9 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
             autoComplete="off"
           >
             {error && <div className={styles.formError}>{error}</div>}
+            {resetMessage && (
+              <div className={styles.formSuccess}>{resetMessage}</div>
+            )}
             <div className={styles.formGroup}>
               <label htmlFor="um-name">Nombre</label>
               <input
@@ -211,6 +242,17 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                 placeholder={isCreate ? "Mínimo 8 caracteres" : "••••••••"}
                 autoComplete="new-password"
               />
+              {isEdit && (
+                <button
+                  type="button"
+                  className={styles.btnResend}
+                  onClick={handleResendPassword}
+                  disabled={resettingPassword || saving}>
+                  {resettingPassword
+                    ? "Enviando…"
+                    : "Reenviar contraseña"}
+                </button>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="um-role">Rol</label>

@@ -38,6 +38,36 @@ const IconLock = () => (
   </svg>
 );
 
+function isEmailChanging(form, original) {
+  return form.email.trim().toLowerCase() !== (original.email || "").toLowerCase();
+}
+
+function getPasswordErrors(form, original) {
+  const errors = {};
+  const emailChanging = isEmailChanging(form, original);
+  const wantsPassword = Boolean(form.newPassword);
+
+  if (wantsPassword) {
+    if (form.newPassword.length < 8) {
+      errors.newPassword = `Mínimo 8 caracteres (${form.newPassword.length}/8)`;
+    }
+    if (!form.confirmPassword) {
+      errors.confirmPassword = "Confirma la nueva contraseña";
+    } else if (form.newPassword !== form.confirmPassword) {
+      errors.confirmPassword = "Las contraseñas no coinciden";
+    }
+  } else if (form.confirmPassword) {
+    errors.confirmPassword = "Indica primero la nueva contraseña";
+  }
+
+  if ((emailChanging || wantsPassword) && !form.currentPassword) {
+    errors.currentPassword =
+      "Indica tu contraseña actual para cambiar email o clave";
+  }
+
+  return errors;
+}
+
 export default function MiPerfilPage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
@@ -57,6 +87,7 @@ export default function MiPerfilPage() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState(null);
   const [errors, setErrors] = useState({});
+  const [dirty, setDirty] = useState({});
 
   useEffect(() => {
     const load = async () => {
@@ -97,6 +128,7 @@ export default function MiPerfilPage() {
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setDirty((prev) => ({ ...prev, [field]: true }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
   };
 
@@ -172,23 +204,18 @@ export default function MiPerfilPage() {
 
     const emailChanging = email !== original.email.toLowerCase();
     const wantsPassword = Boolean(form.newPassword);
-
-    if (wantsPassword) {
-      if (form.newPassword.length < 8) {
-        nextErrors.newPassword = "Mínimo 8 caracteres";
-      }
-      if (form.newPassword !== form.confirmPassword) {
-        nextErrors.confirmPassword = "Las contraseñas no coinciden";
-      }
-    }
-
-    if ((emailChanging || wantsPassword) && !form.currentPassword) {
-      nextErrors.currentPassword =
-        "Indica tu contraseña actual para cambiar email o clave";
-    }
+    Object.assign(nextErrors, getPasswordErrors({ ...form, email }, original));
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
+      setDirty((prev) => ({
+        ...prev,
+        name: true,
+        email: true,
+        currentPassword: true,
+        newPassword: true,
+        confirmPassword: true,
+      }));
       return;
     }
 
@@ -233,6 +260,8 @@ export default function MiPerfilPage() {
         newPassword: "",
         confirmPassword: "",
       });
+      setDirty({});
+      setErrors({});
       setPreview(next.image || "");
       setMessage({ type: "success", text: "Perfil actualizado correctamente" });
       router.refresh();
@@ -252,6 +281,30 @@ export default function MiPerfilPage() {
   }
 
   const initial = form.name?.charAt(0).toUpperCase() || "U";
+  const passwordErrors = getPasswordErrors(form, original);
+  const emailChanging = isEmailChanging(form, original);
+  const currentError =
+    passwordErrors.currentPassword &&
+    (dirty.currentPassword ||
+      dirty.newPassword ||
+      (dirty.email && emailChanging))
+      ? passwordErrors.currentPassword
+      : null;
+  const newError =
+    dirty.newPassword && passwordErrors.newPassword
+      ? passwordErrors.newPassword
+      : null;
+  const confirmError =
+    (dirty.confirmPassword || Boolean(form.confirmPassword)) &&
+    passwordErrors.confirmPassword
+      ? passwordErrors.confirmPassword
+      : null;
+  const newOk =
+    dirty.newPassword && form.newPassword.length >= 8 && !passwordErrors.newPassword;
+  const confirmOk =
+    Boolean(form.confirmPassword) &&
+    form.newPassword === form.confirmPassword &&
+    form.newPassword.length >= 8;
 
   return (
     <div className={styles.wrapper}>
@@ -396,15 +449,24 @@ export default function MiPerfilPage() {
                       onChange={(e) =>
                         handleChange("currentPassword", e.target.value)
                       }
+                      onBlur={() =>
+                        setDirty((prev) => ({ ...prev, currentPassword: true }))
+                      }
                       className={`${styles.input} ${
-                        errors.currentPassword ? styles.inputError : ""
+                        currentError ? styles.inputError : ""
                       }`}
                       autoComplete="current-password"
                       placeholder="••••••••"
+                      aria-invalid={currentError ? true : undefined}
+                      aria-describedby={
+                        currentError ? "perfil-current-hint" : undefined
+                      }
                     />
                   </div>
-                  {errors.currentPassword ? (
-                    <p className={styles.fieldError}>{errors.currentPassword}</p>
+                  {currentError ? (
+                    <p id="perfil-current-hint" className={styles.fieldError}>
+                      {currentError}
+                    </p>
                   ) : null}
                 </div>
 
@@ -421,16 +483,29 @@ export default function MiPerfilPage() {
                       type="password"
                       value={form.newPassword}
                       onChange={(e) => handleChange("newPassword", e.target.value)}
+                      onBlur={() =>
+                        setDirty((prev) => ({ ...prev, newPassword: true }))
+                      }
                       className={`${styles.input} ${
-                        errors.newPassword ? styles.inputError : ""
+                        newError ? styles.inputError : newOk ? styles.inputValid : ""
                       }`}
                       autoComplete="new-password"
                       placeholder="Mínimo 8 caracteres"
                       minLength={8}
+                      aria-invalid={newError ? true : undefined}
+                      aria-describedby={
+                        newError || newOk ? "perfil-new-hint" : undefined
+                      }
                     />
                   </div>
-                  {errors.newPassword ? (
-                    <p className={styles.fieldError}>{errors.newPassword}</p>
+                  {newError ? (
+                    <p id="perfil-new-hint" className={styles.fieldError}>
+                      {newError}
+                    </p>
+                  ) : newOk ? (
+                    <p id="perfil-new-hint" className={styles.fieldHint}>
+                      Contraseña válida
+                    </p>
                   ) : null}
                 </div>
 
@@ -449,15 +524,32 @@ export default function MiPerfilPage() {
                       onChange={(e) =>
                         handleChange("confirmPassword", e.target.value)
                       }
+                      onBlur={() =>
+                        setDirty((prev) => ({ ...prev, confirmPassword: true }))
+                      }
                       className={`${styles.input} ${
-                        errors.confirmPassword ? styles.inputError : ""
+                        confirmError
+                          ? styles.inputError
+                          : confirmOk
+                            ? styles.inputValid
+                            : ""
                       }`}
                       autoComplete="new-password"
                       placeholder="Repite la nueva contraseña"
+                      aria-invalid={confirmError ? true : undefined}
+                      aria-describedby={
+                        confirmError || confirmOk ? "perfil-confirm-hint" : undefined
+                      }
                     />
                   </div>
-                  {errors.confirmPassword ? (
-                    <p className={styles.fieldError}>{errors.confirmPassword}</p>
+                  {confirmError ? (
+                    <p id="perfil-confirm-hint" className={styles.fieldError}>
+                      {confirmError}
+                    </p>
+                  ) : confirmOk ? (
+                    <p id="perfil-confirm-hint" className={styles.fieldHint}>
+                      Las contraseñas coinciden
+                    </p>
                   ) : null}
                 </div>
               </div>

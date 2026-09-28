@@ -245,9 +245,35 @@
   background: #fef2f2;
 }
 
+.inputError:hover,
+.inputError:focus {
+  border-color: #ef4444;
+  background: #fef2f2;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.inputValid {
+  border-color: #34d399;
+  background: #ecfdf5;
+}
+
+.inputValid:hover,
+.inputValid:focus {
+  border-color: #10b981;
+  background: #ecfdf5;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
 .fieldError {
   margin: 0;
   color: #dc2626;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.fieldHint {
+  margin: 0;
+  color: #047857;
   font-size: 0.8125rem;
   font-weight: 500;
 }

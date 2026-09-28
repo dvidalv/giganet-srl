@@ -2976,6 +2976,31 @@ ${
  * @param {string} [params.ambiente] - Ambiente (demo/production)
  * @param {string} [params.ip] - IP del cliente
  */
+function parseFechaRegistro(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value : null;
+  }
+  const text = String(value).trim();
+  const dmy = text.match(
+    /^(\d{2})-(\d{2})-(\d{4})(?:[ T](\d{2}):(\d{2}):(\d{2}))?$/,
+  );
+  if (dmy) {
+    const [, dd, mm, yyyy, hh = "0", mi = "0", ss = "0"] = dmy;
+    const parsed = new Date(
+      Number(yyyy),
+      Number(mm) - 1,
+      Number(dd),
+      Number(hh),
+      Number(mi),
+      Number(ss),
+    );
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+  const parsed = new Date(text);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
 async function guardarRegistroEnvio({
   ncf,
   rnc,
@@ -3038,8 +3063,9 @@ async function guardarRegistroEnvio({
       registro.montoTotal = Number(montoTotal);
     }
 
-    if (fechaEmision) {
-      registro.fechaEmision = new Date(fechaEmision);
+    const fechaRegistro = parseFechaRegistro(fechaEmision);
+    if (fechaRegistro) {
+      registro.fechaEmision = fechaRegistro;
     }
 
     if (!exitoso && respuesta) {

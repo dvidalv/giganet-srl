@@ -2450,6 +2450,19 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     return null;
   };
 
+  // DGII: IndicadorNotaCredito = "1" si la NC se emite más de 30 días después del comprobante modificado.
+  const calcularIndicadorNotaCredito = () => {
+    const aUtc = (ddMmYyyy) => {
+      const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(String(ddMmYyyy ?? ""));
+      return m ? Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+    };
+    const emision = aUtc(formatearFecha(facturaAdaptada.fecha));
+    const modificado = aUtc(formatearFecha(facturaAdaptada.fechaNCFModificado));
+    if (emision == null || modificado == null) return "0";
+    const dias = Math.round((emision - modificado) / 86400000);
+    return dias > 30 ? "1" : "0";
+  };
+
   // Estructura completa para TheFactoryHKA - CORREGIDA según ejemplo oficial
   const documentoCompleto = {
     Token: token,
@@ -2505,7 +2518,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               NCF: facturaAdaptada.ncf,
               // NO incluir FechaVencimientoSecuencia para tipo 34
               IndicadorMontoGravado: indicadorMontoGravado,
-              IndicadorNotaCredito: "0", // OBLIGATORIO para tipo 34
+              IndicadorNotaCredito: calcularIndicadorNotaCredito(),
               TipoIngresos: "01",
               TipoPago: "1",
             };

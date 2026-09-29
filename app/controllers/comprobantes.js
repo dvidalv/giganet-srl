@@ -73,6 +73,28 @@ const notaSinRncCompradorObligatorio = (factura) => {
   return monto < UMBRAL_RNC_COMPRADOR_DOP;
 };
 
+/**
+ * Formato e-CF v1.0 (nota b): en el tipo 32 el RNC del comprador solo se exige cuando el
+ * monto total llega a DOP$250,000. Por debajo el comprobante se emite a consumidor final.
+ */
+const consumoRequiereRncComprador = (tipo, monto) => {
+  if (String(tipo ?? "").trim() !== "32") return false;
+  const valor = parseFloat(String(monto ?? "").replace(/,/g, ".")) || 0;
+  return valor >= UMBRAL_RNC_COMPRADOR_DOP;
+};
+
+/** Catálogo DGII: 1 contado, 2 crédito, 3 gratuito. */
+const TIPOS_PAGO_DGII = ["1", "2", "3"];
+
+/**
+ * Catálogo DGII de formas de pago: 1 efectivo, 2 cheque/transferencia/depósito,
+ * 3 tarjeta, 4 venta a crédito, 5 bonos, 6 permuta, 7 nota de crédito, 8 otras.
+ */
+const FORMAS_PAGO_DGII = ["1", "2", "3", "4", "5", "6", "7", "8"];
+
+/** El formato admite hasta 7 repeticiones de FormaDePago. */
+const MAX_FORMAS_PAGO = 7;
+
 function getApiKeyFromRequest(req) {
   const authHeader = req.headers?.authorization;
   const bearer = authHeader?.replace(/^Bearer\s+/i, "").trim();
@@ -1608,11 +1630,19 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   // 🔍 Validación específica por tipo de comprobante para RNC del comprador
   if (facturaAdaptada?.tipo === "32") {
-    // Tipo 32 (Consumo): RNC del comprador debe ser null (consumidor final)
-    // No validamos comprador.rnc para tipo 32
-    console.log(
-      "📋 Tipo 32 detectado - RNC comprador será null (consumidor final)"
-    );
+    // Tipo 32 (Consumo): consumidor final salvo que el monto obligue a identificar al comprador
+    if (
+      consumoRequiereRncComprador(facturaAdaptada.tipo, facturaAdaptada.total)
+    ) {
+      if (!comprador?.rnc) camposFaltantes.push("comprador.rnc");
+      console.log(
+        `📋 Tipo 32 de DOP$${UMBRAL_RNC_COMPRADOR_DOP} o más - RNC comprador obligatorio`
+      );
+    } else {
+      console.log(
+        "📋 Tipo 32 detectado - RNC comprador será null (consumidor final)"
+      );
+    }
   } else if (notaSinRncCompradorObligatorio(facturaAdaptada)) {
     // Nota de crédito/débito sobre una factura de consumo < DOP$250,000: RNC comprador opcional
     console.log(
@@ -2068,7 +2098,9 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               : {}),
             Monto: montoCampo,
             IndicadorFacturacion:
-              descuentosParaProcesar.indicadorFacturacion || "1",
+              descuentosParaProcesar.IndicadorFacturacion ||
+              descuentosParaProcesar.indicadorFacturacion ||
+              "1",
           },
         ];
 
@@ -2463,6 +2495,56 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     return dias > 30 ? "1" : "0";
   };
 
+  /**
+   * `TipoPago` y `TablaFormasPago` según lo que declare la factura.
+   * Sin datos válidos se mantiene el comportamiento histórico: contado en efectivo por el total.
+   * Los montos declarados deben sumar el total, que es lo que valida la DGII.
+   */
+  const construirFormasPago = () => {
+    const totalStr = montoTotalConDescuentos.toFixed(2);
+    const tipoRaw = String(facturaAdaptada.tipoPago ?? "").trim();
+    const TipoPago = TIPOS_PAGO_DGII.includes(tipoRaw) ? tipoRaw : "1";
+
+    const declaradas = Array.isArray(facturaAdaptada.formasPago)
+      ? facturaAdaptada.formasPago
+      : [];
+    const formas = declaradas
+      .map((fp) => ({
+        Forma: String(fp?.Forma ?? fp?.forma ?? "").trim(),
+        monto: parsearMonto(fp?.Monto ?? fp?.monto),
+      }))
+      .filter((fp) => FORMAS_PAGO_DGII.includes(fp.Forma) && fp.monto > 0)
+      .slice(0, MAX_FORMAS_PAGO);
+
+    if (formas.length === 0) {
+      return { TipoPago, TablaFormasPago: [{ Forma: "1", Monto: totalStr }] };
+    }
+
+    const suma = formas.reduce((acc, fp) => acc + fp.monto, 0);
+    if (Math.abs(suma - montoTotalConDescuentos) > 0.01) {
+      throw new Error(
+        `Las formas de pago suman ${suma.toFixed(2)} y el total del comprobante es ${totalStr}. Deben coincidir.`
+      );
+    }
+
+    return {
+      TipoPago,
+      TablaFormasPago: formas.map((fp) => ({
+        Forma: fp.Forma,
+        Monto: fp.monto.toFixed(2),
+      })),
+    };
+  };
+
+  const formasPagoDoc = construirFormasPago();
+
+  /** Tipo 32: consumidor final, salvo que el monto obligue a identificar al comprador. */
+  const rncCompradorFinal =
+    facturaAdaptada.tipo === "32" &&
+    !consumoRequiereRncComprador(facturaAdaptada.tipo, montoTotalConDescuentos)
+      ? null
+      : (comprador?.rnc ?? null);
+
   // Estructura completa para TheFactoryHKA - CORREGIDA según ejemplo oficial
   const documentoCompleto = {
     Token: token,
@@ -2487,13 +2569,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               IndicadorMontoGravado: indicadorMontoGravado,
               IndicadorEnvioDiferido: "1",
               TipoIngresos: "01",
-              TipoPago: "1",
-              TablaFormasPago: [
-                {
-                  Forma: "1",
-                  Monto: montoTotalConDescuentos.toFixed(2),
-                },
-              ],
+              ...formasPagoDoc,
             };
           } else if (facturaAdaptada.tipo === "33") {
             // Tipo 33: Nota de Débito - SÍ incluir FechaVencimientoSecuencia (requerido por TheFactoryHKA)
@@ -2503,13 +2579,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               FechaVencimientoSecuencia: fechaVencimientoFormateada, // ✅ OBLIGATORIO para tipo 33
               IndicadorMontoGravado: indicadorMontoGravado,
               TipoIngresos: "03", // ESPECÍFICO para Nota de Débito (OBLIGATORIO)
-              TipoPago: "1",
-              TablaFormasPago: [
-                {
-                  Forma: "1",
-                  Monto: montoTotalConDescuentos.toFixed(2),
-                },
-              ],
+              ...formasPagoDoc,
             };
           } else if (facturaAdaptada.tipo === "34") {
             // Tipo 34: Nota de Crédito - estructura especial SIN fechaVencimiento ni indicadorEnvioDiferido
@@ -2520,20 +2590,14 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               IndicadorMontoGravado: indicadorMontoGravado,
               IndicadorNotaCredito: calcularIndicadorNotaCredito(),
               TipoIngresos: "01",
-              TipoPago: "1",
+              TipoPago: formasPagoDoc.TipoPago,
             };
           } else if (facturaAdaptada.tipo === "41") {
             // Tipo 41: Compras - incluyen indicadorMontoGravado pero NO indicadorEnvioDiferido
             return {
               ...baseIdDoc,
               IndicadorMontoGravado: indicadorMontoGravado,
-              TipoPago: "1",
-              TablaFormasPago: [
-                {
-                  Forma: "1",
-                  Monto: montoTotalConDescuentos.toFixed(2),
-                },
-              ],
+              ...formasPagoDoc,
             };
           } else if (facturaAdaptada.tipo === "43") {
             // Tipo 43: Gastos Menores - estructura muy simple, solo campos básicos
@@ -2546,7 +2610,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               ...baseIdDoc,
               IndicadorMontoGravado: indicadorMontoGravado,
               TipoIngresos: "01",
-              TipoPago: "1",
+              TipoPago: formasPagoDoc.TipoPago,
             };
           } else if (
             facturaAdaptada.tipo === "44" ||
@@ -2557,26 +2621,14 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             return {
               ...baseIdDoc,
               TipoIngresos: "01",
-              TipoPago: "1",
-              TablaFormasPago: [
-                {
-                  Forma: "1",
-                  Monto: montoTotalConDescuentos.toFixed(2),
-                },
-              ],
+              ...formasPagoDoc,
             };
           }
 
           // Fallback por defecto
           return {
             ...baseIdDoc,
-            TipoPago: "1",
-            TablaFormasPago: [
-              {
-                Forma: "1",
-                Monto: montoTotalConDescuentos.toFixed(2),
-              },
-            ],
+            ...formasPagoDoc,
           };
         })(),
         Emisor: (() => {
@@ -2630,7 +2682,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         ...(facturaAdaptada.tipo !== "43" && {
           comprador: (() => {
             const baseComprador = {
-              rnc: facturaAdaptada.tipo === "32" ? null : comprador.rnc, // 🔧 Para tipo 32: null (consumidor final)
+              rnc: rncCompradorFinal,
               razonSocial: stringVacioANull(comprador.nombre),
               correo: stringVacioANull(comprador.correo),
               direccion: stringVacioANull(comprador.direccion),
@@ -2652,9 +2704,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
                 fechaEntrega: comprador.fechaEntrega || null,
                 fechaOrden: comprador.fechaOrden || null,
                 numeroOrden: comprador.numeroOrden || null,
-                codigoInterno:
-                  comprador.codigoInterno ||
-                  (facturaAdaptada.tipo === "32" ? null : comprador.rnc), // 🔧 Para tipo 32: null
+                codigoInterno: comprador.codigoInterno || rncCompradorFinal,
               };
             }
 

@@ -6,8 +6,9 @@ El **RNC** ya no es una variable fija del servidor: debe enviarse en **cada peti
 
 ## Autenticación
 
-- **Solicitar número:** se usa **API Key** (header `Authorization: Bearer <api_key>` o `X-API-Key: <api_key>`).
-- **Resto de endpoints** (enviar factura, consultar estatus, anular, descargar, enviar email): por ahora requieren **sesión** (login en la web). Si en el futuro se exponen con API Key, el cuerpo de la petición será el mismo; solo cambiaría la forma de autenticar.
+Todos los endpoints aceptan **API Key** en la cabecera (`Authorization: Bearer <api_key>` o `X-API-Key: <api_key>`). También aceptan **sesión** (cookie) cuando la llamada viene de la web.
+
+Excepciones que aún requieren sesión: consultar estatus y descargar archivo.
 
 ---
 
@@ -86,6 +87,37 @@ Estructura mínima de referencia:
 ```
 
 **Importante:** El RNC del emisor es obligatorio y **siempre se toma de `emisor.rnc`**. No se usa `factura.rnc`.
+
+### RNC del comprador en tipo 32
+
+En la factura de consumo el comprobante se emite a consumidor final y `comprador.rnc` se ignora. La excepción es el umbral de la DGII: cuando el total llega a **DOP$250,000** el RNC del comprador pasa a ser obligatorio y sí se envía. Si falta en ese caso, la petición se rechaza indicando `comprador.rnc` entre los campos faltantes.
+
+### Formas de pago (opcional)
+
+Si no se envían, el comprobante sale como **contado en efectivo por el total**, que es el comportamiento histórico.
+
+```json
+{
+  "factura": {
+    "ncf": "E3200000001",
+    "tipo": "32",
+    "total": "3000.00",
+    "tipoPago": "1",
+    "formasPago": [
+      { "forma": "1", "monto": "1000.00" },
+      { "forma": "3", "monto": "2000.00" }
+    ]
+  }
+}
+```
+
+| Campo               | Valores                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `tipoPago`          | `1` contado · `2` crédito · `3` gratuito                                                                                    |
+| `formasPago[].forma` | `1` efectivo · `2` cheque/transferencia/depósito · `3` tarjeta · `4` venta a crédito · `5` bonos · `6` permuta · `7` nota de crédito · `8` otras |
+| `formasPago[].monto` | Monto de esa forma de pago                                                                                                  |
+
+Se admiten hasta **7** formas de pago. Los montos **deben sumar el total** del comprobante; si no cuadran, la petición se rechaza con un mensaje indicando ambas cifras.
 
 Para tipos 33/34 (notas de débito/crédito) se envían además `modificacion`, `ItemsDevueltos`, etc., según la documentación del controlador.
 

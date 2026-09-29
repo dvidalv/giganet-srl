@@ -120,6 +120,34 @@ function formatFechaVencimiento(fecha) {
   const año = d.getUTCFullYear();
   return `${dia}-${mes}-${año}`;
 }
+
+function secuencialDesdeNcfEcf(ncf, tipoComprobante) {
+  const s = String(ncf ?? "").trim().toUpperCase();
+  const tipo = String(tipoComprobante ?? "").trim();
+  const m = s.match(/^[A-Z]?(\d{2})(\d{10})$/);
+  if (!m || m[1] !== tipo) return null;
+  const n = parseInt(m[2], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Fecha de vencimiento de secuencia DGII registrada en el rango de NCF del usuario. */
+async function resolverFechaVencNcfDesdeRango({ userId, rnc, tipo, ncf }) {
+  if (!rnc || !tipo || !ncf || ["32", "34"].includes(String(tipo))) return null;
+  const sec = secuencialDesdeNcfEcf(ncf, tipo);
+  if (sec == null) return null;
+  const Comprobante = await getComprobanteModelForUserId(userId);
+  if (!Comprobante) return null;
+  const rncLimpio = String(rnc).replace(/\D/g, "");
+  const rango = await Comprobante.findOne({
+    rnc: rncLimpio,
+    tipo_comprobante: String(tipo),
+    numero_inicial: { $lte: sec },
+    numero_final: { $gte: sec },
+  })
+    .select("fecha_vencimiento")
+    .lean();
+  return formatFechaVencimiento(rango?.fecha_vencimiento);
+}
 import { sendEmail } from "@/api-mail_brevo";
 import { THEFACTORY_USUARIO, THEFACTORY_CLAVE } from "@/utils/constants";
 import { resolveTheFactoryUrlsForUser } from "@/utils/theFactoryUrls";
@@ -3198,12 +3226,36 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       theFactoryUrls: urls,
     });
 
+    let bodyParaEnviar = body;
+    const tipoFac = String(body.factura?.tipo ?? "").trim();
+    if (
+      body.factura?.ncf &&
+      !body.factura?.fechaVencNCF &&
+      !["32", "34"].includes(tipoFac)
+    ) {
+      const fv = await resolverFechaVencNcfDesdeRango({
+        userId: options.userId,
+        rnc,
+        tipo: tipoFac,
+        ncf: body.factura.ncf,
+      });
+      if (fv) {
+        bodyParaEnviar = {
+          ...body,
+          factura: { ...body.factura, fechaVencNCF: fv },
+        };
+        console.log(
+          `📅 fechaVencNCF tomada del rango autorizado (${tipoFac}): ${fv}`
+        );
+      }
+    }
+
     // Transformar el JSON simplificado al formato completo.
     // Lo que falle aquí es el body del cliente, no The Factory: el catch general lo
     // clasificaría como error de red (503 + correo a soporte) y ocultaría el motivo.
     let facturaCompleta;
     try {
-      facturaCompleta = transformarFacturaParaTheFactory(body, token);
+      facturaCompleta = transformarFacturaParaTheFactory(bodyParaEnviar, token);
     } catch (errorDatos) {
       const mensaje = errorDatos?.message || "Datos de la factura inválidos";
       console.error("❌ Documento no armado por datos inválidos:", mensaje);

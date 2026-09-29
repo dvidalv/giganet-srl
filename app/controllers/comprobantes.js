@@ -3198,8 +3198,26 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       theFactoryUrls: urls,
     });
 
-    // Transformar el JSON simplificado al formato completo
-    const facturaCompleta = transformarFacturaParaTheFactory(body, token);
+    // Transformar el JSON simplificado al formato completo.
+    // Lo que falle aquí es el body del cliente, no The Factory: el catch general lo
+    // clasificaría como error de red (503 + correo a soporte) y ocultaría el motivo.
+    let facturaCompleta;
+    try {
+      facturaCompleta = transformarFacturaParaTheFactory(body, token);
+    } catch (errorDatos) {
+      const mensaje = errorDatos?.message || "Datos de la factura inválidos";
+      console.error("❌ Documento no armado por datos inválidos:", mensaje);
+      return {
+        status: httpStatus.BAD_REQUEST,
+        data: {
+          status: "error",
+          message: mensaje,
+          errorType: "DATOS_INVALIDOS",
+          ncf: body.factura?.ncf || null,
+          sugerencia: "Corrija los datos enviados y reintente",
+        },
+      };
+    }
 
     console.log(
       "Factura transformada:",

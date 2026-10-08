@@ -2528,10 +2528,54 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
    * Sin datos válidos se mantiene el comportamiento histórico: contado en efectivo por el total.
    * Los montos declarados deben sumar el total, que es lo que valida la DGII.
    */
+  /**
+   * DGII: en ventas a crédito (TipoPago 2) `FechaLimitePago` es obligatoria (dd-MM-AAAA, ≥ emisión).
+   * Se toma `factura.fechaLimitePago`; si falta o es anterior a la emisión, emisión + 30 días.
+   * `TerminoPago` (máx. 15 caracteres) es opcional; el tipo 34 no lo admite.
+   */
+  const DIAS_CREDITO_POR_DEFECTO = 30;
+  const construirCondicionesCredito = (TipoPago) => {
+    if (TipoPago !== "2") return {};
+    const aUtc = (ddMmYyyy) => {
+      const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(String(ddMmYyyy ?? ""));
+      return m ? Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+    };
+    const aDdMmYyyy = (ms) => {
+      const d = new Date(ms);
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      return `${dd}-${mm}-${d.getUTCFullYear()}`;
+    };
+    const emisionStr = formatearFecha(facturaAdaptada.fecha);
+    const emision = aUtc(emisionStr) ?? Date.UTC(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      new Date().getDate()
+    );
+
+    const declarada = aUtc(formatearFecha(facturaAdaptada.fechaLimitePago));
+    const usaDeclarada = declarada != null && declarada >= emision;
+    const limite = usaDeclarada
+      ? declarada
+      : emision + DIAS_CREDITO_POR_DEFECTO * 86400000;
+
+    const condiciones = { FechaLimitePago: aDdMmYyyy(limite) };
+    if (facturaAdaptada.tipo !== "34") {
+      const terminoDeclarado = String(facturaAdaptada.terminoPago ?? "").trim();
+      const dias = Math.round((limite - emision) / 86400000);
+      const termino = usaDeclarada
+        ? terminoDeclarado || `${dias} días`
+        : `${DIAS_CREDITO_POR_DEFECTO} días`;
+      condiciones.TerminoPago = termino.slice(0, 15);
+    }
+    return condiciones;
+  };
+
   const construirFormasPago = () => {
     const totalStr = montoTotalConDescuentos.toFixed(2);
     const tipoRaw = String(facturaAdaptada.tipoPago ?? "").trim();
     const TipoPago = TIPOS_PAGO_DGII.includes(tipoRaw) ? tipoRaw : "1";
+    const condicionesCredito = construirCondicionesCredito(TipoPago);
 
     const declaradas = Array.isArray(facturaAdaptada.formasPago)
       ? facturaAdaptada.formasPago
@@ -2545,7 +2589,11 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       .slice(0, MAX_FORMAS_PAGO);
 
     if (formas.length === 0) {
-      return { TipoPago, TablaFormasPago: [{ Forma: "1", Monto: totalStr }] };
+      return {
+        TipoPago,
+        ...condicionesCredito,
+        TablaFormasPago: [{ Forma: "1", Monto: totalStr }],
+      };
     }
 
     const suma = formas.reduce((acc, fp) => acc + fp.monto, 0);
@@ -2557,6 +2605,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
     return {
       TipoPago,
+      ...condicionesCredito,
       TablaFormasPago: formas.map((fp) => ({
         Forma: fp.Forma,
         Monto: fp.monto.toFixed(2),
@@ -2619,6 +2668,9 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               IndicadorNotaCredito: calcularIndicadorNotaCredito(),
               TipoIngresos: "01",
               TipoPago: formasPagoDoc.TipoPago,
+              ...(formasPagoDoc.FechaLimitePago
+                ? { FechaLimitePago: formasPagoDoc.FechaLimitePago }
+                : {}),
             };
           } else if (facturaAdaptada.tipo === "41") {
             // Tipo 41: Compras - incluyen indicadorMontoGravado pero NO indicadorEnvioDiferido
@@ -2639,6 +2691,12 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               IndicadorMontoGravado: indicadorMontoGravado,
               TipoIngresos: "01",
               TipoPago: formasPagoDoc.TipoPago,
+              ...(formasPagoDoc.FechaLimitePago
+                ? {
+                    FechaLimitePago: formasPagoDoc.FechaLimitePago,
+                    TerminoPago: formasPagoDoc.TerminoPago,
+                  }
+                : {}),
             };
           } else if (
             facturaAdaptada.tipo === "44" ||
@@ -3292,9 +3350,10 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
         110: "RNC no autorizado para este tipo de comprobante",
         111: "Datos de la factura inválidos",
       };
+      // El mensaje de TheFactory es el motivo real; un mismo código (p. ej. 110) cubre varios casos.
       const mensajeError =
+        String(response.data.mensaje ?? "").trim() ||
         errorMessages[response.data.codigo] ||
-        response.data.mensaje ||
         "Error desconocido";
 
       await enviarFacturaASoporte(body, {

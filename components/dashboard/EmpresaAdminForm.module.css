@@ -356,6 +356,50 @@
   font-size: 0.9rem;
 }
 
+.compEmptyBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-bottom: 0.35rem;
+}
+
+.compEmptyBox .compEmpty {
+  padding-bottom: 0;
+}
+
+.compCreate {
+  margin: 0 0 1.15rem;
+  padding: 1rem 1rem 1.1rem;
+  border: 1px solid #ccfbf1;
+  border-radius: 12px;
+  background: #f0fdfa;
+}
+
+.compCreateHead {
+  margin-bottom: 0.85rem;
+}
+
+.compCreateTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.975rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.compCreateHint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #0f766e;
+}
+
+.compFieldError {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
 .compMsgSuccess,
 .compMsgError {
   margin: 0 0 0.9rem;

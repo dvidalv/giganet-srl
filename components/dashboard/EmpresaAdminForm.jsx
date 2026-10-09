@@ -772,6 +772,10 @@ export default function EmpresaAdminForm({ userId }) {
         userId={userId}
         ambiente={empresa.theFactoryAmbiente}
         reloadToken={comprobantesReloadToken}
+        empresa={{
+          rnc: empresa.rnc,
+          razonSocial: empresa.razonSocial,
+        }}
       />
     </div>
     </>

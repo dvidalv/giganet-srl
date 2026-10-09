@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaHashtag } from "react-icons/fa";
 import styles from "./EmpresaAdminForm.module.css";
+import EmpresaAdminSecuenciaForm from "./EmpresaAdminSecuenciaForm";
 
 const ESTADOS_ACTIVOS = ["activo", "alerta"];
 
@@ -72,7 +73,12 @@ function findTfCorrelativo(row, tfSeriesPayload) {
   return fallback;
 }
 
-export default function EmpresaAdminComprobantes({ userId, ambiente, reloadToken = 0 }) {
+export default function EmpresaAdminComprobantes({
+  userId,
+  ambiente,
+  reloadToken = 0,
+  empresa = null,
+}) {
   const [rows, setRows] = useState([]);
   const [resolvedAmbiente, setResolvedAmbiente] = useState(ambiente || "production");
   const [loading, setLoading] = useState(true);
@@ -90,6 +96,7 @@ export default function EmpresaAdminComprobantes({ userId, ambiente, reloadToken
   const [ajustarError, setAjustarError] = useState(null);
   const [tfSeriesLoading, setTfSeriesLoading] = useState(false);
   const [tfSeriesPayload, setTfSeriesPayload] = useState(null);
+  const [adding, setAdding] = useState(false);
 
   const fetchRows = useCallback(async () => {
     if (!userId) return;
@@ -369,8 +376,8 @@ export default function EmpresaAdminComprobantes({ userId, ambiente, reloadToken
             Comprobantes de la empresa
           </h2>
           <p className={styles.compSubtitle}>
-            Se cargan las secuencias del ambiente activo. Use # o el próximo
-            número para alinear Giganet con The Factory, o edite el rango.
+            Se cargan las secuencias del ambiente activo. Puede agregar una
+            serie, usar # para alinear Giganet con The Factory, o editar el rango.
           </p>
         </div>
         <div className={styles.compHeaderActions}>
@@ -386,6 +393,17 @@ export default function EmpresaAdminComprobantes({ userId, ambiente, reloadToken
             disabled={loading}
           >
             {loading ? "Cargando…" : "Actualizar"}
+          </button>
+          <button
+            type="button"
+            className={styles.compBtnPrimary}
+            onClick={() => {
+              setAdding((open) => !open);
+              setRowMessage(null);
+            }}
+            disabled={loading}
+          >
+            {adding ? "Cerrar alta" : "Agregar secuencia"}
           </button>
         </div>
       </div>
@@ -452,6 +470,24 @@ export default function EmpresaAdminComprobantes({ userId, ambiente, reloadToken
       </div>
       </div>
 
+      {adding && (
+        <EmpresaAdminSecuenciaForm
+          userId={userId}
+          empresa={empresa}
+          onCancel={() => setAdding(false)}
+          onCreated={(data) => {
+            setAdding(false);
+            let text = data.message || "Secuencia creada.";
+            if (data.theFactorySync && !data.theFactorySync.ok) {
+              text += ` Aviso The Factory: ${data.theFactorySync.message || "no se pudo sincronizar."}`;
+            }
+            setRowMessage({ type: "success", text });
+            fetchRows();
+            fetchTheFactorySeries();
+          }}
+        />
+      )}
+
       {rowMessage && (
         <p
           className={
@@ -472,10 +508,24 @@ export default function EmpresaAdminComprobantes({ userId, ambiente, reloadToken
           {error}
         </p>
       ) : rows.length === 0 ? (
-        <p className={styles.compEmpty}>
-          Esta empresa no tiene secuencias en el ambiente{" "}
-          {isDemo ? "demo" : "producción"}.
-        </p>
+        <div className={styles.compEmptyBox}>
+          <p className={styles.compEmpty}>
+            Esta empresa no tiene secuencias en el ambiente{" "}
+            {isDemo ? "demo" : "producción"}.
+          </p>
+          {!adding && (
+            <button
+              type="button"
+              className={styles.compBtnPrimary}
+              onClick={() => {
+                setAdding(true);
+                setRowMessage(null);
+              }}
+            >
+              Agregar la primera secuencia
+            </button>
+          )}
+        </div>
       ) : filteredRows.length === 0 ? (
         <p className={styles.compEmpty}>
           {query.trim()

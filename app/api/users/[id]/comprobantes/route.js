@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import User from "@/app/models/user";
+import { createComprobanteSequence } from "@/lib/createComprobanteSequence";
 import {
   getComprobanteModelForUserId,
   userUsesComprobantesDevMongo,
@@ -59,6 +60,53 @@ export async function GET(_request, { params }) {
     }
     return NextResponse.json(
       { error: "Error al listar las secuencias de la empresa" },
+      { status: 500 },
+    );
+  }
+}
+
+/** POST /api/users/[id]/comprobantes — crear secuencia para esa empresa. */
+export async function POST(request, { params }) {
+  const check = await requireAdmin();
+  if (check.error) return check.error;
+
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
+  }
+
+  try {
+    const user = await User.findById(id)
+      .select("empresa.rnc empresa.razonSocial")
+      .lean();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 },
+      );
+    }
+
+    const empresaRnc = String(user.empresa?.rnc ?? "").replace(/\D/g, "");
+    const empresaRazon = String(user.empresa?.razonSocial ?? "").trim();
+    const payload = {
+      ...body,
+      rnc: body.rnc || empresaRnc,
+      razon_social: body.razon_social || empresaRazon,
+    };
+
+    const result = await createComprobanteSequence(id, payload);
+    return NextResponse.json(result.json, { status: result.status });
+  } catch (err) {
+    console.error("POST /api/users/[id]/comprobantes:", err);
+    return NextResponse.json(
+      { error: "Error al crear la secuencia de la empresa" },
       { status: 500 },
     );
   }

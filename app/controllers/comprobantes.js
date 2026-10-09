@@ -2220,6 +2220,33 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   //   ).toFixed(2),
   // });
 
+  /**
+   * Descuento de esa línea (el % real del POS, no un 10 fijo) para la grilla de The Factory.
+   * `descuentoMonto` + `tablaSubDescuento` son los campos del ítem que pinta HKA;
+   * `DescuentosORecargos` sigue llevando el mismo monto a los totales DGII.
+   */
+  function tablaSubDescuentoDesdeItemLinea(item) {
+    const dlb = parsearMonto(item.descuentoLineaBase ?? item.descuentoLinea ?? 0);
+    if (dlb <= 0.0001) return {};
+    const pctRaw = item.lineDiscountPct ?? item.lineDiscountPorcentaje;
+    let pctNum = pctRaw != null ? Number(pctRaw) : NaN;
+    const bruto = parsearMonto(item.precio);
+    if (!Number.isFinite(pctNum) && bruto > 0.0001) {
+      pctNum = Math.round((dlb / bruto) * 10000) / 100;
+    }
+    const usoPct = Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 100;
+    return {
+      DescuentoMonto: dlb.toFixed(2),
+      TablaSubDescuento: [
+        {
+          Tipo: usoPct ? "%" : "$",
+          ...(usoPct ? { Porcentaje: Number(pctNum).toFixed(2) } : {}),
+          Monto: dlb.toFixed(2),
+        },
+      ],
+    };
+  }
+
   // Construir los detalles de items DESPUÉS de calcular los montos - camelCase según ejemplo oficial
   const detallesItems = itemsAdaptados.map((item, index) => {
     // Determinar si este item específico es gravado o exento
@@ -2259,6 +2286,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     }
 
     const { PrecioUnitario, Monto } = precioUnitarioYMontoDesdePrecioLinea(item);
+    const subDescuentoItem = tablaSubDescuentoDesdeItemLinea(item);
 
     // Campos comunes para todos los tipos (PascalCase según ejemplo oficial)
     return {
@@ -2271,6 +2299,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       UnidadMedida: item.unidadMedida || "43",
       PrecioUnitario,
       Monto,
+      ...subDescuentoItem,
     };
   });
 
@@ -2302,7 +2331,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     const pctRaw = item.lineDiscountPct ?? item.lineDiscountPorcentaje;
     const pctNum = pctRaw != null ? Number(pctRaw) : NaN;
     const usoPct =
-      Number.isFinite(pctNum) && pctNum >= 1 && pctNum <= 100;
+      Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 100;
     descuentosDesdeItemsLinea.push({
       NumeroLinea: String(idx + 1),
       TipoAjuste: "D",

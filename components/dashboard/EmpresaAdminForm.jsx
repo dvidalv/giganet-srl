@@ -598,8 +598,21 @@ export default function EmpresaAdminForm({ userId }) {
                   <span className={styles.inputIcon}><IconDocument /></span>
                   <span>The Factory HKA (e-CF)</span>
                 </span>
-                <span className={adminStyles.configPanelChevron} aria-hidden="true">
-                  <IconChevronDown />
+                <span className={adminStyles.configPanelMeta}>
+                  <span
+                    className={
+                      empresa.theFactoryAmbiente === "demo"
+                        ? adminStyles.compBadgeDemo
+                        : adminStyles.compBadgeProd
+                    }
+                  >
+                    {empresa.theFactoryAmbiente === "demo"
+                      ? "Pruebas (demo)"
+                      : "Producción"}
+                  </span>
+                  <span className={adminStyles.configPanelChevron} aria-hidden="true">
+                    <IconChevronDown />
+                  </span>
                 </span>
               </summary>
               <div className={adminStyles.configPanelBody}>

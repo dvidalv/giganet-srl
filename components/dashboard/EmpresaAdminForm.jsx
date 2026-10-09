@@ -117,6 +117,7 @@ export default function EmpresaAdminForm({ userId }) {
   const [theFactoryClaveProductionDraft, setTheFactoryClaveProductionDraft] = useState("");
   const [clearingTfClave, setClearingTfClave] = useState(false);
   const [surveySending, setSurveySending] = useState(false);
+  const [comprobantesReloadToken, setComprobantesReloadToken] = useState(0);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -343,6 +344,7 @@ export default function EmpresaAdminForm({ userId }) {
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
       setTheFactoryClaveDemoDraft("");
       setTheFactoryClaveProductionDraft("");
+      setComprobantesReloadToken((n) => n + 1);
       setMessage({ type: "success", text: "Empresa actualizada correctamente" });
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -769,6 +771,7 @@ export default function EmpresaAdminForm({ userId }) {
       <EmpresaAdminComprobantes
         userId={userId}
         ambiente={empresa.theFactoryAmbiente}
+        reloadToken={comprobantesReloadToken}
       />
     </div>
     </>

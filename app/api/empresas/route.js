@@ -30,6 +30,8 @@ export async function GET() {
         rnc: u.empresa?.rnc ?? "",
         razonSocial: u.empresa?.razonSocial ?? "",
         telefono: u.empresa?.telefono ?? "",
+        theFactoryAmbiente:
+          u.empresa?.theFactoryAmbiente === "demo" ? "demo" : "production",
       },
     }));
 

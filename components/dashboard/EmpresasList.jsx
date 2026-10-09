@@ -65,6 +65,7 @@ function EmpresasList() {
           const telefono = e.telefono
             ? formatPhoneNumber(e.telefono)
             : "—";
+          const isDemo = e.theFactoryAmbiente === "demo";
           return (
             <li key={item.id}>
               <Link href={`/dashboard/empresas/${item.id}`} className={styles.card}>
@@ -85,7 +86,14 @@ function EmpresasList() {
                   )}
                 </div>
                 <div className={styles.data}>
-                  <div className={styles.razonSocial}>{razon}</div>
+                  <div className={styles.titleRow}>
+                    <div className={styles.razonSocial}>{razon}</div>
+                    <span
+                      className={isDemo ? styles.badgeDemo : styles.badgeProd}
+                    >
+                      {isDemo ? "Pruebas (demo)" : "Producción"}
+                    </span>
+                  </div>
                   <div className={styles.row}>
                     <span className={styles.label}>RNC:</span>
                     <span className={styles.value}>{rnc}</span>

@@ -134,6 +134,10 @@
   font-size: 0.8125rem;
 }
 
+p.hint {
+  margin: 0.35rem 0 0;
+}
+
 .label {
   display: block;
   font-size: 0.875rem;

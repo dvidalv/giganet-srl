@@ -20,8 +20,9 @@ export default async function MisComprobantes() {
           <p className={styles.subtitle}>
             Despliega el panel &quot;Series en The Factory HKA&quot; para ver
             lo que tiene el emisor en The Factory; más abajo, las secuencias en
-            Giganet. Puedes anular NCF no utilizados desde cada tarjeta (icono
-            de prohibido).
+            Giganet. Puedes anular NCF no utilizados (icono de prohibido) o
+            ajustar el próximo número (#) si ya emitió comprobantes desde The
+            Factory.
           </p>
         </div>
         <Link href="/dashboard/mis-comprobantes/nuevo" className={styles.cta}>

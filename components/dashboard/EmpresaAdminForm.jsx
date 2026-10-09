@@ -7,6 +7,7 @@ import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils
 import { crearEncuesta } from "@/actions/crearEncuesta-action";
 import styles from "@/app/dashboard/empresa/page.module.css";
 import adminStyles from "./EmpresaAdminForm.module.css";
+import EmpresaAdminComprobantes from "./EmpresaAdminComprobantes";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -380,7 +381,7 @@ export default function EmpresaAdminForm({ userId }) {
         </p>
       </div>
 
-      <div className={styles.wrapper}>
+      <div className={adminStyles.pageWrap}>
       <Link
         href="/dashboard/empresas"
         style={{
@@ -765,6 +766,10 @@ export default function EmpresaAdminForm({ userId }) {
           </div>
         </form>
       </div>
+      <EmpresaAdminComprobantes
+        userId={userId}
+        ambiente={empresa.theFactoryAmbiente}
+      />
     </div>
     </>
   );

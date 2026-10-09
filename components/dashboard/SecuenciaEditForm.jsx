@@ -43,8 +43,15 @@ export default function SecuenciaEditForm({ id }) {
   const [estado, setEstado] = useState("");
   const [comentario, setComentario] = useState("");
   const [alerta_minima_restante, setAlerta_minima_restante] = useState("");
+  const [proximo_numero, setProximo_numero] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
+
+  function proximoDesdeDoc(data) {
+    const inicial = Number(data?.numero_inicial ?? 0);
+    const utilizados = Number(data?.numeros_utilizados ?? 0);
+    return String(inicial + utilizados);
+  }
 
   const fetchComprobante = useCallback(async () => {
     if (!id) return;
@@ -67,6 +74,7 @@ export default function SecuenciaEditForm({ id }) {
       setEstado(data.estado ?? "activo");
       setComentario(data.comentario ?? "");
       setAlerta_minima_restante(String(data.alerta_minima_restante ?? 10));
+      setProximo_numero(proximoDesdeDoc(data));
     } catch (err) {
       setError("Error de conexión");
       setComprobante(null);
@@ -95,6 +103,7 @@ export default function SecuenciaEditForm({ id }) {
         estado: estado.trim(),
         comentario: comentario.trim(),
         alerta_minima_restante: alerta_minima_restante ? Number(alerta_minima_restante) : undefined,
+        proximo_numero: proximo_numero !== "" ? Number(proximo_numero) : undefined,
       };
       const res = await fetch(`/api/comprobantes/${id}`, {
         method: "PATCH",
@@ -117,6 +126,7 @@ export default function SecuenciaEditForm({ id }) {
       setNumero_final(String(updated.numero_final ?? ""));
       setFecha_autorizacion(toInputDate(updated.fecha_autorizacion));
       setFecha_vencimiento(toInputDate(updated.fecha_vencimiento));
+      setProximo_numero(proximoDesdeDoc(updated));
       setTimeout(() => router.push("/dashboard/mis-comprobantes"), 1500);
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -228,6 +238,25 @@ export default function SecuenciaEditForm({ id }) {
                 onChange={(e) => setNumero_final(e.target.value)}
               />
             </div>
+          </div>
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="proximo_numero">
+              Próximo número a emitir
+            </label>
+            <input
+              id="proximo_numero"
+              type="number"
+              min={numero_inicial !== "" ? Number(numero_inicial) : 0}
+              max={numero_final !== "" ? Number(numero_final) + 1 : undefined}
+              step={1}
+              className={styles.input}
+              value={proximo_numero}
+              onChange={(e) => setProximo_numero(e.target.value)}
+            />
+            <p className={styles.hint}>
+              Adelántelo si ya emitió e-CF desde The Factory u otro sistema. Se
+              recalcularán los números utilizados y disponibles.
+            </p>
           </div>
           <div className={styles.rowHalf}>
             <div className={styles.row}>

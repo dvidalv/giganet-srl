@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { FaReceipt, FaFileInvoiceDollar, FaBan } from "react-icons/fa";
+import { FaReceipt, FaFileInvoiceDollar, FaBan, FaHashtag } from "react-icons/fa";
 import { FaFileCircleMinus } from "react-icons/fa6";
 import styles from "./ComprobantesList.module.css";
 
@@ -59,6 +59,28 @@ function labelAmbienteTheFactory(key) {
   if (key === "demo") return "Pruebas (demo)";
   if (key === "production") return "Producción";
   return key ? String(key) : "—";
+}
+
+function findTfCorrelativo(c, tfSeriesPayload) {
+  const series = tfSeriesPayload?.series;
+  if (!Array.isArray(series) || series.length === 0) return null;
+  const tipo = String(c.tipo ?? c.tipo_comprobante ?? "").trim();
+  const ni = Number(c.numeroInicial ?? c.numero_inicial);
+  const nf = Number(c.numeroFinal ?? c.numero_final);
+  let fallback = null;
+  for (const row of series) {
+    const td = String(row.tipoDocumento ?? row.tipo_documento ?? "").trim();
+    if (td !== tipo) continue;
+    const corr = Number(row.correlativo);
+    if (!Number.isFinite(corr)) continue;
+    const vmin = Number(row.valorMinimo ?? row.valor_minimo);
+    const vmax = Number(row.valorMaximo ?? row.valor_maximo);
+    if (Number.isFinite(vmin) && Number.isFinite(vmax) && Number.isFinite(ni) && Number.isFinite(nf)) {
+      if (ni <= vmax && nf >= vmin) return corr;
+    }
+    if (fallback == null) fallback = corr;
+  }
+  return fallback;
 }
 
 function getCardTheme(estadoTipo) {
@@ -129,6 +151,10 @@ export default function ComprobantesList() {
   const [anulandoId, setAnulandoId] = useState(null);
   const [anularNcfDesde, setAnularNcfDesde] = useState("");
   const [anularNcfHasta, setAnularNcfHasta] = useState("");
+  const [pendingAjustar, setPendingAjustar] = useState(null);
+  const [ajustandoId, setAjustandoId] = useState(null);
+  const [ajustarProximo, setAjustarProximo] = useState("");
+  const [ajustarError, setAjustarError] = useState(null);
   const [tfSeriesLoading, setTfSeriesLoading] = useState(true);
   const [tfSeriesError, setTfSeriesError] = useState(null);
   const [tfSeriesErrorHint, setTfSeriesErrorHint] = useState(null);
@@ -230,6 +256,89 @@ export default function ComprobantesList() {
       setAnularNcfHasta("");
     }
   }, [anulandoId]);
+
+  const openAjustarModal = useCallback((c) => {
+    const proximo = c.proximoNumero ?? c.proximo_numero ?? 0;
+    const tfCorr = findTfCorrelativo(c, tfSeriesPayload);
+    // Solo adelantar automáticamente si The Factory ya consumió números de más.
+    const sugerido =
+      tfCorr != null && Number.isFinite(tfCorr) && tfCorr > proximo
+        ? tfCorr
+        : proximo;
+    setPendingAjustar(c);
+    setAjustarProximo(String(sugerido));
+    setAjustarError(null);
+  }, [tfSeriesPayload]);
+
+  const closeAjustarModal = useCallback(() => {
+    if (!ajustandoId) {
+      setPendingAjustar(null);
+      setAjustarProximo("");
+      setAjustarError(null);
+    }
+  }, [ajustandoId]);
+
+  const handleAjustarSecuencia = useCallback(async () => {
+    if (!pendingAjustar) return;
+    const id = pendingAjustar.id ?? pendingAjustar._id;
+    const inicial = Number(
+      pendingAjustar.numeroInicial ?? pendingAjustar.numero_inicial
+    );
+    const final = Number(
+      pendingAjustar.numeroFinal ?? pendingAjustar.numero_final
+    );
+    const proximo = Number(String(ajustarProximo).replace(/\D/g, ""));
+    if (!Number.isInteger(proximo) || String(ajustarProximo).trim() === "") {
+      setAjustarError("Indique el próximo número a emitir.");
+      return;
+    }
+    if (proximo < inicial) {
+      setAjustarError(
+        `El próximo número no puede ser menor que el inicio del rango (${inicial.toLocaleString("es-DO")}).`
+      );
+      return;
+    }
+    if (proximo > final + 1) {
+      setAjustarError(
+        `El próximo número no puede superar el final del rango (${final.toLocaleString("es-DO")}).`
+      );
+      return;
+    }
+    setAjustandoId(id);
+    setAjustarError(null);
+    try {
+      const res = await fetch(`/api/comprobantes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proximo_numero: proximo }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAjustarError(json.error ?? "Error al ajustar la secuencia");
+        return;
+      }
+      setPendingAjustar(null);
+      setAjustarProximo("");
+      await fetchComprobantes();
+      await fetchTheFactorySeries();
+      if (json.theFactorySync && !json.theFactorySync.ok) {
+        alert(
+          `Secuencia actualizada en Giganet. Aviso The Factory: ${
+            json.theFactorySync.message || "no se pudo actualizar el correlativo en el emisor."
+          }`
+        );
+      }
+    } catch {
+      setAjustarError("Error de conexión al ajustar la secuencia.");
+    } finally {
+      setAjustandoId(null);
+    }
+  }, [
+    pendingAjustar,
+    ajustarProximo,
+    fetchComprobantes,
+    fetchTheFactorySeries,
+  ]);
 
   const handleAnular = useCallback(async () => {
     if (!pendingAnular) return;
@@ -336,10 +445,15 @@ export default function ComprobantesList() {
         setAnularNcfDesde("");
         setAnularNcfHasta("");
       }
+      if (pendingAjustar && !ajustandoId) {
+        setPendingAjustar(null);
+        setAjustarProximo("");
+        setAjustarError(null);
+      }
     };
     document.addEventListener("keydown", onEscape);
     return () => document.removeEventListener("keydown", onEscape);
-  }, [pendingDelete, deletingId, pendingAnular, anulandoId]);
+  }, [pendingDelete, deletingId, pendingAnular, anulandoId, pendingAjustar, ajustandoId]);
 
   const filtered = useMemo(() => {
     let list = comprobantes;
@@ -566,6 +680,176 @@ export default function ComprobantesList() {
           </div>
         </div>
       )}
+
+      {pendingAjustar && (() => {
+        const inicial = Number(
+          pendingAjustar.numeroInicial ?? pendingAjustar.numero_inicial ?? 0
+        );
+        const final = Number(
+          pendingAjustar.numeroFinal ?? pendingAjustar.numero_final ?? 0
+        );
+        const actual =
+          pendingAjustar.proximoNumero ?? pendingAjustar.proximo_numero ?? 0;
+        const tfCorr = findTfCorrelativo(pendingAjustar, tfSeriesPayload);
+        const proximoParsed = Number(String(ajustarProximo).replace(/\D/g, ""));
+        const proximoValido =
+          Number.isInteger(proximoParsed) &&
+          String(ajustarProximo).trim() !== "" &&
+          proximoParsed >= inicial &&
+          proximoParsed <= final + 1;
+        const nuevosUtilizados = proximoValido ? proximoParsed - inicial : null;
+        const cantidad = final - inicial + 1;
+        const nuevosDisponibles =
+          nuevosUtilizados != null ? Math.max(0, cantidad - nuevosUtilizados) : null;
+        const prefijo = pendingAjustar.prefijo ?? "E";
+        const tipo = pendingAjustar.tipo ?? pendingAjustar.tipo_comprobante;
+        const ncfPreview = proximoValido
+          ? formatearNCF(prefijo, tipo, proximoParsed)
+          : null;
+        const vaAtras = proximoValido && proximoParsed < actual;
+        const sinCambio = proximoValido && proximoParsed === actual;
+
+        return (
+          <div
+            className={styles.modalOverlay}
+            onClick={closeAjustarModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-ajustar-title"
+            aria-describedby="modal-ajustar-desc">
+            <div
+              className={`${styles.modalContent} ${styles.modalContentWide}`}
+              onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalIconAjustar}>
+                <FaHashtag size={26} aria-hidden />
+              </div>
+              <h2 id="modal-ajustar-title" className={styles.modalTitle}>
+                Ajustar secuencia
+              </h2>
+              <p id="modal-ajustar-desc" className={styles.modalMessage}>
+                Adelante el próximo número si ya emitió e-CF desde The Factory
+                u otro sistema, para que Giganet no reutilice esos NCF.
+              </p>
+              {pendingAjustar.titulo && (
+                <p className={styles.modalDetail}>
+                  <strong>{pendingAjustar.titulo}</strong>
+                  {pendingAjustar.tipo_comprobante && (
+                    <> — Tipo {pendingAjustar.tipo_comprobante}</>
+                  )}
+                </p>
+              )}
+              <div className={styles.ajustarMeta}>
+                <div>
+                  <p className={styles.cardLabel}>Rango</p>
+                  <p className={styles.cardValue}>
+                    {formatRango(inicial, final)}
+                  </p>
+                </div>
+                <div>
+                  <p className={styles.cardLabel}>Próximo actual</p>
+                  <p className={styles.cardValue}>
+                    {Number(actual).toLocaleString("es-DO")}
+                  </p>
+                </div>
+                <div>
+                  <p className={styles.cardLabel}>The Factory</p>
+                  <p className={styles.cardValue}>
+                    {tfCorr != null
+                      ? Number(tfCorr).toLocaleString("es-DO")
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+              {tfCorr != null && tfCorr > actual && (
+                <p className={styles.ajustarTfHint} role="status">
+                  The Factory ya va por {Number(tfCorr).toLocaleString("es-DO")}.
+                  Use ese correlativo para que Giganet no reutilice NCF ya
+                  emitidos allá.
+                </p>
+              )}
+              {tfCorr != null && tfCorr < actual && (
+                <p className={styles.ajustarTfHint} role="status">
+                  The Factory reporta {Number(tfCorr).toLocaleString("es-DO")},
+                  por detrás de Giganet. No lo use salvo que deba retroceder
+                  a propósito.
+                </p>
+              )}
+              <div className={styles.modalForm}>
+                <label htmlFor="ajustar-proximo" className={styles.modalLabel}>
+                  Próximo número a emitir
+                </label>
+                <input
+                  id="ajustar-proximo"
+                  type="number"
+                  min={inicial}
+                  max={final + 1}
+                  step={1}
+                  className={styles.modalInput}
+                  value={ajustarProximo}
+                  onChange={(e) => {
+                    setAjustarProximo(e.target.value);
+                    setAjustarError(null);
+                  }}
+                  disabled={!!ajustandoId}
+                  autoFocus
+                />
+                {tfCorr != null && tfCorr !== proximoParsed && (
+                  <button
+                    type="button"
+                    className={styles.ajustarUsarTf}
+                    onClick={() => {
+                      setAjustarProximo(String(tfCorr));
+                      setAjustarError(null);
+                    }}
+                    disabled={!!ajustandoId}>
+                    Usar correlativo de The Factory ({tfCorr.toLocaleString("es-DO")})
+                  </button>
+                )}
+                {ncfPreview && (
+                  <p className={styles.ajustarPreview}>
+                    NCF: <strong>{ncfPreview}</strong>
+                    {nuevosUtilizados != null && (
+                      <>
+                        {" · "}
+                        Utilizados {nuevosUtilizados.toLocaleString("es-DO")}
+                        {" · "}
+                        Disponibles {nuevosDisponibles.toLocaleString("es-DO")}
+                      </>
+                    )}
+                  </p>
+                )}
+                {vaAtras && (
+                  <p className={styles.modalDangerNote} role="alert">
+                    Está retrocediendo la secuencia. Solo hágalo si el número
+                    actual no se llegó a emitir.
+                  </p>
+                )}
+                {ajustarError && (
+                  <p className={styles.ajustarError} role="alert">
+                    {ajustarError}
+                  </p>
+                )}
+              </div>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.modalCancel}
+                  onClick={closeAjustarModal}
+                  disabled={!!ajustandoId}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={styles.modalConfirmAjustar}
+                  onClick={handleAjustarSecuencia}
+                  disabled={!!ajustandoId || !proximoValido || sinCambio}>
+                  {ajustandoId ? "Guardando..." : "Guardar secuencia"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <section className={styles.tfSeriesPanel} aria-label="Series The Factory HKA">
         <div className={styles.tfSeriesPanelBar}>
@@ -838,6 +1122,15 @@ export default function ComprobantesList() {
                       </div>
                     </div>
                     <div className={styles.cardActions}>
+                      <button
+                        type="button"
+                        className={`${styles.actionBtn} ${styles.actionBtnAjustar}`}
+                        title="Ajustar secuencia"
+                        aria-label="Ajustar próximo número de secuencia"
+                        onClick={() => openAjustarModal(c)}
+                        disabled={ajustandoId === (c.id ?? c._id)}>
+                        <FaHashtag size={15} aria-hidden />
+                      </button>
                       <Link
                         href={detallesHref}
                         className={styles.actionBtn}
@@ -952,11 +1245,18 @@ export default function ComprobantesList() {
                       </div>
                       <div>
                         <p className={styles.cardLabel}>Próximo #</p>
-                        <p className={styles.cardValue}>
-                          {canGenerate
-                            ? proximoNum.toLocaleString("es-DO")
-                            : "—"}
-                        </p>
+                        {canGenerate ? (
+                          <button
+                            type="button"
+                            className={styles.proximoBtn}
+                            onClick={() => openAjustarModal(c)}
+                            title="Ajustar próximo número"
+                            aria-label={`Ajustar próximo número ${proximoNum.toLocaleString("es-DO")}`}>
+                            {proximoNum.toLocaleString("es-DO")}
+                          </button>
+                        ) : (
+                          <p className={styles.cardValue}>—</p>
+                        )}
                       </div>
                     </div>
                     <div>

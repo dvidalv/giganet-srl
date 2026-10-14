@@ -2034,12 +2034,6 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
           );
           totalDescuentos += montoDescuento;
 
-          const nlRaw =
-            descuento.NumeroLinea != null
-              ? String(descuento.NumeroLinea).trim()
-              : descuento.numeroLinea != null
-                ? String(descuento.numeroLinea).trim()
-                : "";
           const tipoValorRaw = String(
             descuento.TipoValor || descuento.tipoValor || "$"
           ).trim();
@@ -2052,7 +2046,8 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
            * al XML (MontoDescuentooRecargo, etc.). No usar los nombres largos en JSON — el API no los enlaza.
            */
           return {
-            ...(nlRaw !== "" ? { NumeroLinea: nlRaw } : {}),
+            /** DGII: consecutivo dentro de DescuentosORecargos (1..n), no el número del ítem. */
+            NumeroLinea: String(index + 1),
             TipoAjuste: "D", // D = Descuento
             Descripcion:
               descuento.Descripcion ||
@@ -2222,8 +2217,8 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   /**
    * Descuento de esa línea (el % real del POS, no un 10 fijo) para la grilla de The Factory.
-   * `descuentoMonto` + `tablaSubDescuento` son los campos del ítem que pinta HKA;
-   * `DescuentosORecargos` sigue llevando el mismo monto a los totales DGII.
+   * DGII: MontoItem = PrecioUnitario × Cantidad − DescuentoMonto. El descuento por línea va solo
+   * en el ítem; `DescuentosORecargos` es para descuentos globales (si no, se descuenta dos veces).
    */
   function tablaSubDescuentoDesdeItemLinea(item) {
     const dlb = parsearMonto(item.descuentoLineaBase ?? item.descuentoLinea ?? 0);
@@ -2285,8 +2280,12 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       };
     }
 
-    const { PrecioUnitario, Monto } = precioUnitarioYMontoDesdePrecioLinea(item);
+    const { PrecioUnitario, Monto: montoBruto } = precioUnitarioYMontoDesdePrecioLinea(item);
     const subDescuentoItem = tablaSubDescuentoDesdeItemLinea(item);
+    const descItem = parsearMonto(subDescuentoItem.DescuentoMonto ?? 0);
+    const Monto = (
+      Math.round((parseFloat(montoBruto) - descItem) * 100) / 100
+    ).toFixed(2);
 
     // Campos comunes para todos los tipos (PascalCase según ejemplo oficial)
     return {
@@ -2303,47 +2302,17 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     };
   });
 
-  /** Monto de línea en detalle menos `descuentoLineaBase` del ítem fuente (coherencia con Totales netos). */
-  const montoDetalleNeto = (detItem, idx) => {
-    const bruto = Math.round(parseFloat(String(detItem.Monto)) * 100) / 100;
-    const orig = itemsAdaptados[idx];
-    const dlb = orig
-      ? parsearMonto(orig.descuentoLineaBase ?? orig.descuentoLinea ?? 0)
-      : 0;
-    return Math.round((bruto - dlb) * 100) / 100;
-  };
+  /** `Monto` del detalle ya es neto de `DescuentoMonto` (coherencia con Totales netos). */
+  const montoDetalleNeto = (detItem) =>
+    Math.round(parseFloat(String(detItem.Monto)) * 100) / 100;
 
   const sumaDetallePorIndicador = (ind) =>
     detallesItems
-      .reduce((suma, item, idx) => {
+      .reduce((suma, item) => {
         if (String(item.IndicadorFacturacion) !== ind) return suma;
-        return suma + montoDetalleNeto(item, idx);
+        return suma + montoDetalleNeto(item);
       }, 0)
       .toFixed(2);
-
-  /** Descuentos por línea e-CF (DGII / TheFactory) desde `descuentoLineaBase` en ítems simplificados. */
-  const descuentosDesdeItemsLinea = [];
-  itemsAdaptados.forEach((item, idx) => {
-    const dlb = parsearMonto(item.descuentoLineaBase ?? item.descuentoLinea ?? 0);
-    if (dlb <= 0.0001) return;
-    const det = detallesItems[idx];
-    if (!det) return;
-    const pctRaw = item.lineDiscountPct ?? item.lineDiscountPorcentaje;
-    const pctNum = pctRaw != null ? Number(pctRaw) : NaN;
-    const usoPct =
-      Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 100;
-    descuentosDesdeItemsLinea.push({
-      NumeroLinea: String(idx + 1),
-      TipoAjuste: "D",
-      Descripcion: "Descuento por línea POS",
-      TipoValor: usoPct ? "%" : "$",
-      ...(usoPct ? { Valor: pctNum.toFixed(2) } : {}),
-      Monto: dlb.toFixed(2),
-      IndicadorFacturacion: det.IndicadorFacturacion || "1",
-    });
-  });
-
-  const descuentosORecargosMerged = [...descuentosArray, ...descuentosDesdeItemsLinea];
 
   // 🔍 Debug: Verificar suma individual de items vs totales calculados
   let sumaItemsGravados = sumaDetallePorIndicador("1");
@@ -2464,9 +2433,15 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   }
 
   detallesItems.forEach((linea) => {
+    const desc = parsearMonto(linea.DescuentoMonto ?? 0);
     const m = Math.round(parseFloat(String(linea.Monto)) * 100) / 100;
-    const aligned = precioUnitarioYMontoCoherentes(m, linea.Cantidad);
-    linea.Monto = aligned.Monto;
+    const aligned = precioUnitarioYMontoCoherentes(
+      Math.round((m + desc) * 100) / 100,
+      linea.Cantidad
+    );
+    linea.Monto = (
+      Math.round((parseFloat(aligned.Monto) - desc) * 100) / 100
+    ).toFixed(2);
     linea.PrecioUnitario = aligned.PrecioUnitario;
   });
 
@@ -2505,7 +2480,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   if (facturaAdaptada.tipo === "43") {
     const sumaDetalle = detallesItems.reduce(
-      (s, it, idx) => s + montoDetalleNeto(it, idx),
+      (s, it) => s + montoDetalleNeto(it),
       0
     );
     if (Math.abs(sumaDetalle - montoTotalConDescuentos) > 0.02) {
@@ -2958,12 +2933,12 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
       },
       DetallesItems: detallesItems,
       // Agregar sección de descuentos/recargos (TheFactory espera array, no objeto con descuentoORecargo)
-      ...(descuentosORecargosMerged.length > 0 && {
-        DescuentosORecargos: descuentosORecargosMerged,
+      ...(descuentosArray.length > 0 && {
+        DescuentosORecargos: descuentosArray,
       }),
       // Para tipo 45: Agregar sección vacía si no hay descuentos
       ...(facturaAdaptada.tipo === "45" &&
-        descuentosORecargosMerged.length === 0 && {
+        descuentosArray.length === 0 && {
           DescuentosORecargos: [],
         }),
       // Para tipos 33 y 34: Agregar InformacionReferencia OBLIGATORIA (con validación)

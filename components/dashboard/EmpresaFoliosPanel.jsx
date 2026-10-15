@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import compStyles from "./EmpresaAdminForm.module.css";
 import styles from "./EmpresaFolios.module.css";
 import CampoFecha from "./CampoFecha";
+import CampoNumero from "./CampoNumero";
 import FolioContratoCard from "./FolioContratoCard";
 import {
   ETIQUETAS_ACCION,
@@ -173,11 +174,15 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
         body: JSON.stringify({ ...form, renovacionDe: creando.renovacionDe }),
       });
       setCreando(null);
+      const asignados = data.contrato.asignados || 0;
+      const detalleAsignacion = asignados
+        ? `${formatNumero(asignados)} folios asignados en The Factory.`
+        : "Sin folios asignados: registre la asignación en el contrato para habilitar la emisión.";
       setMessage({
         type: "success",
         text: creando.renovacionDe
-          ? `Renovación ${data.contrato.codigo} creada. Los folios de cada contrato se mantienen separados.`
-          : `Contrato ${data.contrato.codigo} creado.`,
+          ? `Renovación ${data.contrato.codigo} creada. ${detalleAsignacion} Los folios de cada contrato se mantienen separados.`
+          : `Contrato ${data.contrato.codigo} creado. ${detalleAsignacion}`,
       });
       await cargar();
     } catch (err) {
@@ -563,26 +568,20 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
           <div className={compStyles.compEditorGrid}>
             <label>
               Cantidad contratada *
-              <input
-                type="number"
-                min={1}
-                step={1}
+              <CampoNumero
                 required
                 value={form.cantidadContratada}
-                onChange={(e) => setForm((f) => ({ ...f, cantidadContratada: e.target.value }))}
-                placeholder="Ej. 100000"
+                onChange={(v) => setForm((f) => ({ ...f, cantidadContratada: v }))}
+                placeholder="Ej. 100,000"
                 disabled={savingContrato}
               />
             </label>
             <label>
               Asignación inicial en The Factory
-              <input
-                type="number"
-                min={0}
-                step={1}
+              <CampoNumero
                 value={form.asignacionInicial}
-                onChange={(e) => setForm((f) => ({ ...f, asignacionInicial: e.target.value }))}
-                placeholder="Opcional, ej. 20000"
+                onChange={(v) => setForm((f) => ({ ...f, asignacionInicial: v }))}
+                placeholder="Opcional, ej. 20,000"
                 disabled={savingContrato}
               />
             </label>
@@ -612,12 +611,9 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
               <div className={`${compStyles.compEditorFull} ${styles.campoCompuesto}`}>
                 <label>
                   Folios consumidos a la fecha
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
+                  <CampoNumero
                     value={form.consumoPrevio}
-                    onChange={(e) => setForm((f) => ({ ...f, consumoPrevio: e.target.value }))}
+                    onChange={(v) => setForm((f) => ({ ...f, consumoPrevio: v }))}
                     placeholder="0 si la empresa empieza a emitir con este contrato"
                     disabled={savingContrato}
                     aria-describedby="consumo-previo-ayuda"

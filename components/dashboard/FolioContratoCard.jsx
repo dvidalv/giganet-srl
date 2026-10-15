@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import compStyles from "./EmpresaAdminForm.module.css";
 import styles from "./EmpresaFolios.module.css";
 import CampoFecha from "./CampoFecha";
+import CampoNumero from "./CampoNumero";
 import {
   ETIQUETAS_ACCION,
   EstadoFoliosBadge,
@@ -333,14 +334,10 @@ export default function FolioContratoCard({ userId, contrato, hoy, onChanged, on
           <div className={compStyles.compEditorGrid}>
             <label>
               Cantidad asignada *
-              <input
-                type="number"
-                min={1}
-                max={contrato.pendienteAsignar}
-                step={1}
+              <CampoNumero
                 required
                 value={asignacion.cantidad}
-                onChange={(e) => setAsignacion((a) => ({ ...a, cantidad: e.target.value }))}
+                onChange={(v) => setAsignacion((a) => ({ ...a, cantidad: v }))}
                 disabled={saving}
               />
             </label>
@@ -381,24 +378,18 @@ export default function FolioContratoCard({ userId, contrato, hoy, onChanged, on
           <div className={compStyles.compEditorGrid}>
             <label>
               Cantidad contratada *
-              <input
-                type="number"
-                min={Math.max(1, contrato.asignados, contrato.consumidos)}
-                step={1}
+              <CampoNumero
                 required
                 value={draft.cantidadContratada}
-                onChange={(e) => setDraft((d) => ({ ...d, cantidadContratada: e.target.value }))}
+                onChange={(v) => setDraft((d) => ({ ...d, cantidadContratada: v }))}
                 disabled={saving}
               />
             </label>
             <label>
               Saldo confirmado por The Factory
-              <input
-                type="number"
-                min={0}
-                step={1}
+              <CampoNumero
                 value={draft.saldoCantidad}
-                onChange={(e) => setDraft((d) => ({ ...d, saldoCantidad: e.target.value }))}
+                onChange={(v) => setDraft((d) => ({ ...d, saldoCantidad: v }))}
                 placeholder="Opcional"
                 disabled={saving}
               />
@@ -424,13 +415,9 @@ export default function FolioContratoCard({ userId, contrato, hoy, onChanged, on
             </label>
             <label>
               Consumidos antes del control
-              <input
-                type="number"
-                min={0}
-                max={contrato.asignados}
-                step={1}
+              <CampoNumero
                 value={draft.consumoPrevio}
-                onChange={(e) => setDraft((d) => ({ ...d, consumoPrevio: e.target.value }))}
+                onChange={(v) => setDraft((d) => ({ ...d, consumoPrevio: v }))}
                 disabled={saving}
                 title="e-NCF emitidos antes de activar el control de folios; se suman a los consumidos"
               />
@@ -581,12 +568,11 @@ export default function FolioContratoCard({ userId, contrato, hoy, onChanged, on
                 <div className={compStyles.compEditorGrid}>
                   <label>
                     Ajuste de consumo (+/-) *
-                    <input
-                      type="number"
-                      step={1}
+                    <CampoNumero
+                      permitirNegativo
                       required
                       value={ajuste.cantidad}
-                      onChange={(e) => setAjuste((a) => ({ ...a, cantidad: e.target.value }))}
+                      onChange={(v) => setAjuste((a) => ({ ...a, cantidad: v }))}
                       placeholder="Ej. -3 o 10"
                       disabled={saving}
                     />

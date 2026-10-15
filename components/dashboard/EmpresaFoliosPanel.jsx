@@ -39,6 +39,8 @@ function formularioInicial(hoy, base = null) {
     fechaVencimiento: sumarAnio(inicio),
     asignacionInicial: "",
     consumoPrevio: "",
+    saldoCantidad: "",
+    saldoNota: "",
     observaciones: "",
   };
 }
@@ -64,6 +66,24 @@ function previsualizarContrato(form) {
     asignados,
     excedeAsignado: consumidos > asignados,
     disponible: Math.max(0, Math.min(asignados, cantidad) - consumidos),
+  };
+}
+
+/**
+ * Contraste con el saldo informado por The Factory: con la asignación inicial y el saldo,
+ * lo consumido según The Factory es asignación − saldo.
+ */
+function contrastarSaldo(form) {
+  const saldo = entero(form.saldoCantidad);
+  const asignados = entero(form.asignacionInicial);
+  if (saldo === null || !asignados) return null;
+  if (saldo > asignados) return { saldo, asignados, excede: true };
+  const consumidosTf = asignados - saldo;
+  return {
+    saldo,
+    asignados,
+    consumidosTf,
+    coincide: consumidosTf === (entero(form.consumoPrevio) ?? 0),
   };
 }
 
@@ -171,7 +191,11 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
       const data = await fetchJson(`/api/users/${userId}/folios/contratos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, renovacionDe: creando.renovacionDe }),
+        body: JSON.stringify({
+          ...form,
+          saldoTheFactory: { cantidad: form.saldoCantidad, nota: form.saldoNota },
+          renovacionDe: creando.renovacionDe,
+        }),
       });
       setCreando(null);
       const asignados = data.contrato.asignados || 0;
@@ -278,6 +302,7 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
   const actual = resumen.contratoActual;
   const ocupado = savingModalidad || savingContrato;
   const vistaPrevia = form ? previsualizarContrato(form) : null;
+  const contrasteSaldo = form ? contrastarSaldo(form) : null;
 
   return (
     <section className={compStyles.compSection} aria-labelledby="folios-heading">
@@ -562,7 +587,7 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
             <p className={compStyles.compCreateHint}>
               {creando.renovacionDe
                 ? "Se crea un contrato nuevo e independiente; el anterior conserva sus folios e historial. Mientras ambos estén vigentes se usa primero el que vence antes."
-                : "Si la empresa ya venía emitiendo, use la fecha real de inicio de su paquete y registre los folios que ya consumió. La fecha de vencimiento es comercial: el cliente emite durante todo ese día y queda bloqueado desde las 00:00 del día siguiente (hora de República Dominicana)."}
+                : "Si la empresa ya venía emitiendo, use la fecha real de inicio de su paquete y registre los folios que ya consumió y el saldo actual que muestra The Factory. La fecha de vencimiento es comercial: el cliente emite durante todo ese día y queda bloqueado desde las 00:00 del día siguiente (hora de República Dominicana)."}
             </p>
           </div>
           <div className={compStyles.compEditorGrid}>
@@ -605,6 +630,26 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
                 value={form.fechaVencimiento}
                 onChange={(dia) => setForm((f) => ({ ...f, fechaVencimiento: dia }))}
                 disabled={savingContrato}
+              />
+            </label>
+            <label>
+              Saldo actual en The Factory
+              <CampoNumero
+                value={form.saldoCantidad}
+                onChange={(v) => setForm((f) => ({ ...f, saldoCantidad: v }))}
+                placeholder="Opcional, ej. 15,000"
+                disabled={savingContrato}
+              />
+            </label>
+            <label>
+              Nota del saldo
+              <input
+                type="text"
+                maxLength={500}
+                value={form.saldoNota}
+                onChange={(e) => setForm((f) => ({ ...f, saldoNota: e.target.value }))}
+                placeholder="Ej. Consultado en el portal de The Factory"
+                disabled={savingContrato || form.saldoCantidad === ""}
               />
             </label>
             {!creando.renovacionDe && (
@@ -664,6 +709,36 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
                     )}
                   </div>
                 )}
+                {contrasteSaldo &&
+                  (contrasteSaldo.excede ? (
+                    <p className={compStyles.compAjustarWarn} role="status">
+                      El saldo de The Factory ({formatNumero(contrasteSaldo.saldo)}) supera la
+                      asignación inicial ({formatNumero(contrasteSaldo.asignados)}). Verifique la
+                      asignación inicial.
+                    </p>
+                  ) : (
+                    !contrasteSaldo.coincide && (
+                      <div className={compStyles.compAjustarHint} role="status">
+                        Según The Factory la empresa ha consumido{" "}
+                        <strong>{formatNumero(contrasteSaldo.consumidosTf)}</strong> folios
+                        (asignación {formatNumero(contrasteSaldo.asignados)} − saldo{" "}
+                        {formatNumero(contrasteSaldo.saldo)}).{" "}
+                        <button
+                          type="button"
+                          className={compStyles.compAjustarUsarTf}
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              consumoPrevio: String(contrasteSaldo.consumidosTf),
+                            }))
+                          }
+                          disabled={savingContrato}
+                        >
+                          Usar {formatNumero(contrasteSaldo.consumidosTf)}
+                        </button>
+                      </div>
+                    )
+                  ))}
               </div>
             )}
             <label className={compStyles.compEditorFull}>

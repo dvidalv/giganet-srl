@@ -17,6 +17,7 @@ export async function POST(request, { params }) {
       fechaVencimiento: body.fechaVencimiento,
       asignacionInicial: body.asignacionInicial,
       consumoPrevio: body.consumoPrevio,
+      saldoTheFactory: body.saldoTheFactory ?? null,
       observaciones: body.observaciones,
       renovacionDe: body.renovacionDe || null,
       admin: check.admin,

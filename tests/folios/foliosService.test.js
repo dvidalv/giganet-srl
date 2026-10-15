@@ -416,10 +416,13 @@ describe("empresas que ya venían emitiendo", () => {
       fechaVencimiento: "2027-02-28",
       asignacionInicial: 40000,
       consumoPrevio: 32500,
+      saldoTheFactory: { cantidad: "7,500", nota: "Portal TF" },
       admin: ADMIN,
       ahora: horaRD("2026-10-15"),
     });
     expect(c).toMatchObject({ consumoPrevio: 32500, consumidos: 32500, asignados: 40000, disponible: 7500 });
+    expect(c.saldoTheFactory).toMatchObject({ cantidad: 7500, nota: "Portal TF" });
+    expect(c.saldoTheFactory.fecha).toBeInstanceOf(Date);
 
     const asignacion = await mongoose.connection.collection("folios_asignaciones").findOne({ contrato: new mongoose.Types.ObjectId(c.id) });
     expect(asignacion.fecha).toBe("2026-03-01");

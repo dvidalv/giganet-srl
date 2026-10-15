@@ -102,6 +102,12 @@ function EmpresasList() {
                     <span className={styles.label}>Teléfono:</span>
                     <span className={styles.value}>{telefono}</span>
                   </div>
+                  <div className={styles.row}>
+                    <span className={styles.label}>Folios:</span>
+                    <span className={styles.value}>
+                      {e.modalidadFolios === "CONTROLADO" ? "Controlados" : "Ilimitados"}
+                    </span>
+                  </div>
                 </div>
               </Link>
             </li>

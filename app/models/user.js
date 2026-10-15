@@ -130,6 +130,33 @@ const userSchema = new Schema(
         enum: ["production", "demo"],
         default: "production",
       },
+      /**
+       * Control comercial de folios e-CF. Sin este subdocumento (clientes previos)
+       * la empresa se trata como ILIMITADO.
+       */
+      folios: {
+        modalidad: {
+          type: String,
+          enum: ["ILIMITADO", "CONTROLADO"],
+          default: "ILIMITADO",
+        },
+        /** % del límite emitible bajo el cual se avisa por email a Giganet; null = desactivada. */
+        alertaMinimaPct: {
+          type: Number,
+          min: 1,
+          max: 90,
+          default: 10,
+        },
+        actualizadoEn: {
+          type: Date,
+          default: null,
+        },
+        actualizadoPor: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+      },
     },
     verificationToken: {
       type: String,
@@ -175,6 +202,8 @@ const needsUserModelRecompile =
     !existingUserModel.schema.path("empresa.theFactoryClaveDemoEnc") ||
     !existingUserModel.schema.path("empresa.theFactoryUsuarioProduction") ||
     !existingUserModel.schema.path("empresa.theFactoryClaveProductionEnc") ||
+    !existingUserModel.schema.path("empresa.folios.modalidad") ||
+    !existingUserModel.schema.path("empresa.folios.alertaMinimaPct") ||
     (typeof rncMaxlength === "number" && rncMaxlength < 11)
   );
 

@@ -32,6 +32,8 @@ export async function GET() {
         telefono: u.empresa?.telefono ?? "",
         theFactoryAmbiente:
           u.empresa?.theFactoryAmbiente === "demo" ? "demo" : "production",
+        modalidadFolios:
+          u.empresa?.folios?.modalidad === "CONTROLADO" ? "CONTROLADO" : "ILIMITADO",
       },
     }));
 

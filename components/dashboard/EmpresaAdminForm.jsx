@@ -8,6 +8,8 @@ import { crearEncuesta } from "@/actions/crearEncuesta-action";
 import styles from "@/app/dashboard/empresa/page.module.css";
 import adminStyles from "./EmpresaAdminForm.module.css";
 import EmpresaAdminComprobantes from "./EmpresaAdminComprobantes";
+import EmpresaFoliosPanel from "./EmpresaFoliosPanel";
+import { ModalidadBadge } from "./foliosUi";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -118,6 +120,7 @@ export default function EmpresaAdminForm({ userId }) {
   const [clearingTfClave, setClearingTfClave] = useState(false);
   const [surveySending, setSurveySending] = useState(false);
   const [comprobantesReloadToken, setComprobantesReloadToken] = useState(0);
+  const [modalidadFolios, setModalidadFolios] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -610,6 +613,7 @@ export default function EmpresaAdminForm({ userId }) {
                       ? "Pruebas (demo)"
                       : "Producción"}
                   </span>
+                  {modalidadFolios && <ModalidadBadge modalidad={modalidadFolios} />}
                   <span className={adminStyles.configPanelChevron} aria-hidden="true">
                     <IconChevronDown />
                   </span>
@@ -781,6 +785,7 @@ export default function EmpresaAdminForm({ userId }) {
           </div>
         </form>
       </div>
+      <EmpresaFoliosPanel userId={userId} onModalidadChange={setModalidadFolios} />
       <EmpresaAdminComprobantes
         userId={userId}
         ambiente={empresa.theFactoryAmbiente}

@@ -152,6 +152,13 @@ import { sendEmail } from "@/api-mail_brevo";
 import { THEFACTORY_USUARIO, THEFACTORY_CLAVE } from "@/utils/constants";
 import { resolveTheFactoryUrlsForUser } from "@/utils/theFactoryUrls";
 import { decryptTheFactoryPassword } from "@/utils/thefactoryCredentials";
+import {
+  reservarFolio,
+  registrarResultadoEnvio,
+  liberarFolio,
+  marcarFolioPendiente,
+  respuestaBloqueoFolios,
+} from "@/lib/folios/foliosService";
 
 const THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK =
   String(process.env.THEFACTORY_ALLOW_ENV_CREDENTIALS_FALLBACK || "").toLowerCase() ===
@@ -3262,6 +3269,8 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
   // "Error interno al enviar factura" en vez del 400 de The Factory.
   let rnc = null;
   let urls = null;
+  let reservaFolio = null;
+  let envioIntentado = false;
 
   try {
     console.log("Datos recibidos:", JSON.stringify(body, null, 2));
@@ -3283,6 +3292,34 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     }
 
     urls = await resolveTheFactoryUrlsForUser(options.userId);
+
+    // Control comercial de folios: debe resolverse antes de cualquier contacto con The Factory.
+    try {
+      reservaFolio = await reservarFolio({
+        userId: options.userId,
+        ncf: body.factura?.ncf,
+        tipoComprobante: body.factura?.tipo,
+        ambienteKey: urls.ambienteKey,
+      });
+    } catch (errorFolios) {
+      console.error("❌ No se pudo verificar el saldo de folios:", errorFolios);
+      return {
+        status: httpStatus.SERVICE_UNAVAILABLE,
+        data: {
+          status: "error",
+          message:
+            "No se pudo verificar el saldo de folios electrónicos. Reintente en unos minutos.",
+          errorType: "FOLIOS_VERIFICACION_FALLIDA",
+        },
+      };
+    }
+    if (!reservaFolio.permitido) {
+      console.warn(
+        `⛔ Emisión bloqueada por control de folios (${reservaFolio.codigo}) NCF=${body.factura?.ncf ?? "—"}`
+      );
+      return respuestaBloqueoFolios(reservaFolio);
+    }
+
     const token = await obtenerTokenTheFactory(rnc, {
       ...options,
       theFactoryUrls: urls,
@@ -3321,6 +3358,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     } catch (errorDatos) {
       const mensaje = errorDatos?.message || "Datos de la factura inválidos";
       console.error("❌ Documento no armado por datos inválidos:", mensaje);
+      await liberarFolio(reservaFolio, "DATOS_INVALIDOS");
       return {
         status: httpStatus.BAD_REQUEST,
         data: {
@@ -3339,11 +3377,16 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     );
 
     // Enviar a TheFactoryHKA (Token y DocumentoElectronico en la raíz del body)
+    envioIntentado = true;
     const response = await axios.post(urls.enviarUrl, facturaCompleta, {
       headers: {
         "Content-Type": "application/json",
       },
       timeout: 60000,
+    });
+    await registrarResultadoEnvio(reservaFolio, {
+      aceptado: Boolean(response.data?.procesado) && response.data?.codigo === 0,
+      codigo: response.data?.codigo ?? null,
     });
 
     if (!response.data.procesado || response.data.codigo !== 0) {
@@ -3483,6 +3526,17 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
     // Normalizar el error de The Factory
     const normalizedError = normalizeTheFactoryError(error);
     logTheFactoryError(error, normalizedError);
+
+    if (!envioIntentado) {
+      await liberarFolio(reservaFolio, "ERROR_PREVIO_AL_ENVIO");
+    } else if (error?.response) {
+      await registrarResultadoEnvio(reservaFolio, {
+        aceptado: false,
+        codigo: error.response.status ?? null,
+      });
+    } else {
+      await marcarFolioPendiente(reservaFolio);
+    }
 
     try {
       await guardarRegistroEnvio({

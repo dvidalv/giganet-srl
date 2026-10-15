@@ -140,12 +140,14 @@ const userSchema = new Schema(
           enum: ["ILIMITADO", "CONTROLADO"],
           default: "ILIMITADO",
         },
-        /** % del límite emitible bajo el cual se avisa por email a Giganet; null = desactivada. */
+        /**
+         * % del límite emitible bajo el cual se avisa por email a Giganet; null = desactivada.
+         * Sin default en el esquema: si no existe se usa ALERTA_MINIMA_PCT_DEFECTO (lib/folios/estado.js).
+         */
         alertaMinimaPct: {
           type: Number,
           min: 1,
           max: 90,
-          default: 10,
         },
         actualizadoEn: {
           type: Date,

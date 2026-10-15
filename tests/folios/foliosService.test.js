@@ -382,6 +382,7 @@ describe("concurrencia y reintentos", () => {
 describe("alertas", () => {
   it("genera alertas de vencimiento y consumo sin duplicados", async () => {
     const { empresaId, contrato } = await empresaControlada({ cantidad: 10, asignados: 10, vence: "2026-02-10" });
+    await configurarAlertaMinima({ empresaId, pct: null, admin: ADMIN });
     for (let i = 1; i <= 8; i += 1) await emitir(empresaId, `E32000000000${i}`);
 
     const ahora = horaRD("2026-01-15");
@@ -535,15 +536,16 @@ describe("alerta mínima por email", () => {
     }
   }
 
-  it("avisa una sola vez al alcanzar el umbral (10 % por defecto del límite asignado)", async () => {
+  it("avisa una sola vez al alcanzar el umbral (30 % por defecto del límite asignado)", async () => {
     const { empresaId, contrato } = await empresaControlada({ cantidad: 100, asignados: 10, ...VIGENCIA });
-    expect((await obtenerResumenEmpresa(empresaId)).alertaMinima).toMatchObject({ pct: 10, limite: 10, umbral: 1 });
+    expect((await obtenerResumenEmpresa(empresaId)).alertaMinima).toMatchObject({ pct: 30, limite: 10, umbral: 3 });
+    expect((await User.findById(empresaId).lean()).empresa.folios.alertaMinimaPct).toBeUndefined();
 
-    await emitirVarios(empresaId, 1, 8);
+    await emitirVarios(empresaId, 1, 6);
     expect(await alertaMinima(contrato.id)).toBeNull();
     expect(sendEmail).not.toHaveBeenCalled();
 
-    await emitirVarios(empresaId, 9, 9);
+    await emitirVarios(empresaId, 7, 7);
     const alerta = await alertaMinima(contrato.id);
     expect(alerta).toMatchObject({ atendida: false, emailIntentos: 1, emailError: "" });
     expect(alerta.emailEnviadoEn).toBeInstanceOf(Date);
@@ -551,10 +553,10 @@ describe("alerta mínima por email", () => {
     const [email] = sendEmail.mock.calls[0];
     expect(email.to).toBe("alertas@giganet.test");
     expect(email.subject).toContain("Folios bajos");
-    expect(email.subject).toContain("(1 disponible)");
+    expect(email.subject).toContain("(3 disponibles)");
     expect(email.htmlContent).toContain(contrato.codigo);
 
-    await emitirVarios(empresaId, 10, 10);
+    await emitirVarios(empresaId, 8, 9);
     await evaluarAlertas();
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(await FolioAlerta.countDocuments({ tipo: "MINIMO" })).toBe(1);
@@ -569,21 +571,21 @@ describe("alerta mínima por email", () => {
     expect(await alertaMinima(contrato.id)).toBeNull();
     expect(await FolioAuditoria.countDocuments({ accion: "ALERTA_MINIMA_REARMADA" })).toBe(1);
 
-    await ajustarConsumo({ empresaId, contratoId: contrato.id, cantidad: 8, motivo: "Carga", admin: ADMIN });
+    await ajustarConsumo({ empresaId, contratoId: contrato.id, cantidad: 4, motivo: "Carga", admin: ADMIN });
     expect(await alertaMinima(contrato.id)).toBeNull();
     await ajustarConsumo({ empresaId, contratoId: contrato.id, cantidad: 1, motivo: "Carga", admin: ADMIN });
     expect(await alertaMinima(contrato.id)).not.toBeNull();
     expect(sendEmail).toHaveBeenCalledTimes(2);
-    expect(sendEmail.mock.calls[1][0].subject).toContain("(2 disponibles)");
+    expect(sendEmail.mock.calls[1][0].subject).toContain("(6 disponibles)");
   });
 
   it("un fallo de Brevo no afecta la emisión y el cron reintenta el email", async () => {
     const { empresaId, contrato } = await empresaControlada({ cantidad: 100, asignados: 10, ...VIGENCIA });
-    await emitirVarios(empresaId, 1, 8);
+    await emitirVarios(empresaId, 1, 6);
     sendEmail.mockRejectedValueOnce({ success: false, error: "Brevo caído" });
 
-    await emitirVarios(empresaId, 9, 9);
-    expect((await contratoDb(contrato.id)).consumidos).toBe(9);
+    await emitirVarios(empresaId, 7, 7);
+    expect((await contratoDb(contrato.id)).consumidos).toBe(7);
     const fallida = await alertaMinima(contrato.id);
     expect(fallida).toMatchObject({ emailEnviadoEn: null, emailError: "Brevo caído", emailIntentos: 1 });
 
@@ -614,19 +616,19 @@ describe("alerta mínima por email", () => {
     for (const pct of [0, 91, 2.5, "abc"]) {
       await expect(configurarAlertaMinima({ empresaId, pct, admin: ADMIN })).rejects.toThrow(/porcentaje/);
     }
-    await expect(configurarAlertaMinima({ empresaId, pct: 10, admin: ADMIN })).rejects.toThrow(/No hay cambios/);
+    await expect(configurarAlertaMinima({ empresaId, pct: 30, admin: ADMIN })).rejects.toThrow(/No hay cambios/);
 
-    await ajustarConsumo({ empresaId, contratoId: contrato.id, cantidad: 70, motivo: "Carga", admin: ADMIN });
+    await ajustarConsumo({ empresaId, contratoId: contrato.id, cantidad: 60, motivo: "Carga", admin: ADMIN });
     expect(sendEmail).not.toHaveBeenCalled();
 
-    const resumen = await configurarAlertaMinima({ empresaId, pct: 30, admin: ADMIN });
-    expect(resumen.alertaMinima).toMatchObject({ pct: 30, limite: 100, umbral: 30 });
+    const resumen = await configurarAlertaMinima({ empresaId, pct: 50, admin: ADMIN });
+    expect(resumen.alertaMinima).toMatchObject({ pct: 50, limite: 100, umbral: 50 });
     expect(await alertaMinima(contrato.id)).not.toBeNull();
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(await FolioAuditoria.countDocuments({ accion: "ALERTA_MINIMA_CONFIGURADA" })).toBe(1);
 
     const legada = await crearEmpresaLegada();
-    expect((await obtenerResumenEmpresa(legada)).alertaMinima.pct).toBe(10);
+    expect((await obtenerResumenEmpresa(legada)).alertaMinima.pct).toBe(30);
   });
 });
 

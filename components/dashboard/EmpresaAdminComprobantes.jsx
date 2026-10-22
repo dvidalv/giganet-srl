@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FaHashtag } from "react-icons/fa";
+import { FaBan, FaHashtag } from "react-icons/fa";
 import styles from "./EmpresaAdminForm.module.css";
 import EmpresaAdminSecuenciaForm from "./EmpresaAdminSecuenciaForm";
 
 const ESTADOS_ACTIVOS = ["activo", "alerta"];
+const NCF_REGEX = /^E\d{2}\d{8,10}$/;
 
 const ESTADOS = [
   { value: "activo", label: "Activo" },
@@ -94,6 +95,11 @@ export default function EmpresaAdminComprobantes({
   const [ajustandoId, setAjustandoId] = useState(null);
   const [ajustarProximo, setAjustarProximo] = useState("");
   const [ajustarError, setAjustarError] = useState(null);
+  const [pendingAnular, setPendingAnular] = useState(null);
+  const [anularNcfDesde, setAnularNcfDesde] = useState("");
+  const [anularNcfHasta, setAnularNcfHasta] = useState("");
+  const [anularError, setAnularError] = useState(null);
+  const [anulandoId, setAnulandoId] = useState(null);
   const [tfSeriesLoading, setTfSeriesLoading] = useState(false);
   const [tfSeriesPayload, setTfSeriesPayload] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -150,13 +156,24 @@ export default function EmpresaAdminComprobantes({
   }, [fetchRows, fetchTheFactorySeries, reloadToken]);
 
   useEffect(() => {
-    if (!pendingAjustar) return undefined;
+    if (!pendingAjustar && !pendingAnular) return undefined;
     const onKey = (e) => {
-      if (e.key === "Escape") closeAjustarModal();
+      if (e.key !== "Escape") return;
+      if (pendingAjustar && !ajustandoId) {
+        setPendingAjustar(null);
+        setAjustarProximo("");
+        setAjustarError(null);
+      }
+      if (pendingAnular && !anulandoId) {
+        setPendingAnular(null);
+        setAnularNcfDesde("");
+        setAnularNcfHasta("");
+        setAnularError(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pendingAjustar, ajustandoId]);
+  }, [pendingAjustar, ajustandoId, pendingAnular, anulandoId]);
 
   const openAjustarModal = (row) => {
     const proximo = proximoDe(row);
@@ -183,6 +200,77 @@ export default function EmpresaAdminComprobantes({
       String(current) === String(proximo) ? String(tfCorr) : current,
     );
   }, [pendingAjustar, tfSeriesPayload]);
+
+  const openAnularModal = (row) => {
+    const proximo = proximoDe(row);
+    const fin = Number(row.numero_final ?? 0);
+    setPendingAnular(row);
+    setAnularNcfDesde(formatearNCF(row.prefijo ?? "E", row.tipo_comprobante, proximo));
+    setAnularNcfHasta(formatearNCF(row.prefijo ?? "E", row.tipo_comprobante, fin));
+    setAnularError(null);
+    setRowMessage(null);
+  };
+
+  const closeAnularModal = () => {
+    if (anulandoId) return;
+    setPendingAnular(null);
+    setAnularNcfDesde("");
+    setAnularNcfHasta("");
+    setAnularError(null);
+  };
+
+  const handleAnular = async () => {
+    if (!pendingAnular) return;
+    const ncfDesde = anularNcfDesde.trim();
+    const ncfHasta = anularNcfHasta.trim();
+    if (!NCF_REGEX.test(ncfDesde) || !NCF_REGEX.test(ncfHasta)) {
+      setAnularError(
+        "El NCF debe ser E + tipo (2 dígitos) + secuencia (8 a 10 dígitos). Ej. E310000000044.",
+      );
+      return;
+    }
+    const secDesde = parseInt(ncfDesde.substring(3), 10);
+    const secHasta = parseInt(ncfHasta.substring(3), 10);
+    if (secHasta < secDesde) {
+      setAnularError("El NCF hasta debe ser mayor o igual que el NCF desde.");
+      return;
+    }
+    const id = rowId(pendingAnular);
+    setAnulandoId(id);
+    setAnularError(null);
+    try {
+      const res = await fetch(`/api/users/${userId}/comprobantes/anular`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anulaciones: [
+            {
+              tipoDocumento: pendingAnular.tipo_comprobante ?? pendingAnular.tipo,
+              ncfDesde,
+              ncfHasta,
+            },
+          ],
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.status === "error") {
+        setAnularError(json.message || json.error || "No se pudieron anular las secuencias.");
+        return;
+      }
+      setPendingAnular(null);
+      setAnularNcfDesde("");
+      setAnularNcfHasta("");
+      setRowMessage({
+        type: "success",
+        text: json.message || "Secuencias anuladas ante The Factory.",
+      });
+      await fetchRows();
+    } catch {
+      setAnularError("Error de conexión al anular.");
+    } finally {
+      setAnulandoId(null);
+    }
+  };
 
   const closeAjustarModal = () => {
     if (ajustandoId) return;
@@ -616,6 +704,16 @@ export default function EmpresaAdminComprobantes({
                   >
                     {isEditing ? "Cerrar" : "Editar / ajustar"}
                   </button>
+                  {Number(row.numeros_disponibles ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      className={styles.compBtnDanger}
+                      onClick={() => openAnularModal(row)}
+                      disabled={!!savingId || deletingId === id || !!anulandoId}
+                    >
+                      <FaBan size={12} aria-hidden /> Anular NCF
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={styles.compBtnDanger}
@@ -734,6 +832,92 @@ export default function EmpresaAdminComprobantes({
             );
           })}
         </ul>
+      )}
+
+      {pendingAnular && (
+        <div
+          className={styles.compModalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="anular-ncf-title"
+          onClick={closeAnularModal}
+          onKeyDown={(e) => e.key === "Escape" && closeAnularModal()}
+        >
+          <div className={styles.compModalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 id="anular-ncf-title" className={styles.compModalTitle}>
+              Anular secuencias no usadas
+            </h3>
+            <p className={styles.compModalMessage}>
+              Anula ante The Factory los NCF de esta empresa que no se van a emitir, para que no se
+              reutilicen. No corrige un e-CF que ya se emitió. La anulación se envía a The Factory
+              con las credenciales de esta empresa.
+            </p>
+            <p className={styles.compModalDetail}>
+              <strong>
+                {pendingAnular.descripcion_tipo || `Tipo ${pendingAnular.tipo_comprobante}`}
+              </strong>
+              {pendingAnular.tipo_comprobante != null && (
+                <> — Tipo {pendingAnular.tipo_comprobante}</>
+              )}
+            </p>
+            <div className={styles.compModalForm}>
+              <label className={styles.compAjustarLabel} htmlFor="anular-ncf-desde">
+                NCF desde
+              </label>
+              <input
+                id="anular-ncf-desde"
+                type="text"
+                className={styles.compModalInput}
+                value={anularNcfDesde}
+                onChange={(e) => {
+                  setAnularNcfDesde(e.target.value);
+                  setAnularError(null);
+                }}
+                placeholder="E310000000044"
+                disabled={!!anulandoId}
+                autoFocus
+              />
+              <label className={styles.compAjustarLabel} htmlFor="anular-ncf-hasta">
+                NCF hasta
+              </label>
+              <input
+                id="anular-ncf-hasta"
+                type="text"
+                className={styles.compModalInput}
+                value={anularNcfHasta}
+                onChange={(e) => {
+                  setAnularNcfHasta(e.target.value);
+                  setAnularError(null);
+                }}
+                placeholder="E310000000050"
+                disabled={!!anulandoId}
+              />
+              {anularError && (
+                <p className={styles.compAjustarError} role="alert">
+                  {anularError}
+                </p>
+              )}
+            </div>
+            <div className={styles.compModalActions}>
+              <button
+                type="button"
+                className={styles.compBtn}
+                onClick={closeAnularModal}
+                disabled={!!anulandoId}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.compBtnDanger}
+                onClick={handleAnular}
+                disabled={!!anulandoId}
+              >
+                {anulandoId ? "Anulando…" : "Anular en The Factory"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {pendingAjustar && (() => {

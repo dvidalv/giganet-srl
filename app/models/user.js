@@ -128,7 +128,7 @@ const userSchema = new Schema(
       theFactoryAmbiente: {
         type: String,
         enum: ["production", "demo"],
-        default: "production",
+        default: "demo",
       },
       /**
        * Control comercial de folios e-CF. Sin este subdocumento (clientes previos)
@@ -205,6 +205,7 @@ const needsUserModelRecompile =
     !existingUserModel.schema.path("empresa.theFactoryUsuarioProduction") ||
     !existingUserModel.schema.path("empresa.theFactoryClaveProductionEnc") ||
     !existingUserModel.schema.path("empresa.folios.modalidad") ||
+    existingUserModel.schema.path("empresa.theFactoryAmbiente")?.options?.default !== "demo" ||
     !existingUserModel.schema.path("empresa.folios.alertaMinimaPct") ||
     (typeof rncMaxlength === "number" && rncMaxlength < 11)
   );

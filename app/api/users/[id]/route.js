@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import User from "@/app/models/user";
+import { eliminarDatosDeEmpresa } from "@/lib/eliminarEmpresa";
 import { passwordHash } from "@/utils/utils";
 
 const SELECT =
@@ -130,13 +131,16 @@ export async function DELETE(request, { params }) {
   }
 
   try {
+    const existente = await User.findById(id).select("_id").lean();
+    if (!existente) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+    await eliminarDatosDeEmpresa(id);
     const user = await User.findByIdAndDelete(id);
-    if (!user)
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 },
-      );
-    return NextResponse.json({ message: "Usuario eliminado" });
+    if (!user) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+    return NextResponse.json({ message: "Empresa eliminada" });
   } catch (err) {
     console.error("DELETE /api/users/[id]:", err);
     return NextResponse.json(

@@ -13,17 +13,17 @@ export async function GET() {
   }
 
   try {
-    const users = await User.find({
-      "empresa.rnc": { $regex: /\S/ },
-    })
+    const users = await User.find({ role: "user" })
       .select(SELECT)
-      .sort({ "empresa.razonSocial": 1, "empresa.nombre": 1 })
+      .sort({ "empresa.razonSocial": 1, "empresa.nombre": 1, email: 1 })
       .lean();
 
     const empresas = users.map((u) => ({
       id: u._id.toString(),
       name: u.name,
       email: u.email,
+      incompleta:
+        !String(u.empresa?.rnc || "").trim() || !String(u.empresa?.razonSocial || "").trim(),
       empresa: {
         nombre: u.empresa?.nombre ?? "",
         logo: u.empresa?.logo ?? "",

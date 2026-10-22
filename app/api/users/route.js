@@ -128,6 +128,7 @@ export async function POST(request) {
       isVerified: false,
       verificationToken,
       verificationTokenExpires,
+      empresa: { theFactoryAmbiente: "demo" },
     });
 
     const userName = String(name).trim();

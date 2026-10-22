@@ -66,7 +66,7 @@ export async function GET(request, { params }) {
   if (!id) return NextResponse.json({ error: "ID requerido" }, { status: 400 });
 
   try {
-    const user = await User.findById(id).select("empresa").lean();
+    const user = await User.findById(id).select("name email empresa").lean();
     if (!user) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
@@ -75,7 +75,11 @@ export async function GET(request, { params }) {
     }
     const stored = await getStoredTheFactoryClaves(id);
     const empresa = sanitizeEmpresa(user.empresa || {}, stored.hasDemo, stored.hasProduction);
-    return NextResponse.json({ empresa });
+    return NextResponse.json({
+      empresa,
+      cuentaEmail: user.email || "",
+      cuentaNombre: user.name || "",
+    });
   } catch (err) {
     console.error("GET /api/users/[id]/empresa:", err);
     return NextResponse.json(

@@ -199,6 +199,14 @@
   border-radius: 10px;
   font-size: 1.25rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.userLogo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
 }
 
 .userName {
@@ -251,13 +259,20 @@
   color: #4b5563;
 }
 
+.actionsHead,
+.actionsCell {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
+
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
-.actionBtn {
+.menuBtn {
   width: 36px;
   height: 36px;
   display: inline-flex;
@@ -266,21 +281,83 @@
   border: 1px solid #e5e7eb;
   background: #fff;
   border-radius: 8px;
+  color: #374151;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.95rem;
   transition:
     background 0.15s,
-    border-color 0.15s;
+    border-color 0.15s,
+    color 0.15s;
 }
 
-.actionBtn:hover {
+.menuBtn:hover,
+.menuBtn[aria-expanded="true"] {
   background: #f9fafb;
-  border-color: #3b82f6;
+  border-color: #0f766e;
+  color: #0f766e;
 }
 
-.actionBtnDanger:hover {
-  border-color: #ef4444;
+.menuBtn:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+.menu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 196px;
+  padding: 0.35rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
+
+.menuItem,
+.menuItemDanger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem {
+  color: #1f2937;
+}
+
+.menuItem svg,
+.menuItemDanger svg {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: #f0fdfa;
+  color: #0f766e;
+  outline: none;
+}
+
+.menuItemDanger {
+  margin-top: 0.2rem;
+  color: #b91c1c;
+  border-top: 1px solid #f3f4f6;
+  border-radius: 0 0 8px 8px;
+}
+
+.menuItemDanger:hover,
+.menuItemDanger:focus-visible {
   background: #fef2f2;
+  outline: none;
 }
 
 .pagination {
@@ -700,15 +777,20 @@
     font-size: 0.75rem;
   }
 
-  .actionBtn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    min-height: 32px;
+  .menuBtn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .actionsHead,
+  .actionsCell {
+    text-align: left;
+    width: auto;
+    white-space: normal;
   }
 
   .actions {
-    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .pagination {

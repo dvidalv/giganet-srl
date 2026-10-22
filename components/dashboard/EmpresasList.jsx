@@ -60,7 +60,7 @@ function EmpresasList() {
       <ul className={styles.list}>
         {empresas.map((item) => {
           const e = item.empresa;
-          const razon = e.razonSocial || e.nombre || "Sin razón social";
+          const razon = e.razonSocial || e.nombre || item.name || item.email || "Sin razón social";
           const rnc = e.rnc || "—";
           const telefono = e.telefono
             ? formatPhoneNumber(e.telefono)
@@ -88,11 +88,18 @@ function EmpresasList() {
                 <div className={styles.data}>
                   <div className={styles.titleRow}>
                     <div className={styles.razonSocial}>{razon}</div>
-                    <span
-                      className={isDemo ? styles.badgeDemo : styles.badgeProd}
-                    >
-                      {isDemo ? "Pruebas (demo)" : "Producción"}
+                    <span className={styles.badges}>
+                      {item.incompleta && (
+                        <span className={styles.badgeIncomplete}>Datos incompletos</span>
+                      )}
+                      <span className={isDemo ? styles.badgeDemo : styles.badgeProd}>
+                        {isDemo ? "Pruebas (demo)" : "Producción"}
+                      </span>
                     </span>
+                  </div>
+                  <div className={styles.row}>
+                    <span className={styles.label}>Email:</span>
+                    <span className={styles.value}>{item.email || "—"}</span>
                   </div>
                   <div className={styles.row}>
                     <span className={styles.label}>RNC:</span>

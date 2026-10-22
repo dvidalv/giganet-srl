@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
+import Image from "next/image";
+import { FaEllipsisV, FaEye, FaPencilAlt, FaTrash } from "react-icons/fa";
 import styles from "./UserManagement.module.css";
 
 const STATUS_OPTIONS = [
@@ -11,6 +14,125 @@ const STATUS_OPTIONS = [
 ];
 
 const PAGE_SIZE = 10;
+
+function UserAvatar({ user }) {
+  const logo = typeof user?.empresa?.logo === "string" ? user.empresa.logo.trim() : "";
+  const [failed, setFailed] = useState(false);
+  const remote = logo.startsWith("https://") || logo.startsWith("http://");
+
+  if (logo && remote && !failed) {
+    return (
+      <span className={styles.userIcon}>
+        <Image
+          src={logo}
+          alt=""
+          width={40}
+          height={40}
+          className={styles.userLogo}
+          sizes="40px"
+          onError={() => setFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className={styles.userIcon} aria-hidden="true">
+      👤
+    </span>
+  );
+}
+
+function RowActionsMenu({ onView, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+
+    const place = () => {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuWidth = 196;
+      const menuHeight = menuRef.current?.offsetHeight || 148;
+      let top = rect.bottom + 6;
+      let left = rect.right - menuWidth;
+      if (left < 8) left = 8;
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = window.innerWidth - menuWidth - 8;
+      }
+      if (top + menuHeight > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - menuHeight - 6);
+      }
+      setPos({ top, left });
+    };
+
+    place();
+    const close = () => setOpen(false);
+    const onKey = (event) => {
+      if (event.key === "Escape") close();
+    };
+    const onPointer = (event) => {
+      if (btnRef.current?.contains(event.target) || menuRef.current?.contains(event.target)) return;
+      close();
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [open]);
+
+  const run = (action) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className={styles.actions}>
+      <button
+        ref={btnRef}
+        type="button"
+        className={styles.menuBtn}
+        aria-label="Acciones"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <FaEllipsisV />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className={styles.menu}
+            role="menu"
+            style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
+          >
+            <button type="button" role="menuitem" className={styles.menuItem} onClick={() => run(onView)}>
+              <FaEye aria-hidden="true" />
+              Ver detalles
+            </button>
+            <button type="button" role="menuitem" className={styles.menuItem} onClick={() => run(onEdit)}>
+              <FaPencilAlt aria-hidden="true" />
+              Editar
+            </button>
+            <button type="button" role="menuitem" className={styles.menuItemDanger} onClick={() => run(onDelete)}>
+              <FaTrash aria-hidden="true" />
+              Eliminar
+            </button>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
 
 function Tag({ children, variant = "default" }) {
   return (
@@ -507,7 +629,7 @@ export default function UserManagement() {
                 <th>EMAIL</th>
                 <th>ROL</th>
                 <th>ESTADO</th>
-                <th>ACCIONES</th>
+                <th className={styles.actionsHead}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
@@ -522,7 +644,7 @@ export default function UserManagement() {
                   <tr key={u.id || u._id} className={styles.tableRow}>
                     <td data-label="Usuario">
                       <div className={styles.userCell}>
-                        <span className={styles.userIcon}>👤</span>
+                        <UserAvatar user={u} />
                         <div>
                           <span className={styles.userName}>{u.name}</span>
                           <span className={styles.userEmailSmall}>
@@ -545,30 +667,12 @@ export default function UserManagement() {
                         </Tag>
                       )}
                     </td>
-                    <td data-label="Acciones">
-                      <div className={styles.actions}>
-                        <button
-                          type="button"
-                          className={styles.actionBtn}
-                          title="Ver detalles"
-                          onClick={() => setModal({ type: "view", user: u })}>
-                          👁️
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.actionBtn}
-                          title="Editar"
-                          onClick={() => setModal({ type: "edit", user: u })}>
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                          title="Eliminar"
-                          onClick={() => setModal({ type: "delete", user: u })}>
-                          🗑️
-                        </button>
-                      </div>
+                    <td data-label="Acciones" className={styles.actionsCell}>
+                      <RowActionsMenu
+                        onView={() => setModal({ type: "view", user: u })}
+                        onEdit={() => setModal({ type: "edit", user: u })}
+                        onDelete={() => setModal({ type: "delete", user: u })}
+                      />
                     </td>
                   </tr>
                 ))

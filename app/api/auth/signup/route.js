@@ -61,6 +61,7 @@ export async function POST(request) {
       role: isFirstUser ? "admin" : "user",
       verificationToken,
       verificationTokenExpires,
+      empresa: { theFactoryAmbiente: "demo" },
     });
 
     const h = await headers();

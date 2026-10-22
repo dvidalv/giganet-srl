@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";
 import { crearEncuesta } from "@/actions/crearEncuesta-action";
 import styles from "@/app/dashboard/empresa/page.module.css";
 import adminStyles from "./EmpresaAdminForm.module.css";
 import EmpresaAdminComprobantes from "./EmpresaAdminComprobantes";
+import EmpresaAdminApiKey from "./EmpresaAdminApiKey";
 import EmpresaFoliosPanel from "./EmpresaFoliosPanel";
 import { ModalidadBadge } from "./foliosUi";
 
@@ -107,7 +109,9 @@ function isRemoteLogoUrl(src) {
 }
 
 export default function EmpresaAdminForm({ userId }) {
+  const router = useRouter();
   const [empresa, setEmpresa] = useState(EMPRESA_DEFAULTS);
+  const [cuentaEmail, setCuentaEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -121,6 +125,10 @@ export default function EmpresaAdminForm({ userId }) {
   const [surveySending, setSurveySending] = useState(false);
   const [comprobantesReloadToken, setComprobantesReloadToken] = useState(0);
   const [modalidadFolios, setModalidadFolios] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -148,6 +156,7 @@ export default function EmpresaAdminForm({ userId }) {
       }
       const data = await res.json();
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
+      setCuentaEmail(data.cuentaEmail || "");
       setTheFactoryClaveDemoDraft("");
       setTheFactoryClaveProductionDraft("");
     } catch (err) {
@@ -353,6 +362,30 @@ export default function EmpresaAdminForm({ userId }) {
       setMessage({ type: "error", text: "Error de conexión" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteEmpresa = async () => {
+    const frase = (cuentaEmail.trim() || "ELIMINAR").toLowerCase();
+    if (deleteConfirm.trim().toLowerCase() !== frase) {
+      setDeleteError(`Escriba ${cuentaEmail.trim() || "ELIMINAR"} para confirmar.`);
+      return;
+    }
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDeleteError(data.error || "No se pudo eliminar la empresa.");
+        setDeleting(false);
+        return;
+      }
+      router.push("/dashboard/empresas");
+      router.refresh();
+    } catch {
+      setDeleteError("Error de conexión.");
+      setDeleting(false);
     }
   };
 
@@ -785,6 +818,7 @@ export default function EmpresaAdminForm({ userId }) {
           </div>
         </form>
       </div>
+      <EmpresaAdminApiKey userId={userId} />
       <EmpresaFoliosPanel userId={userId} onModalidadChange={setModalidadFolios} />
       <EmpresaAdminComprobantes
         userId={userId}
@@ -795,7 +829,113 @@ export default function EmpresaAdminForm({ userId }) {
           razonSocial: empresa.razonSocial,
         }}
       />
+      <section className={adminStyles.dangerZone} aria-labelledby="eliminar-empresa-titulo">
+        <div>
+          <h2 id="eliminar-empresa-titulo" className={adminStyles.dangerTitle}>
+            Eliminar empresa
+          </h2>
+          <p className={adminStyles.dangerText}>
+            Borra la cuenta, las secuencias de comprobantes, los folios, los envíos y las encuestas. Esta acción no se puede deshacer.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={adminStyles.dangerBtn}
+          onClick={() => {
+            setDeleteConfirm("");
+            setDeleteError("");
+            setDeleteOpen(true);
+          }}
+        >
+          Eliminar empresa
+        </button>
+      </section>
     </div>
+    {deleteOpen && (
+      <DeleteEmpresaModal
+        nombre={empresa.razonSocial || empresa.nombre || cuentaEmail || "esta empresa"}
+        frase={cuentaEmail.trim() || "ELIMINAR"}
+        valor={deleteConfirm}
+        error={deleteError}
+        deleting={deleting}
+        onChange={setDeleteConfirm}
+        onClose={() => {
+          if (deleting) return;
+          setDeleteOpen(false);
+        }}
+        onConfirm={handleDeleteEmpresa}
+      />
+    )}
     </>
+  );
+}
+
+function DeleteEmpresaModal({
+  nombre,
+  frase,
+  valor,
+  error,
+  deleting,
+  onChange,
+  onClose,
+  onConfirm,
+}) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className={adminStyles.compModalOverlay} onClick={onClose} role="presentation">
+      <div
+        className={adminStyles.compModalContent}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="eliminar-empresa-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="eliminar-empresa-modal" className={adminStyles.compModalTitle}>
+          Eliminar empresa
+        </h2>
+        <p className={adminStyles.compModalMessage}>
+          Se eliminará <strong>{nombre}</strong> junto con sus secuencias, folios, envíos y encuestas.
+        </p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onConfirm();
+          }}
+        >
+          <label className={adminStyles.confirmField}>
+            <span>Escriba {frase} para confirmar</span>
+            <input
+              className={adminStyles.confirmInput}
+              value={valor}
+              onChange={(event) => onChange(event.target.value)}
+              autoComplete="off"
+              autoFocus
+              disabled={deleting}
+            />
+          </label>
+          {error ? <p className={adminStyles.confirmError}>{error}</p> : null}
+          <div className={adminStyles.compModalActions}>
+            <button
+              type="button"
+              className={adminStyles.compBtn}
+              onClick={onClose}
+              disabled={deleting}
+            >
+              Cancelar
+            </button>
+            <button type="submit" className={adminStyles.dangerBtn} disabled={deleting}>
+              {deleting ? "Eliminando…" : "Eliminar empresa"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

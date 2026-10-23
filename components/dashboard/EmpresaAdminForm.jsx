@@ -636,7 +636,9 @@ export default function EmpresaAdminForm({ userId }) {
             <details className={adminStyles.configPanel}>
               <summary className={adminStyles.configPanelSummary}>
                 <span className={adminStyles.configPanelTitle}>
-                  <span className={styles.inputIcon}><IconDocument /></span>
+                  <span className={adminStyles.configPanelIcon} aria-hidden="true">
+                    <IconDocument />
+                  </span>
                   <span>The Factory HKA (e-CF)</span>
                 </span>
                 <span className={adminStyles.configPanelMeta}>

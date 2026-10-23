@@ -131,6 +131,13 @@ export default function EmpresaAdminComprobantes({
 
   const fetchTheFactorySeries = useCallback(async () => {
     if (!userId) return;
+    const rnc = String(empresa?.rnc ?? "").replace(/\D/g, "").trim();
+    // Sin RNC The Factory responde 400; no llamar para no llenar la consola.
+    if (rnc.length < 9) {
+      setTfSeriesPayload(null);
+      setTfSeriesLoading(false);
+      return;
+    }
     setTfSeriesLoading(true);
     try {
       const res = await fetch(`/api/users/${userId}/thefactory-series`);
@@ -149,7 +156,7 @@ export default function EmpresaAdminComprobantes({
     } finally {
       setTfSeriesLoading(false);
     }
-  }, [userId]);
+  }, [userId, empresa?.rnc]);
 
   useEffect(() => {
     fetchRows();

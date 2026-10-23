@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaBan, FaHashtag } from "react-icons/fa";
 import styles from "./EmpresaAdminForm.module.css";
+import CampoNumero from "./CampoNumero";
 import EmpresaAdminSecuenciaForm from "./EmpresaAdminSecuenciaForm";
 
 const ESTADOS_ACTIVOS = ["activo", "alerta"];
@@ -338,6 +339,7 @@ export default function EmpresaAdminComprobantes({
       numero_inicial: String(row.numero_inicial ?? ""),
       numero_final: String(row.numero_final ?? ""),
       proximo_numero: String(proximoDe(row)),
+      alerta_minima_restante: String(row.alerta_minima_restante ?? 10),
       estado: row.estado ?? "activo",
       fecha_vencimiento: toInputDate(row.fecha_vencimiento),
       comentario: row.comentario ?? "",
@@ -357,8 +359,16 @@ export default function EmpresaAdminComprobantes({
     const inicial = Number(draft.numero_inicial);
     const final = Number(draft.numero_final);
     const proximo = Number(draft.proximo_numero);
+    const alertaMinima = Number(draft.alerta_minima_restante);
     if (!Number.isInteger(inicial) || !Number.isInteger(final) || !Number.isInteger(proximo)) {
       setRowMessage({ type: "error", text: "Inicial, final y próximo deben ser enteros." });
+      return;
+    }
+    if (!Number.isInteger(alertaMinima) || alertaMinima < 1) {
+      setRowMessage({
+        type: "error",
+        text: "La alerta mínima restante debe ser un entero mayor a 0.",
+      });
       return;
     }
     setSavingId(id);
@@ -371,6 +381,7 @@ export default function EmpresaAdminComprobantes({
           numero_inicial: inicial,
           numero_final: final,
           proximo_numero: proximo,
+          alerta_minima_restante: alertaMinima,
           estado: draft.estado,
           fecha_vencimiento: draft.fecha_vencimiento || null,
           comentario: draft.comentario,
@@ -444,6 +455,9 @@ export default function EmpresaAdminComprobantes({
       if (filterEstado === "activos" && !ESTADOS_ACTIVOS.includes(estado)) {
         return false;
       }
+      if (filterEstado === "inactivos" && estado !== "inactivo") {
+        return false;
+      }
       if (filterEstado === "vencidos" && estado !== "vencido") {
         return false;
       }
@@ -506,9 +520,11 @@ export default function EmpresaAdminComprobantes({
             className={styles.compFilterSelect}
             value={filterEstado}
             onChange={(e) => setFilterEstado(e.target.value)}
-            aria-label="Filtrar por estado: todos, activos o vencidos">
+            aria-label="Filtrar por estado: todos, activos, inactivos, vencidos o agotados"
+          >
             <option value="todos">Todos</option>
             <option value="activos">Activos</option>
+            <option value="inactivos">Inactivos</option>
             <option value="vencidos">Vencidos</option>
             <option value="agotados">Agotados</option>
           </select>
@@ -728,39 +744,30 @@ export default function EmpresaAdminComprobantes({
                     <div className={styles.compEditorGrid}>
                       <label>
                         Número inicial
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
+                        <CampoNumero
                           value={draft.numero_inicial}
-                          onChange={(e) =>
-                            setDraft((d) => ({ ...d, numero_inicial: e.target.value }))
+                          onChange={(v) =>
+                            setDraft((d) => ({ ...d, numero_inicial: v }))
                           }
                           disabled={!!savingId}
                         />
                       </label>
                       <label>
                         Número final
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
+                        <CampoNumero
                           value={draft.numero_final}
-                          onChange={(e) =>
-                            setDraft((d) => ({ ...d, numero_final: e.target.value }))
+                          onChange={(v) =>
+                            setDraft((d) => ({ ...d, numero_final: v }))
                           }
                           disabled={!!savingId}
                         />
                       </label>
                       <label>
                         Próximo a emitir
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
+                        <CampoNumero
                           value={draft.proximo_numero}
-                          onChange={(e) =>
-                            setDraft((d) => ({ ...d, proximo_numero: e.target.value }))
+                          onChange={(v) =>
+                            setDraft((d) => ({ ...d, proximo_numero: v }))
                           }
                           disabled={!!savingId}
                         />
@@ -780,6 +787,16 @@ export default function EmpresaAdminComprobantes({
                             </option>
                           ))}
                         </select>
+                      </label>
+                      <label>
+                        Alerta mínima restante
+                        <CampoNumero
+                          value={draft.alerta_minima_restante}
+                          onChange={(v) =>
+                            setDraft((d) => ({ ...d, alerta_minima_restante: v }))
+                          }
+                          disabled={!!savingId}
+                        />
                       </label>
                       <label>
                         Vencimiento
@@ -1015,16 +1032,12 @@ export default function EmpresaAdminComprobantes({
                 <label htmlFor="admin-ajustar-proximo" className={styles.compAjustarLabel}>
                   Próximo número a emitir
                 </label>
-                <input
+                <CampoNumero
                   id="admin-ajustar-proximo"
-                  type="number"
-                  min={inicial}
-                  max={final + 1}
-                  step={1}
                   className={styles.compModalInput}
                   value={ajustarProximo}
-                  onChange={(e) => {
-                    setAjustarProximo(e.target.value);
+                  onChange={(v) => {
+                    setAjustarProximo(v);
                     setAjustarError(null);
                   }}
                   disabled={!!ajustandoId}

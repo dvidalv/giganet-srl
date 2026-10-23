@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import styles from "./EmpresaAdminForm.module.css";
+import CampoNumero from "./CampoNumero";
 
 const TIPOS_COMPROBANTE = [
   { value: "31", label: "31 — Factura de Crédito Fiscal Electrónica" },
@@ -255,12 +256,9 @@ export default function EmpresaAdminSecuenciaForm({
         </label>
         <label>
           Número inicial
-          <input
-            type="number"
-            min={0}
-            step={1}
+          <CampoNumero
             value={form.numero_inicial}
-            onChange={(e) => handleChange("numero_inicial", e.target.value)}
+            onChange={(v) => handleChange("numero_inicial", v)}
             disabled={submitting}
           />
           {errors.numero_inicial && (
@@ -269,12 +267,9 @@ export default function EmpresaAdminSecuenciaForm({
         </label>
         <label>
           Número final
-          <input
-            type="number"
-            min={0}
-            step={1}
+          <CampoNumero
             value={form.numero_final}
-            onChange={(e) => handleChange("numero_final", e.target.value)}
+            onChange={(v) => handleChange("numero_final", v)}
             disabled={submitting}
           />
           {errors.numero_final && (
@@ -283,12 +278,9 @@ export default function EmpresaAdminSecuenciaForm({
         </label>
         <label>
           Próximo a emitir
-          <input
-            type="number"
-            min={0}
-            step={1}
+          <CampoNumero
             value={form.proximo_numero}
-            onChange={(e) => handleChange("proximo_numero", e.target.value)}
+            onChange={(v) => handleChange("proximo_numero", v)}
             disabled={submitting}
             placeholder="Igual al inicial si está vacío"
           />
@@ -298,12 +290,9 @@ export default function EmpresaAdminSecuenciaForm({
         </label>
         <label>
           Alerta mínima restante
-          <input
-            type="number"
-            min={1}
-            step={1}
+          <CampoNumero
             value={form.alerta_minima_restante}
-            onChange={(e) => handleChange("alerta_minima_restante", e.target.value)}
+            onChange={(v) => handleChange("alerta_minima_restante", v)}
             disabled={submitting}
           />
           {errors.alerta_minima_restante && (

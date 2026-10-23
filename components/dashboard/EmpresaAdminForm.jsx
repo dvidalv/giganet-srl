@@ -12,6 +12,7 @@ import EmpresaAdminComprobantes from "./EmpresaAdminComprobantes";
 import EmpresaAdminApiKey from "./EmpresaAdminApiKey";
 import EmpresaFoliosPanel from "./EmpresaFoliosPanel";
 import { ModalidadBadge } from "./foliosUi";
+import { empresasListHref } from "@/lib/empresasListSearch";
 
 const EMPRESA_DEFAULTS = {
   nombre: "",
@@ -381,7 +382,7 @@ export default function EmpresaAdminForm({ userId }) {
         setDeleting(false);
         return;
       }
-      router.push("/dashboard/empresas");
+      router.push(empresasListHref());
       router.refresh();
     } catch {
       setDeleteError("Error de conexión.");
@@ -422,6 +423,10 @@ export default function EmpresaAdminForm({ userId }) {
       <div className={adminStyles.pageWrap}>
       <Link
         href="/dashboard/empresas"
+        onClick={(e) => {
+          e.preventDefault();
+          router.push(empresasListHref());
+        }}
         style={{
           display: "inline-flex",
           alignItems: "center",

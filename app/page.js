@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AppsShowcase from "@/components/AppsShowcase";
 import ClientsCarousel from "@/components/ClientsCarousel";
+import PlanesFolios from "@/components/PlanesFolios";
 import {
   FaArrowRight,
   FaAws,
@@ -242,6 +243,9 @@ export default async function Home() {
                   <div className={styles.tagRow}>
                     <span className={styles.tagOrange}>Cumplimiento Legal</span>
                     <span className={styles.tagOrange}>Firma Digital</span>
+                    <Link href="/planes" className={styles.tagOrange}>
+                      Ver planes de folios
+                    </Link>
                   </div>
                 </div>
               </article>
@@ -296,6 +300,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <PlanesFolios compact />
 
       <section id="aplicaciones" className={styles.appsSection}>
         <div className={styles.sectionInner}>

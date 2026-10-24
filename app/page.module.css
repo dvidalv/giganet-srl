@@ -782,6 +782,17 @@
   border: 1px solid rgba(255, 77, 0, 0.2);
 }
 
+a.tagOrange {
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+a.tagOrange:hover {
+  background: rgba(255, 77, 0, 0.2);
+  border-color: rgba(255, 77, 0, 0.4);
+  color: #ffd0bc;
+}
+
 .tagBlue {
   background: rgba(59, 130, 246, 0.1);
   color: #60a5fa;

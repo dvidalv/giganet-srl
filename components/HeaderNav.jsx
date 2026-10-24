@@ -26,6 +26,7 @@ export default function HeaderNav({ user }) {
   const navItems = [
     { label: "Servicios", href: "/#servicios" },
     { label: "Especialidades", href: "/#especialidades" },
+    { label: "Planes", href: "/planes" },
     { label: "Aplicaciones", href: "/#aplicaciones" },
     { label: "Clientes", href: "/#clientes" },
   ];

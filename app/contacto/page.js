@@ -1,13 +1,24 @@
 "use client";
 import styles from "./page.module.css";
-import { useActionState, useState, useEffect, useRef } from "react";
+import { useActionState, useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { enviarFormularioContacto } from "@/actions/enviarFormularioContacto-action";
 import { formatPhoneNumber, formatPhoneNumberRealtime } from "@/utils/phoneUtils";
+import {
+  formatPrecioRD,
+  formatTransacciones,
+  getPlanBySlug,
+  mensajeInteresPlan,
+} from "@/lib/folios/planesCatalogo";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
-export default function Contacto() {
+function ContactoForm() {
+  const searchParams = useSearchParams();
+  const plan = getPlanBySlug(searchParams.get("plan"));
+  const mensajePlan = mensajeInteresPlan(plan);
+
   const [state, action, isPending] = useActionState(
     enviarFormularioContacto,
     {
@@ -48,8 +59,19 @@ export default function Contacto() {
       <div className={styles.formContainer}>
         <h1 className={styles.title}>Contacto</h1>
         <p className={styles.subtitle}>
-          Contáctanos para cualquier consulta o solicitud de servicio
+          {plan
+            ? `Solicite el ${plan.nombre} o cuéntenos cómo podemos ayudarle.`
+            : "Contáctanos para cualquier consulta o solicitud de servicio"}
         </p>
+        {plan ? (
+          <p className={styles.planBanner} role="status">
+            Plan seleccionado: <strong>{plan.nombre}</strong>
+            {" · "}
+            {formatTransacciones(plan.transacciones)} transacciones
+            {" · "}
+            {formatPrecioRD(plan.precioAnual)} anual
+          </p>
+        ) : null}
         <form className={styles.form} action={action}>
           {/* Honeypot: no quitar name="website" — debe coincidir con la server action */}
           <div className={styles.hpField} aria-hidden="true">
@@ -111,7 +133,7 @@ export default function Contacto() {
             <textarea
               name="mensaje"
               placeholder="Tu mensaje"
-              defaultValue={state.values?.mensaje || ""}
+              defaultValue={state.success ? "" : state.values?.mensaje || mensajePlan}
               className={`${styles.textarea} ${state.errors?.mensaje ? styles.inputError : ''}`}
               rows="5"
             />
@@ -157,5 +179,21 @@ export default function Contacto() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Contacto() {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.contacto}>
+          <div className={styles.formContainer}>
+            <h1 className={styles.title}>Cargando...</h1>
+          </div>
+        </div>
+      }
+    >
+      <ContactoForm />
+    </Suspense>
   );
 }

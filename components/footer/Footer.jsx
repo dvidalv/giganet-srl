@@ -46,6 +46,7 @@ function Footer() {
 						<li><Link href="/#hero">Inicio</Link></li>
 						<li><Link href="/#servicios">Servicios</Link></li>
 						<li><Link href="/#especialidades">Especialidades</Link></li>
+						<li><Link href="/planes">Planes de folios</Link></li>
 						<li><Link href="/#aplicaciones">Aplicaciones</Link></li>
 						<li><Link href="/#clientes">Clientes</Link></li>
 						<li><Link href="/contacto">Contacto</Link></li>

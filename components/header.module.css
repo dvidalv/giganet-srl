@@ -268,6 +268,16 @@
   white-space: nowrap;
 }
 
+@media (max-width: 1200px) {
+  .header {
+    padding: 1rem 2rem;
+  }
+
+  .navList {
+    gap: 1.15rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .header {
     padding: 1rem 2rem;

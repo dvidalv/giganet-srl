@@ -3,13 +3,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
-import { RiHome9Fill } from "react-icons/ri";
+import { RiHome9Fill, RiFileList3Line } from "react-icons/ri";
 import { ImQrcode } from "react-icons/im";
 import { BsBuildings } from "react-icons/bs";
 import { IoPeopleCircle } from "react-icons/io5";
-import { FcDataConfiguration } from "react-icons/fc";
-import { IoKeySharp } from "react-icons/io5";
-import { IoBarChartSharp } from "react-icons/io5";
 import { MdOutlinePoll } from "react-icons/md";
 import { FaUserCircle } from "react-icons/fa";
 
@@ -37,10 +34,8 @@ export default function Sidebar({ user }) {
       ? [{ label: "Mi Empresa", href: "/dashboard/empresa", icon: <BsBuildings /> }]
       : []),
     ...(role !== "admin"
-      ? [{ label: "API Key", href: "/dashboard/api-key", icon: <IoKeySharp /> }]
+      ? [{ label: "Mis folios", href: "/dashboard/mis-folios", icon: <RiFileList3Line /> }]
       : []),
-    { label: "Reportes", href: "/dashboard/reportes", icon: <IoBarChartSharp /> },
-    { label: "Configuración", href: "/dashboard/configuracion", icon: <FcDataConfiguration /> },
   ];
 
   return (

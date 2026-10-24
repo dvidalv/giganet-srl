@@ -21,9 +21,10 @@
 .configPanelSummary {
   list-style: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.55rem 0.75rem;
   padding: 0.8rem 0.95rem;
   cursor: pointer;
   font-weight: 600;
@@ -43,7 +44,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
+  flex: 1 1 10rem;
   min-width: 0;
+}
+
+.configPanelTitle > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
 }
 
 .configPanelIcon {
@@ -63,8 +71,9 @@
 
 .configPanelMeta {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
   flex-shrink: 0;
 }
 
@@ -130,6 +139,20 @@
   .surveyFixedBtn {
     font-size: 0.8125rem;
     padding: 0.55rem 0.85rem;
+  }
+
+  .configPanelSummary {
+    align-items: flex-start;
+  }
+
+  .configPanelTitle {
+    flex: 1 1 100%;
+  }
+
+  .configPanelMeta {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    padding-left: 1.7rem;
   }
 }
 

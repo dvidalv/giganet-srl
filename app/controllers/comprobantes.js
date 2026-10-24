@@ -3017,8 +3017,8 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
     const fechaHora = new Date().toLocaleString("es-DO", {
       timeZone: "America/Santo_Domingo",
     });
-    const tipoError = errorInfo.tipo || "Error desconocido";
-    const mensajeError = errorInfo.mensaje || "N/A";
+    const tipoError = textoEnvioSinMarcaFactory(errorInfo.tipo || "Error desconocido");
+    const mensajeError = textoEnvioSinMarcaFactory(errorInfo.mensaje || "N/A");
 
     const soporteTo =
       process.env.FACTURA_ERROR_TO_EMAIL ||
@@ -3066,7 +3066,7 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
           ${
             errorInfo.respuestaTheFactory
               ? `
-          <h2 style="color: #333; margin-top: 30px;">Respuesta de TheFactory</h2>
+          <h2 style="color: #333; margin-top: 30px;">Respuesta de giganet</h2>
           <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
             <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">${escapeHtmlEmail(
               JSON.stringify(errorInfo.respuestaTheFactory, null, 2)
@@ -3078,7 +3078,7 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
           
           <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-top: 30px;">
             <p style="margin: 0; font-size: 12px; color: #6c757d;">
-              Este email fue generado automáticamente por Giganet cuando se detectó un error en el envío de factura electrónica a TheFactoryHKA.
+              Este email fue generado automáticamente por Giganet cuando se detectó un error en el envío de factura electrónica a giganet.
             </p>
           </div>
         </div>
@@ -3108,7 +3108,7 @@ ${JSON.stringify(facturaOriginal, null, 2)}
 
 ${
   errorInfo.respuestaTheFactory
-    ? `Respuesta de TheFactory:\n${JSON.stringify(
+    ? `Respuesta de giganet:\n${JSON.stringify(
         errorInfo.respuestaTheFactory,
         null,
         2
@@ -3263,7 +3263,43 @@ async function guardarRegistroEnvio({
  * @param {Object} body - Body de la petición (emisor, comprador, factura, items, etc.)
  * @returns {Promise<{ status: number, data: Object }>}
  */
+/** En respuestas de envío de comprobante, no mencionar The Factory al cliente. */
+function textoEnvioSinMarcaFactory(texto) {
+  if (typeof texto !== "string") return texto;
+  return texto
+    .replace(/The\s*Factory\s*HKA/gi, "giganet")
+    .replace(/TheFactoryHKA/gi, "giganet")
+    .replace(/The\s*Factory/gi, "giganet")
+    .replace(/TheFactory/gi, "giganet")
+    .replace(/\bde\s+factory\b/gi, "giganet");
+}
+
+function datosEnvioSinMarcaFactory(valor) {
+  if (typeof valor === "string") return textoEnvioSinMarcaFactory(valor);
+  if (Array.isArray(valor)) return valor.map(datosEnvioSinMarcaFactory);
+  if (valor && typeof valor === "object") {
+    const out = {};
+    for (const [clave, hijo] of Object.entries(valor)) {
+      out[clave] = datosEnvioSinMarcaFactory(hijo);
+    }
+    return out;
+  }
+  return valor;
+}
+
+function respuestaEnvioCliente(resultado) {
+  if (!resultado || typeof resultado !== "object") return resultado;
+  return {
+    status: resultado.status,
+    data: datosEnvioSinMarcaFactory(resultado.data),
+  };
+}
+
 export async function enviarFacturaElectronicaLogic(body, options = {}) {
+  return respuestaEnvioCliente(await enviarFacturaElectronicaLogicInterno(body, options));
+}
+
+async function enviarFacturaElectronicaLogicInterno(body, options = {}) {
   // Fuera del try: el catch usa rnc/urls y si viven dentro del try
   // JS lanza ReferenceError (rnc is not defined) y el cliente solo ve
   // "Error interno al enviar factura" en vez del 400 de The Factory.
@@ -3426,7 +3462,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
         status: httpStatus.BAD_REQUEST,
         data: {
           status: "error",
-          message: `Error de TheFactoryHKA: ${mensajeError}`,
+          message: `Error de giganet: ${mensajeError}`,
           details: {
             codigo: response.data.codigo,
             mensajeOriginal: response.data.mensaje,
@@ -3566,8 +3602,8 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
         status: httpStatus.BAD_REQUEST,
         data: {
           status: "error",
-          message: "Credenciales de The Factory no configuradas o inválidas",
-          details: error.message,
+          message: "Credenciales de giganet no configuradas o inválidas",
+          details: textoEnvioSinMarcaFactory(error.message),
         },
       };
     }
@@ -3615,7 +3651,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       // Construir respuesta con información completa y normalizada
       const responseData = {
         status: "error",
-        message: normalizedError.message,
+        message: textoEnvioSinMarcaFactory(normalizedError.message),
         errorType: normalizedError.type,
         httpStatus: normalizedError.httpStatus,
       };
@@ -3656,7 +3692,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
         status: httpStatusCode,
         data: {
           status: "error",
-          message: normalizedError.message,
+          message: textoEnvioSinMarcaFactory(normalizedError.message),
           errorType: normalizedError.type,
           ncf: body.factura?.ncf || null,
           sugerencia: normalizedError.type === 'THE_FACTORY_TIMEOUT' 
@@ -3677,7 +3713,7 @@ export async function enviarFacturaElectronicaLogic(body, options = {}) {
       data: {
         status: "error",
         message: "Error interno del servidor al procesar la factura electrónica",
-        details: error.message,
+        details: textoEnvioSinMarcaFactory(error.message),
       },
     };
   }

@@ -137,6 +137,8 @@ export default function EmpresaAdminForm({ userId }) {
     demo: { loading: false, result: null },
     production: { loading: false, result: null },
   });
+  const tfCheckRequests = useRef({ demo: null, production: null });
+  const tfClaveInputs = useRef({ demo: null, production: null });
   const [surveySending, setSurveySending] = useState(false);
   const [comprobantesReloadToken, setComprobantesReloadToken] = useState(0);
   const [modalidadFolios, setModalidadFolios] = useState(null);
@@ -193,23 +195,34 @@ export default function EmpresaAdminForm({ userId }) {
   };
 
   const resetTfCheck = (ambiente) => {
+    const pending = tfCheckRequests.current[ambiente];
+    if (pending) {
+      pending.abort();
+      tfCheckRequests.current[ambiente] = null;
+    }
     setTfCheck((prev) =>
-      prev[ambiente].result ? { ...prev, [ambiente]: { loading: false, result: null } } : prev,
+      prev[ambiente].result || prev[ambiente].loading
+        ? { ...prev, [ambiente]: { loading: false, result: null } }
+        : prev,
     );
   };
 
-  const handleVerificarTheFactory = async (ambiente) => {
+  const handleVerificarTheFactory = async (ambiente, clave) => {
     const isDemo = ambiente === "demo";
+    tfCheckRequests.current[ambiente]?.abort();
+    const controller = new AbortController();
+    tfCheckRequests.current[ambiente] = controller;
     setTfCheck((prev) => ({ ...prev, [ambiente]: { loading: true, result: null } }));
     let result;
     try {
       const res = await fetch(`/api/users/${userId}/empresa/verificar-thefactory`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           ambiente,
           usuario: (isDemo ? empresa.theFactoryUsuarioDemo : empresa.theFactoryUsuarioProduction) || "",
-          clave: isDemo ? theFactoryClaveDemoDraft : theFactoryClaveProductionDraft,
+          clave,
           rnc: (empresa.rnc || "").replace(/\D/g, ""),
         }),
       });
@@ -217,9 +230,12 @@ export default function EmpresaAdminForm({ userId }) {
       result = res.ok
         ? data
         : { valido: false, mensaje: data.error || `Error ${res.status} al verificar` };
-    } catch {
+    } catch (err) {
+      if (err?.name === "AbortError") return;
       result = { valido: false, mensaje: "Error de conexión al verificar" };
     }
+    if (tfCheckRequests.current[ambiente] !== controller) return;
+    tfCheckRequests.current[ambiente] = null;
     setTfCheck((prev) => ({ ...prev, [ambiente]: { loading: false, result } }));
   };
 
@@ -778,6 +794,9 @@ export default function EmpresaAdminForm({ userId }) {
                       <span className={styles.inputIcon}><IconKey /></span>
                       <input
                         type="password"
+                        ref={(el) => {
+                          tfClaveInputs.current.demo = el;
+                        }}
                         value={theFactoryClaveDemoDraft}
                         onChange={(e) => {
                           setTheFactoryClaveDemoDraft(e.target.value);
@@ -798,7 +817,12 @@ export default function EmpresaAdminForm({ userId }) {
                   label="demo"
                   state={tfCheck.demo}
                   usandoClaveGuardada={!theFactoryClaveDemoDraft.trim() && empresa.theFactoryClaveDemoConfigured}
-                  onVerify={() => handleVerificarTheFactory("demo")}
+                  onVerify={() =>
+                    handleVerificarTheFactory(
+                      "demo",
+                      tfClaveInputs.current.demo?.value ?? theFactoryClaveDemoDraft,
+                    )
+                  }
                 />
                 <div className={styles.grid}>
                   <div className={styles.fieldWrapper}>
@@ -822,6 +846,9 @@ export default function EmpresaAdminForm({ userId }) {
                       <span className={styles.inputIcon}><IconKey /></span>
                       <input
                         type="password"
+                        ref={(el) => {
+                          tfClaveInputs.current.production = el;
+                        }}
                         value={theFactoryClaveProductionDraft}
                         onChange={(e) => {
                           setTheFactoryClaveProductionDraft(e.target.value);
@@ -844,7 +871,12 @@ export default function EmpresaAdminForm({ userId }) {
                   usandoClaveGuardada={
                     !theFactoryClaveProductionDraft.trim() && empresa.theFactoryClaveProductionConfigured
                   }
-                  onVerify={() => handleVerificarTheFactory("production")}
+                  onVerify={() =>
+                    handleVerificarTheFactory(
+                      "production",
+                      tfClaveInputs.current.production?.value ?? theFactoryClaveProductionDraft,
+                    )
+                  }
                 />
                 <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
                   Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}

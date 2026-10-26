@@ -76,6 +76,16 @@ const IconCheck = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
   </svg>
 );
+const IconX = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+const IconShieldCheck = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+  </svg>
+);
 const IconBuildingHeader = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -123,6 +133,10 @@ export default function EmpresaAdminForm({ userId }) {
   const [theFactoryClaveDemoDraft, setTheFactoryClaveDemoDraft] = useState("");
   const [theFactoryClaveProductionDraft, setTheFactoryClaveProductionDraft] = useState("");
   const [clearingTfClave, setClearingTfClave] = useState(false);
+  const [tfCheck, setTfCheck] = useState({
+    demo: { loading: false, result: null },
+    production: { loading: false, result: null },
+  });
   const [surveySending, setSurveySending] = useState(false);
   const [comprobantesReloadToken, setComprobantesReloadToken] = useState(0);
   const [modalidadFolios, setModalidadFolios] = useState(null);
@@ -170,6 +184,43 @@ export default function EmpresaAdminForm({ userId }) {
   const handleChange = (field, value) => {
     setEmpresa((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
+    if (field === "theFactoryUsuarioDemo") resetTfCheck("demo");
+    if (field === "theFactoryUsuarioProduction") resetTfCheck("production");
+    if (field === "rnc") {
+      resetTfCheck("demo");
+      resetTfCheck("production");
+    }
+  };
+
+  const resetTfCheck = (ambiente) => {
+    setTfCheck((prev) =>
+      prev[ambiente].result ? { ...prev, [ambiente]: { loading: false, result: null } } : prev,
+    );
+  };
+
+  const handleVerificarTheFactory = async (ambiente) => {
+    const isDemo = ambiente === "demo";
+    setTfCheck((prev) => ({ ...prev, [ambiente]: { loading: true, result: null } }));
+    let result;
+    try {
+      const res = await fetch(`/api/users/${userId}/empresa/verificar-thefactory`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ambiente,
+          usuario: (isDemo ? empresa.theFactoryUsuarioDemo : empresa.theFactoryUsuarioProduction) || "",
+          clave: isDemo ? theFactoryClaveDemoDraft : theFactoryClaveProductionDraft,
+          rnc: (empresa.rnc || "").replace(/\D/g, ""),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      result = res.ok
+        ? data
+        : { valido: false, mensaje: data.error || `Error ${res.status} al verificar` };
+    } catch {
+      result = { valido: false, mensaje: "Error de conexión al verificar" };
+    }
+    setTfCheck((prev) => ({ ...prev, [ambiente]: { loading: false, result } }));
   };
 
   const handlePhoneChange = (e) => {
@@ -728,7 +779,10 @@ export default function EmpresaAdminForm({ userId }) {
                       <input
                         type="password"
                         value={theFactoryClaveDemoDraft}
-                        onChange={(e) => setTheFactoryClaveDemoDraft(e.target.value)}
+                        onChange={(e) => {
+                          setTheFactoryClaveDemoDraft(e.target.value);
+                          resetTfCheck("demo");
+                        }}
                         placeholder={
                           empresa.theFactoryClaveDemoConfigured
                             ? "Dejar vacío para no cambiar la clave demo"
@@ -740,6 +794,12 @@ export default function EmpresaAdminForm({ userId }) {
                     </div>
                   </div>
                 </div>
+                <TheFactoryVerifyRow
+                  label="demo"
+                  state={tfCheck.demo}
+                  usandoClaveGuardada={!theFactoryClaveDemoDraft.trim() && empresa.theFactoryClaveDemoConfigured}
+                  onVerify={() => handleVerificarTheFactory("demo")}
+                />
                 <div className={styles.grid}>
                   <div className={styles.fieldWrapper}>
                     <label className={styles.label}>Usuario producción</label>
@@ -763,7 +823,10 @@ export default function EmpresaAdminForm({ userId }) {
                       <input
                         type="password"
                         value={theFactoryClaveProductionDraft}
-                        onChange={(e) => setTheFactoryClaveProductionDraft(e.target.value)}
+                        onChange={(e) => {
+                          setTheFactoryClaveProductionDraft(e.target.value);
+                          resetTfCheck("production");
+                        }}
                         placeholder={
                           empresa.theFactoryClaveProductionConfigured
                             ? "Dejar vacío para no cambiar la clave producción"
@@ -775,6 +838,14 @@ export default function EmpresaAdminForm({ userId }) {
                     </div>
                   </div>
                 </div>
+                <TheFactoryVerifyRow
+                  label="producción"
+                  state={tfCheck.production}
+                  usandoClaveGuardada={
+                    !theFactoryClaveProductionDraft.trim() && empresa.theFactoryClaveProductionConfigured
+                  }
+                  onVerify={() => handleVerificarTheFactory("production")}
+                />
                 <p className={styles.logoHint} style={{ marginBottom: "0.5rem" }}>
                   Producción usa <code>THEFACTORY_BASE_URL</code>; pruebas usa{" "}
                   <code>THEFACTORY_BASE_URL_DEMO</code>. Las credenciales deben coincidir con el
@@ -874,6 +945,73 @@ export default function EmpresaAdminForm({ userId }) {
       />
     )}
     </>
+  );
+}
+
+function TheFactoryVerifyRow({ label, state, usandoClaveGuardada, onVerify }) {
+  const { loading, result } = state;
+  return (
+    <div className={adminStyles.tfVerifyRow}>
+      <div className={adminStyles.tfVerifyActions}>
+        <button
+          type="button"
+          className={adminStyles.tfVerifyBtn}
+          onClick={onVerify}
+          disabled={loading}
+          aria-busy={loading}
+        >
+          {loading ? (
+            <span className={adminStyles.tfVerifySpinner} aria-hidden="true" />
+          ) : (
+            <IconShieldCheck />
+          )}
+          {loading ? "Verificando…" : `Verificar credenciales ${label}`}
+        </button>
+        {!result && !loading && (
+          <span className={adminStyles.tfVerifyHint}>
+            {usandoClaveGuardada
+              ? "Se usará la clave guardada."
+              : "Prueba el usuario y la clave ingresados contra The Factory."}
+          </span>
+        )}
+      </div>
+      <div aria-live="polite">
+        {result && (
+          <div
+            className={`${adminStyles.tfVerifyResult} ${
+              result.valido ? adminStyles.tfVerifyOk : adminStyles.tfVerifyFail
+            }`}
+            role="status"
+          >
+            <span className={adminStyles.tfVerifyResultIcon} aria-hidden="true">
+              {result.valido ? <IconCheck /> : <IconX />}
+            </span>
+            <div>
+              <strong>
+                {result.valido
+                  ? "Credenciales válidas"
+                  : result.respondio
+                    ? "Credenciales no válidas"
+                    : "No se pudo verificar"}
+              </strong>
+              {result.mensaje && (
+                <span className={adminStyles.tfVerifyMsg}>
+                  {result.respondio && !result.valido ? "The Factory: " : ""}
+                  {result.mensaje}
+                  {result.codigo != null && !result.valido ? ` (código ${result.codigo})` : ""}
+                </span>
+              )}
+              {result.fuenteClave && (
+                <span className={adminStyles.tfVerifyMeta}>
+                  {result.fuenteClave === "guardada" ? "Clave guardada" : "Clave del formulario"}
+                  {result.rnc ? ` · RNC ${result.rnc}` : ""}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

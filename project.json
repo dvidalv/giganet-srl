@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/nx/schemas/project-schema.json",
+  "name": "giganet-srl",
+  "projectType": "application",
+  "sourceRoot": ".",
+  "tags": ["type:app", "framework:nextjs"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{projectRoot}/.next"],
+      "options": {
+        "command": "next build",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "next dev",
+        "cwd": "{projectRoot}"
+      },
+      "configurations": {
+        "production": {
+          "command": "next start"
+        }
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": [],
+      "options": {
+        "command": "vitest run",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}

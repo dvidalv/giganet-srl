@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaBan, FaHashtag } from "react-icons/fa";
 import styles from "./EmpresaAdminForm.module.css";
 import CampoNumero from "./CampoNumero";
+import CampoFecha from "./CampoFecha";
 import EmpresaAdminSecuenciaForm from "./EmpresaAdminSecuenciaForm";
 
 const ESTADOS_ACTIVOS = ["activo", "alerta"];
@@ -805,20 +806,17 @@ export default function EmpresaAdminComprobantes({
                           disabled={!!savingId}
                         />
                       </label>
-                      <label>
-                        Vencimiento
-                        <input
-                          type="date"
+                      <div className={styles.compEditorField}>
+                        <label htmlFor={`vencimiento-${rowId(row)}`}>Vencimiento</label>
+                        <CampoFecha
+                          id={`vencimiento-${rowId(row)}`}
                           value={draft.fecha_vencimiento}
-                          onChange={(e) =>
-                            setDraft((d) => ({
-                              ...d,
-                              fecha_vencimiento: e.target.value,
-                            }))
+                          onChange={(v) =>
+                            setDraft((d) => ({ ...d, fecha_vencimiento: v }))
                           }
                           disabled={!!savingId}
                         />
-                      </label>
+                      </div>
                       <label className={styles.compEditorFull}>
                         Comentario
                         <input

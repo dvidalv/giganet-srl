@@ -976,7 +976,8 @@
   gap: 0.75rem;
 }
 
-.compEditorGrid label {
+.compEditorGrid label,
+.compEditorField {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;

@@ -220,10 +220,10 @@ export default function CampoFecha({
         aria-controls={abierto ? dialogId : undefined}
         aria-describedby={describedBy}
       >
+        <FaCalendarAlt className={styles.icono} aria-hidden="true" />
         <span className={valido ? styles.valor : styles.placeholder}>
           {valido ? formatoCorto(valido) : placeholder}
         </span>
-        <FaCalendarAlt className={styles.icono} aria-hidden="true" />
       </button>
       <input
         className={styles.validacion}

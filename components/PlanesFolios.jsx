@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { FaCheck, FaWhatsapp } from "react-icons/fa";
 import {
@@ -20,23 +20,7 @@ const BENEFICIOS = [
   "Acompañamiento para activar o renovar su contrato",
 ];
 
-function precioVisible(plan, ciclo) {
-  if (ciclo === "mensual") {
-    return {
-      valor: formatPrecioRD(plan.precioMensual),
-      sufijo: plan.precioMensual == null ? "" : "/ mes",
-      nota: plan.precioMensual == null ? "Solo pago anual" : "Equivalente mensual",
-    };
-  }
-  return {
-    valor: formatPrecioRD(plan.precioAnual),
-    sufijo: "/ año",
-    nota: plan.precioMensual == null ? "Sin precio mensual" : `${formatPrecioRD(plan.precioMensual)} / mes`,
-  };
-}
-
 export default function PlanesFolios({ variant = "section", compact = false }) {
-  const [ciclo, setCiclo] = useState("anual");
   const destacados = useMemo(() => planesDestacados(), []);
   const TitleTag = variant === "page" ? "h1" : "h2";
   const mostrarTabla = !compact;
@@ -60,30 +44,10 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
             Opciones y precios en pesos dominicanos (RD$). Elija el paquete según las
             transacciones e-CF que su empresa necesita emitir.
           </p>
-
-          <div className={styles.ciclo} role="group" aria-label="Ciclo de facturación">
-            <button
-              type="button"
-              className={`${styles.cicloBtn} ${ciclo === "anual" ? styles.cicloBtnActive : ""}`}
-              aria-pressed={ciclo === "anual"}
-              onClick={() => setCiclo("anual")}
-            >
-              Precio anual
-            </button>
-            <button
-              type="button"
-              className={`${styles.cicloBtn} ${ciclo === "mensual" ? styles.cicloBtnActive : ""}`}
-              aria-pressed={ciclo === "mensual"}
-              onClick={() => setCiclo("mensual")}
-            >
-              Precio mensual
-            </button>
-          </div>
         </header>
 
         <div className={styles.featured}>
           {destacados.map((plan) => {
-            const precio = precioVisible(plan, ciclo);
             const recomendado = plan.slug === "corp-5";
             return (
               <article
@@ -94,10 +58,9 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
                 <h3 className={styles.cardName}>{plan.nombre}</h3>
                 <p className={styles.cardResumen}>{plan.resumen}</p>
                 <p className={styles.cardPrice}>
-                  <span className={styles.cardAmount}>{precio.valor}</span>
-                  {precio.sufijo ? <span className={styles.cardPeriod}>{precio.sufijo}</span> : null}
+                  <span className={styles.cardAmount}>{formatPrecioRD(plan.precioAnual)}</span>
+                  <span className={styles.cardPeriod}>/ año</span>
                 </p>
-                <p className={styles.cardNote}>{precio.nota}</p>
                 <p className={styles.cardVolume}>
                   <strong>{formatTransacciones(plan.transacciones)}</strong> transacciones
                 </p>
@@ -109,8 +72,7 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
                     <FaCheck aria-hidden /> Precio en RD$
                   </li>
                   <li>
-                    <FaCheck aria-hidden />
-                    {plan.precioMensual == null ? "Contratación anual" : "Pago anual o mensual"}
+                    <FaCheck aria-hidden /> Contratación anual
                   </li>
                 </ul>
                 <div className={styles.cardActions}>
@@ -135,7 +97,7 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
           <div className={styles.compactCta}>
             <p>
               El tarifario completo incluye 14 planes, desde 200 hasta 150.000
-              transacciones, con precio anual y mensual.
+              transacciones, con precio anual.
             </p>
             <Link href="/planes" className={styles.cardCta}>
               Ver todos los planes
@@ -155,14 +117,13 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <caption className={styles.srOnly}>
-                Planes de folios, transacciones y precios en pesos dominicanos
+                Planes de folios, transacciones y precios anuales en pesos dominicanos
               </caption>
               <thead>
                 <tr>
                   <th scope="col">Plan</th>
                   <th scope="col">Transacciones</th>
                   <th scope="col">Precio anual</th>
-                  <th scope="col">Precio mensual</th>
                   <th scope="col">
                     <span className={styles.srOnly}>Solicitar</span>
                   </th>
@@ -177,7 +138,6 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
                     </th>
                     <td>{formatTransacciones(plan.transacciones)}</td>
                     <td>{formatPrecioRD(plan.precioAnual)}</td>
-                    <td>{formatPrecioRD(plan.precioMensual)}</td>
                     <td>
                       <Link href={hrefContactoPlan(plan.slug)} className={styles.tableLink}>
                         Solicitar
@@ -190,32 +150,25 @@ export default function PlanesFolios({ variant = "section", compact = false }) {
           </div>
 
           <ul className={styles.mobileList}>
-            {PLANES_FOLIOS.map((plan) => {
-              const precio = precioVisible(plan, ciclo);
-              return (
-                <li key={plan.slug} className={styles.mobileItem}>
-                  <div className={styles.mobileTop}>
-                    <div>
-                      <p className={styles.planName}>{plan.nombre}</p>
-                      <p className={styles.mobileVolume}>
-                        {formatTransacciones(plan.transacciones)} transacciones
-                      </p>
-                    </div>
-                    {plan.badge ? <span className={styles.inlineBadge}>{plan.badge}</span> : null}
+            {PLANES_FOLIOS.map((plan) => (
+              <li key={plan.slug} className={styles.mobileItem}>
+                <div className={styles.mobileTop}>
+                  <div>
+                    <p className={styles.planName}>{plan.nombre}</p>
+                    <p className={styles.mobileVolume}>
+                      {formatTransacciones(plan.transacciones)} transacciones
+                    </p>
                   </div>
-                  <p className={styles.mobilePrice}>
-                    {precio.valor}
-                    {precio.sufijo ? ` ${precio.sufijo}` : ""}
-                  </p>
-                  <p className={styles.mobileAlt}>
-                    Anual {formatPrecioRD(plan.precioAnual)} · Mensual {formatPrecioRD(plan.precioMensual)}
-                  </p>
-                  <Link href={hrefContactoPlan(plan.slug)} className={styles.mobileCta}>
-                    Solicitar {plan.nombre}
-                  </Link>
-                </li>
-              );
-            })}
+                  {plan.badge ? <span className={styles.inlineBadge}>{plan.badge}</span> : null}
+                </div>
+                <p className={styles.mobilePrice}>
+                  {formatPrecioRD(plan.precioAnual)} / año
+                </p>
+                <Link href={hrefContactoPlan(plan.slug)} className={styles.mobileCta}>
+                  Solicitar {plan.nombre}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
         ) : null}

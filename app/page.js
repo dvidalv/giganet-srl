@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import AppsShowcase from "@/components/AppsShowcase";
 import ClientsCarousel from "@/components/ClientsCarousel";
-import PlanesFolios from "@/components/PlanesFolios";
 import {
   FaArrowRight,
   FaAws,
@@ -300,8 +299,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      <PlanesFolios compact />
 
       <section id="aplicaciones" className={styles.appsSection}>
         <div className={styles.sectionInner}>

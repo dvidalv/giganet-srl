@@ -25,6 +25,7 @@ import { hashApiKey } from "@/utils/apiKey";
 import { enriquecerDatosEstatusObservaciones } from "@/utils/ecfObservacionMensajes";
 import axios from "axios";
 import QRCode from "qrcode";
+import { aplicarSaldoAnteriorEnTotales } from "@/lib/ecf/saldoAnterior";
 import {
   generateDGIIQRUrl,
   generateDGIIQRUrlFromEnvioResponse,
@@ -2986,6 +2987,15 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         })()),
     },
   };
+
+  const saldoAnteriorDoc = parsearMonto(facturaAdaptada.saldoAnterior);
+  if (saldoAnteriorDoc > 0) {
+    const totales = documentoCompleto?.DocumentoElectronico?.Encabezado?.Totales;
+    if (totales) {
+      documentoCompleto.DocumentoElectronico.Encabezado.Totales =
+        aplicarSaldoAnteriorEnTotales(totales, saldoAnteriorDoc);
+    }
+  }
 
   return documentoCompleto;
 };

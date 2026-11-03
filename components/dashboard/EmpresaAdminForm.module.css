@@ -157,7 +157,7 @@
 }
 
 .pageWrap {
-  max-width: 860px;
+  max-width: 1280px;
   margin: 5rem auto;
   padding: 0 1rem;
 }
@@ -707,6 +707,33 @@
   background: #f0fdfa;
   color: #0f766e;
   border-radius: 50%;
+}
+
+.compModalIconWarning {
+  background: #fef2f2;
+  color: #b91c1c;
+  box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.08);
+}
+
+.compModalContentWarning {
+  border: 1px solid #fecaca;
+  box-shadow: 0 20px 40px rgba(185, 28, 28, 0.12);
+}
+
+.compModalTitleWarning {
+  color: #991b1b;
+}
+
+.compModalWarningNote {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  text-align: center;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
 }
 
 .compModalTitle {

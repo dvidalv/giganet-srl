@@ -9,6 +9,7 @@ import { crearEncuesta } from "@/actions/crearEncuesta-action";
 import styles from "@/app/dashboard/empresa/page.module.css";
 import adminStyles from "./EmpresaAdminForm.module.css";
 import EmpresaAdminComprobantes from "./EmpresaAdminComprobantes";
+import EmpresaAdminImportarDgii from "./EmpresaAdminImportarDgii";
 import EmpresaAdminApiKey from "./EmpresaAdminApiKey";
 import EmpresaFoliosPanel from "./EmpresaFoliosPanel";
 import { ModalidadBadge } from "./foliosUi";
@@ -364,8 +365,12 @@ export default function EmpresaAdminForm({ userId }) {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  /**
+   * Misma validación + PATCH que el botón "Actualizar empresa".
+   * @param {{ theFactoryAmbiente?: string, successMessage?: string }} [overrides]
+   * @returns {Promise<boolean>}
+   */
+  const saveEmpresa = async (overrides = {}) => {
     setMessage(null);
     setErrors({});
 
@@ -378,7 +383,7 @@ export default function EmpresaAdminForm({ userId }) {
     }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -393,8 +398,13 @@ export default function EmpresaAdminForm({ userId }) {
         telefono: (empresa.telefono || "").replace(/\D/g, "").slice(0, 10),
         email: empresa.email || "",
         theFactoryUsuarioDemo: (empresa.theFactoryUsuarioDemo || "").trim().slice(0, 100),
-        theFactoryUsuarioProduction: (empresa.theFactoryUsuarioProduction || "").trim().slice(0, 100),
-        theFactoryAmbiente: empresa.theFactoryAmbiente || "production",
+        theFactoryUsuarioProduction: (empresa.theFactoryUsuarioProduction || "")
+          .trim()
+          .slice(0, 100),
+        theFactoryAmbiente:
+          overrides.theFactoryAmbiente ??
+          empresa.theFactoryAmbiente ??
+          "production",
       };
       if (theFactoryClaveDemoDraft.trim()) {
         payload.theFactoryClaveDemo = theFactoryClaveDemoDraft;
@@ -419,17 +429,44 @@ export default function EmpresaAdminForm({ userId }) {
             : data.error || "Error al actualizar",
         });
         if (data.details) setErrors((prev) => ({ ...prev, _form: data.details }));
-        return;
+        return false;
       }
       setEmpresa({ ...EMPRESA_DEFAULTS, ...data.empresa });
       setTheFactoryClaveDemoDraft("");
       setTheFactoryClaveProductionDraft("");
       setComprobantesReloadToken((n) => n + 1);
-      setMessage({ type: "success", text: "Empresa actualizada correctamente" });
+      setMessage({
+        type: "success",
+        text: overrides.successMessage || "Empresa actualizada correctamente",
+      });
+      return true;
     } catch (err) {
       setMessage({ type: "error", text: "Error de conexión" });
+      return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await saveEmpresa();
+  };
+
+  /** Guarda el ambiente al cambiar el selector (sin esperar "Actualizar empresa"). */
+  const handleAmbienteChange = async (value) => {
+    const next = value === "demo" ? "demo" : "production";
+    const previous = empresa.theFactoryAmbiente || "production";
+    if (next === previous || saving) return;
+
+    handleChange("theFactoryAmbiente", next);
+    const label = next === "demo" ? "Pruebas (demo)" : "Producción";
+    const ok = await saveEmpresa({
+      theFactoryAmbiente: next,
+      successMessage: `Ambiente actualizado a ${label}`,
+    });
+    if (!ok) {
+      handleChange("theFactoryAmbiente", previous);
     }
   };
 
@@ -894,7 +931,9 @@ export default function EmpresaAdminForm({ userId }) {
                   <select
                     className={styles.input}
                     value={empresa.theFactoryAmbiente || "production"}
-                    onChange={(e) => handleChange("theFactoryAmbiente", e.target.value)}
+                    disabled={saving}
+                    aria-label="Ambiente The Factory"
+                    onChange={(e) => handleAmbienteChange(e.target.value)}
                   >
                     <option value="production">Producción</option>
                     <option value="demo">Pruebas (demo)</option>
@@ -930,6 +969,15 @@ export default function EmpresaAdminForm({ userId }) {
       </div>
       <EmpresaAdminApiKey userId={userId} />
       <EmpresaFoliosPanel userId={userId} onModalidadChange={setModalidadFolios} />
+      <EmpresaAdminImportarDgii
+        userId={userId}
+        empresa={{
+          rnc: empresa.rnc,
+          razonSocial: empresa.razonSocial,
+          nombre: empresa.nombre,
+        }}
+        onCreated={() => setComprobantesReloadToken((n) => n + 1)}
+      />
       <EmpresaAdminComprobantes
         userId={userId}
         ambiente={empresa.theFactoryAmbiente}

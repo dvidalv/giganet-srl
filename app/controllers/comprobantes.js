@@ -3766,7 +3766,9 @@ export async function listarSeriesTheFactoryLogic(body, options = {}) {
       };
     }
 
-    const urls = await resolveTheFactoryUrlsForUser(options.userId);
+    const urls = await resolveTheFactoryUrlsForUser(options.userId, {
+      forceAmbiente: options.forceAmbiente,
+    });
     const token = await obtenerTokenTheFactory(rnc, {
       ...options,
       theFactoryUrls: urls,
@@ -4037,14 +4039,19 @@ function enrichedSerieFromFactoryMatch(matched, doc) {
     : { serie: payload.serie, codigoSucursal: payload.codigoSucursal };
 }
 
-async function syncTheFactoryActualizarSeriesWithRetry(doc, userId, maxAttempts = 2) {
+async function syncTheFactoryActualizarSeriesWithRetry(
+  doc,
+  userId,
+  maxAttempts = 2,
+  syncOptions = {},
+) {
   /** @type {{ ok: boolean; message?: string; details?: unknown } | null} */
   let last = null;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
       await new Promise((resolve) => setTimeout(resolve, 11000));
     }
-    last = await syncTheFactoryActualizarSeriesFromComprobante(doc, userId);
+    last = await syncTheFactoryActualizarSeriesFromComprobante(doc, userId, syncOptions);
     if (last.ok) return last;
     const codigo = last.details && typeof last.details === "object" ? /** @type {{ codigo?: number }} */ (last.details).codigo : undefined;
     const msg = String(last.message ?? "");
@@ -4057,8 +4064,8 @@ async function syncTheFactoryActualizarSeriesWithRetry(doc, userId, maxAttempts 
 /**
  * Si CrearSerie responde que la serie ya existe: vincular o actualizar en TF.
  */
-async function syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc) {
-  const rows = await fetchFactorySeriesRows(userId, rnc);
+async function syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc, syncOptions = {}) {
+  const rows = await fetchFactorySeriesRows(userId, rnc, syncOptions);
   const matched =
     pickSerieFromFactoryList(rows, doc) ||
     findFactorySerieRowByTipo(rows, doc.tipo_comprobante);
@@ -4081,12 +4088,17 @@ async function syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc) {
     };
   }
 
-  const updateRes = await syncTheFactoryActualizarSeriesWithRetry(doc, userId);
+  const updateRes = await syncTheFactoryActualizarSeriesWithRetry(
+    doc,
+    userId,
+    2,
+    syncOptions,
+  );
   if (!updateRes.ok) {
     return updateRes;
   }
 
-  const rowsAfter = await fetchFactorySeriesRows(userId, rnc);
+  const rowsAfter = await fetchFactorySeriesRows(userId, rnc, syncOptions);
   const matchedAfter =
     pickSerieFromFactoryList(rowsAfter, doc) ||
     findFactorySerieRowByTipo(rowsAfter, doc.tipo_comprobante) ||
@@ -4101,8 +4113,14 @@ async function syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc) {
   };
 }
 
-async function fetchFactorySeriesRows(userId, rnc) {
-  const listRes = await listarSeriesTheFactoryLogic({ rnc }, { userId });
+async function fetchFactorySeriesRows(userId, rnc, syncOptions = {}) {
+  const listRes = await listarSeriesTheFactoryLogic(
+    { rnc },
+    {
+      userId,
+      forceAmbiente: syncOptions.forceProduction ? "production" : undefined,
+    },
+  );
   if (listRes.status !== httpStatus.OK || listRes.data?.status !== "success") {
     return [];
   }
@@ -4112,9 +4130,14 @@ async function fetchFactorySeriesRows(userId, rnc) {
 /**
  * Tras crear secuencia en Giganet: CrearSeries en The Factory.
  * @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapicrearseries
+ * @param {{ forceProduction?: boolean }} [syncOptions]
  * @returns {Promise<{ ok: boolean, message?: string, details?: unknown, enrichedSerie?: { serie: string, codigoSucursal: string } }>}
  */
-export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
+export async function syncTheFactoryCrearSeriesFromComprobante(
+  doc,
+  userId,
+  syncOptions = {},
+) {
   let urls = null;
   try {
     const rnc = String(doc.rnc ?? "")
@@ -4124,7 +4147,9 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
       return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
     }
 
-    urls = await resolveTheFactoryUrlsForUser(userId);
+    urls = await resolveTheFactoryUrlsForUser(userId, {
+      forceAmbiente: syncOptions.forceProduction ? "production" : undefined,
+    });
     const token = await obtenerTokenTheFactory(rnc, {
       userId,
       theFactoryUrls: urls,
@@ -4145,7 +4170,12 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
     if (!theFactorySerieCodigoOk(data)) {
       const mensajeTf = String(data.mensaje ?? "").trim();
       if (/ya existe una serie/i.test(mensajeTf)) {
-        const linkOrUpdate = await syncTheFactoryLinkOrUpdateExistingSerie(doc, userId, rnc);
+        const linkOrUpdate = await syncTheFactoryLinkOrUpdateExistingSerie(
+          doc,
+          userId,
+          rnc,
+          syncOptions,
+        );
         if (linkOrUpdate.ok) {
           return linkOrUpdate;
         }
@@ -4209,7 +4239,11 @@ export async function syncTheFactoryCrearSeriesFromComprobante(doc, userId) {
  * Tras actualizar secuencia en Giganet: ActualizarSeries en The Factory.
  * @see https://felwiki.thefactoryhka.com.do/doku.php?id=restapiactualizarseries
  */
-export async function syncTheFactoryActualizarSeriesFromComprobante(doc, userId) {
+export async function syncTheFactoryActualizarSeriesFromComprobante(
+  doc,
+  userId,
+  syncOptions = {},
+) {
   try {
     const rnc = String(doc.rnc ?? "")
       .replace(/\D/g, "")
@@ -4218,13 +4252,15 @@ export async function syncTheFactoryActualizarSeriesFromComprobante(doc, userId)
       return { ok: false, message: "RNC o usuario ausente para sincronizar The Factory" };
     }
 
-    const urls = await resolveTheFactoryUrlsForUser(userId);
+    const urls = await resolveTheFactoryUrlsForUser(userId, {
+      forceAmbiente: syncOptions.forceProduction ? "production" : undefined,
+    });
     const token = await obtenerTokenTheFactory(rnc, {
       userId,
       theFactoryUrls: urls,
     });
 
-    const rows = await fetchFactorySeriesRows(userId, rnc);
+    const rows = await fetchFactorySeriesRows(userId, rnc, syncOptions);
     let payload = comprobanteDocToSeriePayload(doc);
     const matched =
       pickSerieFromFactoryList(rows, doc) ||

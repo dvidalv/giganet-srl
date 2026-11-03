@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FaBan, FaHashtag } from "react-icons/fa";
+import { FaBan, FaExclamationTriangle, FaHashtag } from "react-icons/fa";
 import styles from "./EmpresaAdminForm.module.css";
 import CampoNumero from "./CampoNumero";
 import CampoFecha from "./CampoFecha";
@@ -90,6 +90,7 @@ export default function EmpresaAdminComprobantes({
   const [draft, setDraft] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [rowMessage, setRowMessage] = useState(null);
   const [query, setQuery] = useState("");
   const [filterEstado, setFilterEstado] = useState("todos");
@@ -165,7 +166,7 @@ export default function EmpresaAdminComprobantes({
   }, [fetchRows, fetchTheFactorySeries, reloadToken]);
 
   useEffect(() => {
-    if (!pendingAjustar && !pendingAnular) return undefined;
+    if (!pendingAjustar && !pendingAnular && !pendingDelete) return undefined;
     const onKey = (e) => {
       if (e.key !== "Escape") return;
       if (pendingAjustar && !ajustandoId) {
@@ -179,10 +180,13 @@ export default function EmpresaAdminComprobantes({
         setAnularNcfHasta("");
         setAnularError(null);
       }
+      if (pendingDelete && !deletingId) {
+        setPendingDelete(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pendingAjustar, ajustandoId, pendingAnular, anulandoId]);
+  }, [pendingAjustar, ajustandoId, pendingAnular, anulandoId, pendingDelete, deletingId]);
 
   const openAjustarModal = (row) => {
     const proximo = proximoDe(row);
@@ -418,16 +422,20 @@ export default function EmpresaAdminComprobantes({
     }
   };
 
-  const handleDelete = async (row) => {
+  const openDeleteModal = (row) => {
+    setPendingDelete(row);
+    setRowMessage(null);
+  };
+
+  const closeDeleteModal = () => {
+    if (deletingId) return;
+    setPendingDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    const row = pendingDelete;
+    if (!row) return;
     const id = rowId(row);
-    const titulo = row.descripcion_tipo || `Tipo ${row.tipo_comprobante}`;
-    if (
-      !window.confirm(
-        `¿Eliminar la secuencia ${titulo} (${formatRango(row.numero_inicial, row.numero_final)}) en Giganet y, si existe, en The Factory?`,
-      )
-    ) {
-      return;
-    }
     setDeletingId(id);
     setRowMessage(null);
     try {
@@ -446,6 +454,7 @@ export default function EmpresaAdminComprobantes({
         setEditingId(null);
         setDraft(null);
       }
+      setPendingDelete(null);
       setRowMessage({ type: "success", text: json.message ?? "Secuencia eliminada." });
       await fetchRows();
     } catch {
@@ -741,7 +750,7 @@ export default function EmpresaAdminComprobantes({
                   <button
                     type="button"
                     className={styles.compBtnDanger}
-                    onClick={() => handleDelete(row)}
+                    onClick={() => openDeleteModal(row)}
                     disabled={!!savingId || deletingId === id}
                   >
                     {deletingId === id ? "Eliminando…" : "Eliminar"}
@@ -854,6 +863,78 @@ export default function EmpresaAdminComprobantes({
             );
           })}
         </ul>
+      )}
+
+      {pendingDelete && (
+        <div
+          className={styles.compModalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="eliminar-secuencia-title"
+          aria-describedby="eliminar-secuencia-desc"
+          onClick={closeDeleteModal}
+        >
+          <div
+            className={`${styles.compModalContent} ${styles.compModalContentWarning}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className={`${styles.compModalIcon} ${styles.compModalIconWarning}`}
+              aria-hidden
+            >
+              <FaExclamationTriangle size={26} />
+            </div>
+            <h3
+              id="eliminar-secuencia-title"
+              className={`${styles.compModalTitle} ${styles.compModalTitleWarning}`}
+            >
+              ¿Borrar esta secuencia?
+            </h3>
+            <p id="eliminar-secuencia-desc" className={styles.compModalMessage}>
+              ¿Seguro que quieres borrar esta secuencia? Esta acción no se puede deshacer.
+            </p>
+            <p className={styles.compModalWarningNote} role="alert">
+              Se eliminará en Giganet y, si existe, también en The Factory.
+            </p>
+            <p className={styles.compModalDetail}>
+              <strong>
+                {pendingDelete.descripcion_tipo ||
+                  `Tipo ${pendingDelete.tipo_comprobante}`}
+              </strong>
+              {pendingDelete.tipo_comprobante != null && (
+                <> — Tipo E{pendingDelete.tipo_comprobante}</>
+              )}
+            </p>
+            <p className={styles.compModalDetail}>
+              Rango:{" "}
+              <strong>
+                {formatRango(
+                  pendingDelete.numero_inicial,
+                  pendingDelete.numero_final,
+                )}
+              </strong>
+            </p>
+            <div className={styles.compModalActions}>
+              <button
+                type="button"
+                className={styles.compBtn}
+                onClick={closeDeleteModal}
+                disabled={!!deletingId}
+                autoFocus
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.compBtnDanger}
+                onClick={handleConfirmDelete}
+                disabled={!!deletingId}
+              >
+                {deletingId ? "Eliminando…" : "Sí, borrar secuencia"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {pendingAnular && (

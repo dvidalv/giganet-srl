@@ -114,6 +114,9 @@ export default function EmpresaAdminComprobantes({
   const [resolvedAmbiente, setResolvedAmbiente] = useState(
     normalizeAmbiente(ambiente) || "production",
   );
+  const [empresaAmbiente, setEmpresaAmbiente] = useState(
+    normalizeAmbiente(ambiente) || "production",
+  );
   const [filterAmbiente, setFilterAmbiente] = useState(
     () =>
       readStoredAmbiente(userId) ||
@@ -143,12 +146,24 @@ export default function EmpresaAdminComprobantes({
   const [tfSeriesPayload, setTfSeriesPayload] = useState(null);
   const [adding, setAdding] = useState(false);
 
+  const comprobantesUrl = useCallback(
+    (suffix = "") => {
+      const qs = new URLSearchParams();
+      if (filterAmbiente === "demo" || filterAmbiente === "production") {
+        qs.set("ambiente", filterAmbiente);
+      }
+      const q = qs.toString();
+      return `/api/users/${userId}/comprobantes${suffix}${q ? `?${q}` : ""}`;
+    },
+    [userId, filterAmbiente],
+  );
+
   const fetchRows = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/users/${userId}/comprobantes`);
+      const res = await fetch(comprobantesUrl());
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(json.error ?? "Error al cargar comprobantes");
@@ -156,16 +171,18 @@ export default function EmpresaAdminComprobantes({
         return;
       }
       setRows(Array.isArray(json.data) ? json.data : []);
-      if (json.ambiente === "demo" || json.ambiente === "production") {
-        setResolvedAmbiente(json.ambiente);
-      }
+      const viewed = normalizeAmbiente(json.ambiente);
+      if (viewed) setResolvedAmbiente(viewed);
+      const company = normalizeAmbiente(json.empresaAmbiente);
+      if (company) setEmpresaAmbiente(company);
+      else if (viewed) setEmpresaAmbiente(viewed);
     } catch {
       setError("Error de conexión al cargar comprobantes");
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, comprobantesUrl]);
 
   const fetchTheFactorySeries = useCallback(async () => {
     if (!userId) return;
@@ -214,6 +231,11 @@ export default function EmpresaAdminComprobantes({
   useEffect(() => {
     writeStoredAmbiente(userId, filterAmbiente);
   }, [userId, filterAmbiente]);
+
+  useEffect(() => {
+    const fromProp = normalizeAmbiente(ambiente);
+    if (fromProp) setEmpresaAmbiente(fromProp);
+  }, [ambiente]);
 
   useEffect(() => {
     if (!pendingAjustar && !pendingAnular && !pendingDelete) return undefined;
@@ -367,7 +389,7 @@ export default function EmpresaAdminComprobantes({
     setAjustandoId(id);
     setAjustarError(null);
     try {
-      const res = await fetch(`/api/users/${userId}/comprobantes/${id}`, {
+      const res = await fetch(comprobantesUrl(`/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ proximo_numero: proximo }),
@@ -436,7 +458,7 @@ export default function EmpresaAdminComprobantes({
     setSavingId(id);
     setRowMessage(null);
     try {
-      const res = await fetch(`/api/users/${userId}/comprobantes/${id}`, {
+      const res = await fetch(comprobantesUrl(`/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -489,7 +511,7 @@ export default function EmpresaAdminComprobantes({
     setDeletingId(id);
     setRowMessage(null);
     try {
-      const res = await fetch(`/api/users/${userId}/comprobantes/${id}`, {
+      const res = await fetch(comprobantesUrl(`/${id}`), {
         method: "DELETE",
       });
       const json = await res.json().catch(() => ({}));
@@ -514,10 +536,9 @@ export default function EmpresaAdminComprobantes({
     }
   };
 
-  const isDemo = resolvedAmbiente === "demo";
-  const ambientMismatch = filterAmbiente !== resolvedAmbiente;
+  const isDemoEmpresa = empresaAmbiente === "demo";
+  const isDemoView = resolvedAmbiente === "demo";
   const filteredRows = useMemo(() => {
-    if (ambientMismatch) return [];
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
       const estado = String(row.estado ?? "activo").toLowerCase();
@@ -537,7 +558,7 @@ export default function EmpresaAdminComprobantes({
       const tipo = String(row.tipo_comprobante ?? "").toLowerCase();
       return tipo.includes(q);
     });
-  }, [rows, query, filterEstado, ambientMismatch]);
+  }, [rows, query, filterEstado]);
 
   return (
     <section className={styles.compSection} aria-labelledby="admin-comprobantes-title">
@@ -547,18 +568,19 @@ export default function EmpresaAdminComprobantes({
             Comprobantes de la empresa
           </h2>
           <p className={styles.compSubtitle}>
-            Filtre por demo o producción sin cambiar el modo de la empresa. La
-            lista refleja lo que devolvió la API para el ambiente activo. Puede
-            agregar una serie, usar # para alinear Giganet con The Factory, o
-            editar el rango.
+            Filtre por demo o producción para listar ese almacén sin cambiar el
+            modo de la empresa. Puede agregar una serie, usar # para alinear
+            Giganet con The Factory, o editar el rango.
           </p>
         </div>
         <div className={styles.compHeaderActions}>
           <span
-            className={isDemo ? styles.compBadgeDemo : styles.compBadgeProd}
+            className={
+              isDemoEmpresa ? styles.compBadgeDemo : styles.compBadgeProd
+            }
             title="Ambiente activo de la empresa (no se modifica con el filtro)"
           >
-            Empresa: {isDemo ? "Pruebas (demo)" : "Producción"}
+            Empresa: {isDemoEmpresa ? "Pruebas (demo)" : "Producción"}
           </span>
           <button
             type="button"
@@ -705,21 +727,11 @@ export default function EmpresaAdminComprobantes({
         <p className={styles.compMsgError} role="alert">
           {error}
         </p>
-      ) : ambientMismatch ? (
-        <div className={styles.compEmptyBox}>
-          <p className={styles.compEmpty}>
-            No hay secuencias de{" "}
-            {filterAmbiente === "demo" ? "demo" : "producción"} en este listado.
-            La API solo devolvió las del ambiente activo de la empresa (
-            {isDemo ? "demo" : "producción"}). Cambiar este filtro no modifica
-            el modo de la empresa.
-          </p>
-        </div>
       ) : rows.length === 0 ? (
         <div className={styles.compEmptyBox}>
           <p className={styles.compEmpty}>
             Esta empresa no tiene secuencias en el ambiente{" "}
-            {isDemo ? "demo" : "producción"}.
+            {isDemoView ? "demo" : "producción"}.
           </p>
           {!adding && (
             <button

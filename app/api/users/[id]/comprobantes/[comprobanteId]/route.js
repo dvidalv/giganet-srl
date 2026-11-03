@@ -5,7 +5,10 @@ import {
   syncTheFactoryActualizarSeriesFromComprobante,
   syncTheFactoryBorrarSeriesFromComprobante,
 } from "@/app/controllers/comprobantes";
-import { getComprobanteModelForUserId } from "@/lib/comprobantesStore";
+import {
+  getComprobanteModelForUserId,
+  parseComprobantesAmbiente,
+} from "@/lib/comprobantesStore";
 import { applyComprobantePatch } from "@/lib/comprobanteMutations";
 
 async function requireAdmin() {
@@ -18,16 +21,24 @@ async function requireAdmin() {
   return { session };
 }
 
-async function loadOwnedRango(userId, comprobanteId) {
+function forceAmbienteFromRequest(request) {
+  return parseComprobantesAmbiente(
+    new URL(request.url).searchParams.get("ambiente"),
+  );
+}
+
+async function loadOwnedRango(userId, comprobanteId, forceAmbiente) {
   const user = await User.findById(userId).select("_id").lean();
   if (!user) return { error: "Usuario no encontrado", status: 404 };
-  const Comprobante = await getComprobanteModelForUserId(userId);
+  const Comprobante = await getComprobanteModelForUserId(userId, {
+    forceAmbiente,
+  });
   const rango = await Comprobante.findOne({
     _id: comprobanteId,
     usuario: userId,
   });
   if (!rango) return { error: "Secuencia no encontrada", status: 404 };
-  return { Comprobante, rango };
+  return { Comprobante, rango, forceAmbiente };
 }
 
 /** PATCH /api/users/[id]/comprobantes/[comprobanteId] */
@@ -48,7 +59,8 @@ export async function PATCH(request, { params }) {
   }
 
   try {
-    const loaded = await loadOwnedRango(id, comprobanteId);
+    const forceAmbiente = forceAmbienteFromRequest(request);
+    const loaded = await loadOwnedRango(id, comprobanteId, forceAmbiente);
     if (loaded.error) {
       return NextResponse.json(
         { error: loaded.error },
@@ -72,6 +84,7 @@ export async function PATCH(request, { params }) {
     const theFactorySync = await syncTheFactoryActualizarSeriesFromComprobante(
       updated,
       id,
+      forceAmbiente === "production" ? { forceProduction: true } : {},
     );
 
     return NextResponse.json({ data: updated, theFactorySync });
@@ -97,7 +110,7 @@ export async function PATCH(request, { params }) {
 }
 
 /** DELETE /api/users/[id]/comprobantes/[comprobanteId] */
-export async function DELETE(_request, { params }) {
+export async function DELETE(request, { params }) {
   const check = await requireAdmin();
   if (check.error) return check.error;
 
@@ -107,7 +120,8 @@ export async function DELETE(_request, { params }) {
   }
 
   try {
-    const loaded = await loadOwnedRango(id, comprobanteId);
+    const forceAmbiente = forceAmbienteFromRequest(request);
+    const loaded = await loadOwnedRango(id, comprobanteId, forceAmbiente);
     if (loaded.error) {
       return NextResponse.json(
         { error: loaded.error },

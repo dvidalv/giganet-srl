@@ -4,6 +4,7 @@ import User from "@/app/models/user";
 import { createComprobanteSequence } from "@/lib/createComprobanteSequence";
 import {
   getComprobanteModelForUserId,
+  parseComprobantesAmbiente,
   userUsesComprobantesDevMongo,
 } from "@/lib/comprobantesStore";
 
@@ -17,8 +18,10 @@ async function requireAdmin() {
   return { session };
 }
 
-/** GET /api/users/[id]/comprobantes — secuencias de la empresa (demo o producción). */
-export async function GET(_request, { params }) {
+/** GET /api/users/[id]/comprobantes — secuencias de la empresa (demo o producción).
+ *  Query opcional `ambiente=demo|production` fuerza el almacén sin cambiar el modo de la empresa.
+ */
+export async function GET(request, { params }) {
   const check = await requireAdmin();
   if (check.error) return check.error;
 
@@ -36,15 +39,23 @@ export async function GET(_request, { params }) {
       );
     }
 
-    const useDemo = await userUsesComprobantesDevMongo(id);
-    const Comprobante = await getComprobanteModelForUserId(id);
+    const companyDemo = await userUsesComprobantesDevMongo(id);
+    const companyAmbiente = companyDemo ? "demo" : "production";
+    const forceAmbiente = parseComprobantesAmbiente(
+      new URL(request.url).searchParams.get("ambiente"),
+    );
+    const viewAmbiente = forceAmbiente || companyAmbiente;
+    const Comprobante = await getComprobanteModelForUserId(id, {
+      forceAmbiente: viewAmbiente,
+    });
     const rangos = await Comprobante.find({ usuario: id })
       .sort({ tipo_comprobante: 1, numero_inicial: 1 })
       .lean();
 
     return NextResponse.json({
       data: rangos,
-      ambiente: useDemo ? "demo" : "production",
+      ambiente: viewAmbiente,
+      empresaAmbiente: companyAmbiente,
     });
   } catch (err) {
     console.error("GET /api/users/[id]/comprobantes:", err);

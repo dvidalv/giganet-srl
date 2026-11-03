@@ -9,6 +9,7 @@ import EmpresaAdminSecuenciaForm from "./EmpresaAdminSecuenciaForm";
 
 const ESTADOS_ACTIVOS = ["activo", "alerta"];
 const NCF_REGEX = /^E\d{2}\d{8,10}$/;
+const AMBIENTE_STORAGE_PREFIX = "empresa_admin_comprobantes_ambiente_";
 
 const ESTADOS = [
   { value: "activo", label: "Activo" },
@@ -17,6 +18,33 @@ const ESTADOS = [
   { value: "agotado", label: "Agotado" },
   { value: "alerta", label: "Alerta" },
 ];
+
+function normalizeAmbiente(value) {
+  return value === "demo" || value === "production" ? value : null;
+}
+
+function readStoredAmbiente(userId) {
+  if (!userId || typeof window === "undefined") return null;
+  try {
+    return normalizeAmbiente(
+      window.localStorage.getItem(`${AMBIENTE_STORAGE_PREFIX}${userId}`),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAmbiente(userId, value) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${AMBIENTE_STORAGE_PREFIX}${userId}`,
+      value,
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 function formatRango(inicial, final) {
   return `${Number(inicial).toLocaleString("es-DO")} – ${Number(final).toLocaleString("es-DO")}`;
@@ -83,7 +111,15 @@ export default function EmpresaAdminComprobantes({
   empresa = null,
 }) {
   const [rows, setRows] = useState([]);
-  const [resolvedAmbiente, setResolvedAmbiente] = useState(ambiente || "production");
+  const [resolvedAmbiente, setResolvedAmbiente] = useState(
+    normalizeAmbiente(ambiente) || "production",
+  );
+  const [filterAmbiente, setFilterAmbiente] = useState(
+    () =>
+      readStoredAmbiente(userId) ||
+      normalizeAmbiente(ambiente) ||
+      "production",
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -164,6 +200,20 @@ export default function EmpresaAdminComprobantes({
     fetchRows();
     fetchTheFactorySeries();
   }, [fetchRows, fetchTheFactorySeries, reloadToken]);
+
+  useEffect(() => {
+    const stored = readStoredAmbiente(userId);
+    if (stored) {
+      setFilterAmbiente(stored);
+      return;
+    }
+    const fromProp = normalizeAmbiente(ambiente);
+    if (fromProp) setFilterAmbiente(fromProp);
+  }, [userId, ambiente]);
+
+  useEffect(() => {
+    writeStoredAmbiente(userId, filterAmbiente);
+  }, [userId, filterAmbiente]);
 
   useEffect(() => {
     if (!pendingAjustar && !pendingAnular && !pendingDelete) return undefined;
@@ -465,7 +515,9 @@ export default function EmpresaAdminComprobantes({
   };
 
   const isDemo = resolvedAmbiente === "demo";
+  const ambientMismatch = filterAmbiente !== resolvedAmbiente;
   const filteredRows = useMemo(() => {
+    if (ambientMismatch) return [];
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
       const estado = String(row.estado ?? "activo").toLowerCase();
@@ -485,7 +537,7 @@ export default function EmpresaAdminComprobantes({
       const tipo = String(row.tipo_comprobante ?? "").toLowerCase();
       return tipo.includes(q);
     });
-  }, [rows, query, filterEstado]);
+  }, [rows, query, filterEstado, ambientMismatch]);
 
   return (
     <section className={styles.compSection} aria-labelledby="admin-comprobantes-title">
@@ -495,15 +547,18 @@ export default function EmpresaAdminComprobantes({
             Comprobantes de la empresa
           </h2>
           <p className={styles.compSubtitle}>
-            Se cargan las secuencias del ambiente activo. Puede agregar una
-            serie, usar # para alinear Giganet con The Factory, o editar el rango.
+            Filtre por demo o producción sin cambiar el modo de la empresa. La
+            lista refleja lo que devolvió la API para el ambiente activo. Puede
+            agregar una serie, usar # para alinear Giganet con The Factory, o
+            editar el rango.
           </p>
         </div>
         <div className={styles.compHeaderActions}>
           <span
             className={isDemo ? styles.compBadgeDemo : styles.compBadgeProd}
+            title="Ambiente activo de la empresa (no se modifica con el filtro)"
           >
-            {isDemo ? "Pruebas (demo)" : "Producción"}
+            Empresa: {isDemo ? "Pruebas (demo)" : "Producción"}
           </span>
           <button
             type="button"
@@ -528,6 +583,28 @@ export default function EmpresaAdminComprobantes({
       </div>
 
       <div className={styles.compFilters}>
+        <div className={styles.compFilterAmbiente}>
+          <label
+            htmlFor="admin-comp-ambiente"
+            className={styles.compFilterLabel}
+          >
+            Ambiente
+          </label>
+          <select
+            id="admin-comp-ambiente"
+            className={styles.compFilterSelect}
+            value={filterAmbiente}
+            onChange={(e) => {
+              const next = normalizeAmbiente(e.target.value) || "production";
+              setFilterAmbiente(next);
+              setRowMessage(null);
+            }}
+            aria-label="Filtrar comprobantes por ambiente demo o producción"
+          >
+            <option value="demo">Demo</option>
+            <option value="production">Producción</option>
+          </select>
+        </div>
         <div className={styles.compFilterEstado}>
           <label htmlFor="admin-comp-estado" className={styles.compFilterLabel}>
             Estado
@@ -628,6 +705,16 @@ export default function EmpresaAdminComprobantes({
         <p className={styles.compMsgError} role="alert">
           {error}
         </p>
+      ) : ambientMismatch ? (
+        <div className={styles.compEmptyBox}>
+          <p className={styles.compEmpty}>
+            No hay secuencias de{" "}
+            {filterAmbiente === "demo" ? "demo" : "producción"} en este listado.
+            La API solo devolvió las del ambiente activo de la empresa (
+            {isDemo ? "demo" : "producción"}). Cambiar este filtro no modifica
+            el modo de la empresa.
+          </p>
+        </div>
       ) : rows.length === 0 ? (
         <div className={styles.compEmptyBox}>
           <p className={styles.compEmpty}>

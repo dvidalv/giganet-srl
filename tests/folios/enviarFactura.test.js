@@ -80,6 +80,12 @@ function contrato(empresaId, { cantidad = 10, asignados = 10, inicio, vence } = 
 
 const llamadasA = (url) => axios.post.mock.calls.filter(([u]) => u === url).length;
 
+function encabezadoEnviado(url = PROD.enviarUrl) {
+  const call = axios.post.mock.calls.find(([u]) => u === url);
+  if (!call) throw new Error(`No hubo POST a ${url}`);
+  return call[1].DocumentoElectronico.Encabezado;
+}
+
 beforeAll(iniciarMongo);
 afterAll(detenerMongo);
 
@@ -177,6 +183,57 @@ describe("envío de facturas con control de folios", () => {
     const consumo = await FolioConsumo.findOne({ ncf: "E320000000001" }).lean();
     expect(consumo).toMatchObject({ estado: "reservado", pendienteVerificacion: true });
     expect(await FolioContrato.findById(c.id).lean()).toMatchObject({ consumidos: 0, reservados: 1 });
+  });
+
+  it("E32 menor a 250000: un correo inválido no se envía a The Factory", async () => {
+    const userId = await empresaConCredenciales();
+    const body = factura("E320000000050");
+    body.comprador.correo = "correo-invalido";
+    body.emisor.correo = "tampoco es correo";
+    const r = await enviarFacturaElectronicaLogic(body, { userId });
+    expect(r.status).toBe(200);
+    const encabezado = encabezadoEnviado();
+    expect(encabezado.comprador.correo).toBeNull();
+    expect(encabezado.comprador.envioMail).toBe("NO");
+    expect(encabezado.Emisor.correo).toBeNull();
+  });
+
+  it("E32 menor a 250000: un correo válido sí se envía", async () => {
+    const userId = await empresaConCredenciales();
+    const body = factura("E320000000051");
+    body.comprador.correo = "  cliente@empresa.com ";
+    body.emisor.correo = "facturacion@empresa.com";
+    const r = await enviarFacturaElectronicaLogic(body, { userId });
+    expect(r.status).toBe(200);
+    const encabezado = encabezadoEnviado();
+    expect(encabezado.comprador.correo).toBe("cliente@empresa.com");
+    expect(encabezado.comprador.envioMail).toBe("SI");
+    expect(encabezado.Emisor.correo).toBe("facturacion@empresa.com");
+  });
+
+  it("E32 de 250000 o más: el correo inválido sigue enviándose", async () => {
+    const userId = await empresaConCredenciales();
+    const body = factura("E320000000052");
+    body.factura.total = "250000.00";
+    body.items = [{ nombre: "Producto", precio: "250000.00", cantidad: "1" }];
+    body.comprador.rnc = "101010101";
+    body.comprador.correo = "correo-invalido";
+    const r = await enviarFacturaElectronicaLogic(body, { userId });
+    expect(r.status).toBe(200);
+    const encabezado = encabezadoEnviado();
+    expect(encabezado.comprador.correo).toBe("correo-invalido");
+    expect(encabezado.comprador.envioMail).toBe("SI");
+  });
+
+  it("E31: el correo inválido sigue enviándose", async () => {
+    const userId = await empresaConCredenciales();
+    const body = factura("E310000000053");
+    body.factura.tipo = "31";
+    body.comprador.rnc = "101010101";
+    body.comprador.correo = "correo-invalido";
+    const r = await enviarFacturaElectronicaLogic(body, { userId });
+    expect(r.status).toBe(200);
+    expect(encabezadoEnviado().comprador.correo).toBe("correo-invalido");
   });
 
   it("después del vencimiento siguen funcionando consultas y descargas", async () => {

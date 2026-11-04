@@ -25,6 +25,7 @@ import { hashApiKey } from "@/utils/apiKey";
 import { enriquecerDatosEstatusObservaciones } from "@/utils/ecfObservacionMensajes";
 import axios from "axios";
 import QRCode from "qrcode";
+import { correoParaTheFactory } from "@/lib/ecf/correoConsumo";
 import { aplicarSaldoAnteriorEnTotales } from "@/lib/ecf/saldoAnterior";
 import {
   generateDGIIQRUrl,
@@ -2628,11 +2629,24 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   const formasPagoDoc = construirFormasPago();
 
   /** Tipo 32: consumidor final, salvo que el monto obligue a identificar al comprador. */
-  const rncCompradorFinal =
+  const consumoFinalSinRnc =
     facturaAdaptada.tipo === "32" &&
-    !consumoRequiereRncComprador(facturaAdaptada.tipo, montoTotalConDescuentos)
-      ? null
-      : (comprador?.rnc ?? null);
+    !consumoRequiereRncComprador(facturaAdaptada.tipo, montoTotalConDescuentos);
+  const rncCompradorFinal = consumoFinalSinRnc ? null : (comprador?.rnc ?? null);
+  /**
+   * E32 menor a DOP$250,000: un correo inválido no viaja a The Factory.
+   * Se emite el comprobante y envioMail queda en NO.
+   */
+  const correoEmisorEnvio = correoParaTheFactory(
+    emisor?.correo,
+    consumoFinalSinRnc,
+    "correo del emisor"
+  );
+  const correoCompradorEnvio = correoParaTheFactory(
+    comprador?.correo,
+    consumoFinalSinRnc,
+    "correo del comprador"
+  );
 
   // Estructura completa para TheFactoryHKA - CORREGIDA según ejemplo oficial
   const documentoCompleto = {
@@ -2755,7 +2769,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             return {
               ...baseEmisor,
               nombreComercial: stringVacioANull(emisor.razonSocial),
-              correo: stringVacioANull(emisor.correo),
+              correo: correoEmisorEnvio,
               webSite: emisor.webSite || null,
               codigoVendedor: stringVacioANullLimit(
                 facturaAdaptada.id,
@@ -2782,7 +2796,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
             const baseComprador = {
               rnc: rncCompradorFinal,
               razonSocial: stringVacioANull(comprador.nombre),
-              correo: stringVacioANull(comprador.correo),
+              correo: correoCompradorEnvio,
               direccion: stringVacioANull(comprador.direccion),
               municipio: comprador.municipio || null,
               provincia: comprador.provincia || null,
@@ -2798,7 +2812,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               return {
                 ...baseComprador,
                 contacto: stringVacioANull(comprador.nombre),
-                envioMail: stringVacioANull(comprador.correo) ? "SI" : "NO",
+                envioMail: correoCompradorEnvio ? "SI" : "NO",
                 fechaEntrega: comprador.fechaEntrega || null,
                 fechaOrden: comprador.fechaOrden || null,
                 numeroOrden: comprador.numeroOrden || null,

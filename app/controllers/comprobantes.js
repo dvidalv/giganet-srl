@@ -1589,6 +1589,21 @@ const stringVacioANullLimit = (valor, max) => {
   return sanitized.length > max ? sanitized.slice(0, max) : sanitized;
 };
 
+/** TLD de al menos 2 letras: The Factory rechaza `usuario@dominio.d`. */
+const CORREO_FEL_RE = /^[^\s@]+@(?:[^\s@.]+\.)+[A-Za-z]{2,}$/;
+
+/**
+ * Correo del comprador para The Factory. Vacío o con formato inválido → null.
+ * El umbral de DOP$250,000 no aplica al correo: ese monto solo obliga el RNC.
+ */
+const correoCompradorONull = (valor) => {
+  const limpio = stringVacioANull(valor);
+  if (!limpio || typeof limpio !== "string") return null;
+  const compacto = limpio.replace(/\s+/g, "");
+  if (!CORREO_FEL_RE.test(compacto)) return null;
+  return compacto;
+};
+
 // Formato de teléfono para DGII/TheFactory (TelefonoValidationType): XXX-XXX-XXXX
 const formatearTelefonoDGII = (tel) => {
   if (tel == null || tel === "") return null;
@@ -2628,24 +2643,21 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
 
   const formasPagoDoc = construirFormasPago();
 
-  /** Tipo 32: consumidor final, salvo que el monto obligue a identificar al comprador. */
-  const consumoFinalSinRnc =
-    facturaAdaptada.tipo === "32" &&
-    !consumoRequiereRncComprador(facturaAdaptada.tipo, montoTotalConDescuentos);
-  const rncCompradorFinal = consumoFinalSinRnc ? null : (comprador?.rnc ?? null);
   /**
-   * E32 menor a DOP$250,000: un correo inválido no viaja a The Factory.
-   * Se emite el comprobante y envioMail queda en NO.
+   * Tipo 32: por debajo de DOP$250,000 el RNC va null (consumidor final).
+   * Desde ese monto el RNC es obligatorio y no se omite. Se usa el total de la
+   * factura, no el total ya descontado.
    */
+  const rncCompradorFinal =
+    facturaAdaptada.tipo === "32" &&
+    !consumoRequiereRncComprador(facturaAdaptada.tipo, facturaAdaptada.total)
+      ? null
+      : (comprador?.rnc ?? null);
+  const consumoFinalSinRnc = rncCompradorFinal == null && facturaAdaptada.tipo === "32";
   const correoEmisorEnvio = correoParaTheFactory(
     emisor?.correo,
     consumoFinalSinRnc,
     "correo del emisor"
-  );
-  const correoCompradorEnvio = correoParaTheFactory(
-    comprador?.correo,
-    consumoFinalSinRnc,
-    "correo del comprador"
   );
 
   // Estructura completa para TheFactoryHKA - CORREGIDA según ejemplo oficial
@@ -2793,10 +2805,11 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
         // Comprador: Tipo 43 NO incluye comprador según estructura oficial
         ...(facturaAdaptada.tipo !== "43" && {
           comprador: (() => {
+            const correo = correoCompradorONull(comprador.correo);
             const baseComprador = {
               rnc: rncCompradorFinal,
               razonSocial: stringVacioANull(comprador.nombre),
-              correo: correoCompradorEnvio,
+              correo,
               direccion: stringVacioANull(comprador.direccion),
               municipio: comprador.municipio || null,
               provincia: comprador.provincia || null,
@@ -2812,7 +2825,7 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
               return {
                 ...baseComprador,
                 contacto: stringVacioANull(comprador.nombre),
-                envioMail: correoCompradorEnvio ? "SI" : "NO",
+                envioMail: correo ? "SI" : "NO",
                 fechaEntrega: comprador.fechaEntrega || null,
                 fechaOrden: comprador.fechaOrden || null,
                 numeroOrden: comprador.numeroOrden || null,

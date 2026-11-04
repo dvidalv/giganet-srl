@@ -3029,6 +3029,8 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
     });
     const tipoError = textoEnvioSinMarcaFactory(errorInfo.tipo || "Error desconocido");
     const mensajeError = textoEnvioSinMarcaFactory(errorInfo.mensaje || "N/A");
+    const esAirtime = /airtime/i.test(emisorNombre);
+    const headerMarca = esAirtime ? "airtime" : "Giganet - Facturación electrónica";
 
     const soporteTo =
       process.env.FACTURA_ERROR_TO_EMAIL ||
@@ -3041,7 +3043,7 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
       <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #003366 0%, #0056b3 100%); padding: 30px; text-align: center; color: white;">
           <h1>⚠️ Error en Envío de Factura Electrónica</h1>
-          <p>Giganet - Facturación electrónica</p>
+          <p>${escapeHtmlEmail(headerMarca)}</p>
           <p style="margin: 12px 0 0; font-size: 18px; font-weight: bold;">${escapeHtmlEmail(emisorNombre)}</p>
           <p style="margin: 4px 0 0; opacity: 0.9;">RNC ${escapeHtmlEmail(emisorRnc)} · ${escapeHtmlEmail(ncf)}</p>
         </div>
@@ -3101,6 +3103,18 @@ const enviarFacturaASoporte = async (facturaOriginal, errorInfo) => {
     await sendEmail({
       to: soporteTo,
       subject: `Error factura electrónica — ${emisorNombre} — ${ncf}`,
+      ...(esAirtime
+        ? {
+            fromName: process.env.AIRTIME_BREVO_FROM_NAME || "airtime",
+            fromEmail:
+              process.env.AIRTIME_BREVO_FROM_EMAIL ||
+              process.env.BREVO_FROM_EMAIL ||
+              process.env.EMAIL_FROM,
+            ...(process.env.AIRTIME_BREVO_API_KEY
+              ? { apiKey: process.env.AIRTIME_BREVO_API_KEY }
+              : {}),
+          }
+        : {}),
       htmlContent,
       textContent: `Error en Envío de Factura Electrónica
 

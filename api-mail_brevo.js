@@ -7,6 +7,7 @@
  * @param {string} emailData.textContent - Contenido en texto plano (opcional)
  * @param {string} emailData.fromEmail - Email del remitente (opcional)
  * @param {string} emailData.fromName - Nombre del remitente (opcional)
+ * @param {string} emailData.apiKey - API key de Brevo de la cuenta del cliente (opcional)
  * @returns {Promise<Object>} Respuesta de la API de Brevo
  */
 const sendEmail = async (emailData) => {
@@ -18,10 +19,11 @@ const sendEmail = async (emailData) => {
       textContent = "",
       fromEmail = process.env.BREVO_FROM_EMAIL || process.env.EMAIL_FROM || "noreply@example.com",
       fromName = process.env.BREVO_FROM_NAME || "Giganet",
+      apiKey = process.env.BREVO_API_KEY,
     } = emailData;
 
     // Validar que tenemos API Key
-    if (!process.env.BREVO_API_KEY) {
+    if (!apiKey) {
       throw new Error("BREVO_API_KEY no está configurada en las variables de entorno");
     }
 
@@ -47,7 +49,7 @@ const sendEmail = async (emailData) => {
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "api-key": process.env.BREVO_API_KEY,
+        "api-key": apiKey,
       },
       body: JSON.stringify(payload),
     });

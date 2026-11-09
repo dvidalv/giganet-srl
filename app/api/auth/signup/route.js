@@ -4,10 +4,11 @@ import User from "@/app/models/user";
 import { sendEmail } from "@/api-mail_brevo";
 import crypto from "crypto";
 import { headers } from "next/headers";
+import { prepareOptionalUsername } from "@/utils/username";
 
 export async function POST(request) {
   const body = await request.json();
-  let { email, password, name } = body;
+  let { email, password, name, username } = body;
 
   try {
     if (!email || !password || !name) {
@@ -36,6 +37,11 @@ export async function POST(request) {
       );
     }
 
+    const usernamePrep = prepareOptionalUsername(username);
+    if (!usernamePrep.ok) {
+      return NextResponse.json({ error: usernamePrep.error }, { status: 400 });
+    }
+
     // Comprobar si el email ya existe (usando el email normalizado)
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -43,6 +49,18 @@ export async function POST(request) {
         { error: "Email already exists" },
         { status: 400 },
       );
+    }
+
+    if (usernamePrep.username) {
+      const existingUsername = await User.findOne({
+        username: usernamePrep.username,
+      }).select("_id");
+      if (existingUsername) {
+        return NextResponse.json(
+          { error: "Ese nombre de usuario ya está en uso" },
+          { status: 400 },
+        );
+      }
     }
 
     const hashedPassword = passwordHash(password);
@@ -58,6 +76,7 @@ export async function POST(request) {
       email,
       password: hashedPassword,
       name: name.trim(),
+      ...(usernamePrep.username ? { username: usernamePrep.username } : {}),
       role: isFirstUser ? "admin" : "user",
       verificationToken,
       verificationTokenExpires,
@@ -130,12 +149,14 @@ export async function POST(request) {
         { status: 400 },
       );
     }
-    // Manejar errores de duplicado (email único), p. ej. condición de carrera
+    // Manejar errores de duplicado (email/username único), p. ej. condición de carrera
     if (error.code === 11000) {
-      return NextResponse.json(
-        { error: "Email already exists" },
-        { status: 400 },
-      );
+      const key = Object.keys(error.keyPattern || {})[0];
+      const message =
+        key === "username"
+          ? "Ese nombre de usuario ya está en uso"
+          : "Email already exists";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
     console.error("Error:", error);
     return NextResponse.json(

@@ -1,16 +1,19 @@
 "use server";
 import { headers } from "next/headers";
+import { prepareOptionalUsername } from "@/utils/username";
 
 export async function crearUsuario(prevState, formData) {
   const name = formData.get("name");
   const email = formData.get("email");
   const password = formData.get("password");
+  const usernameRaw = formData.get("username");
 
   // Objeto con los valores del formulario
   const formValues = {
     name: name || "",
     email: email || "",
     password: password || "",
+    username: usernameRaw || "",
   };
 
   // Objeto para errores por campo
@@ -33,6 +36,11 @@ export async function crearUsuario(prevState, formData) {
     fieldErrors.password = "La contraseña debe tener al menos 8 caracteres.";
   }
 
+  const usernamePrep = prepareOptionalUsername(usernameRaw);
+  if (!usernamePrep.ok) {
+    fieldErrors.username = usernamePrep.error;
+  }
+
   // Si hay errores, retornarlos con los valores ingresados
   if (Object.keys(fieldErrors).length > 0) {
     return { errors: fieldErrors, success: null, values: formValues };
@@ -46,23 +54,42 @@ export async function crearUsuario(prevState, formData) {
     const res = await fetch(`${baseUrl}/api/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        ...(usernamePrep.username ? { username: usernamePrep.username } : {}),
+      }),
       cache: "no-store",
     });
 
     const data = await res.json().catch(() => ({}));
 
     if (res.status !== 201) {
-      const msg = data?.error || data?.details?.join?.(", ") || "Error al crear el usuario";
+      const msg =
+        data?.error || data?.details?.join?.(", ") || "Error al crear el usuario";
+      if (/usuario ya está en uso/i.test(msg)) {
+        return {
+          errors: { ...fieldErrors, username: msg },
+          error: null,
+          success: null,
+          values: formValues,
+        };
+      }
       return { error: msg, success: null, values: formValues };
     }
 
     return {
-      success: "¡Cuenta creada! Por favor verifica tu email para activar tu cuenta.",
+      success:
+        "¡Cuenta creada! Por favor verifica tu email para activar tu cuenta.",
       error: null,
-      values: { name: "", email: "", password: "" },
+      values: { name: "", email: "", password: "", username: "" },
     };
   } catch (err) {
-    return { error: err?.message || "Error al crear el usuario", success: null, values: formValues };
+    return {
+      error: err?.message || "Error al crear el usuario",
+      success: null,
+      values: formValues,
+    };
   }
 }

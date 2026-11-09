@@ -24,6 +24,20 @@ const userSchema = new Schema(
       required: [true, "Email is required"],
       match: [/^\S+@\S+\.\S+$/, "Please enter a valid email address"],
     },
+    /**
+     * Opcional. Si se define, debe ser único (índice sparse).
+     * Normalizar a minúsculas antes de guardar.
+     */
+    username: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: [30, "El nombre de usuario no puede exceder 30 caracteres"],
+      match: [
+        /^[a-z0-9._-]{3,30}$/,
+        "El nombre de usuario debe tener 3 a 30 caracteres (letras, números, punto, guion o guion bajo)",
+      ],
+    },
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -188,6 +202,18 @@ const userSchema = new Schema(
   },
 );
 
+// Sparse: varios usuarios sin username; los que sí lo tienen deben ser únicos.
+userSchema.index(
+  { username: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: {
+      username: { $type: "string", $gt: "" },
+    },
+  },
+);
+
 // Crear el modelo.
 // En desarrollo, si el modelo ya existe pero no contiene campos nuevos
 // (por hot-reload), lo recompilamos para evitar que Mongoose ignore updates.
@@ -200,6 +226,7 @@ const rncMaxlength = Array.isArray(rncMaxlengthOpt)
 const needsUserModelRecompile =
   !!existingUserModel &&
   (
+    !existingUserModel.schema.path("username") ||
     !existingUserModel.schema.path("empresa.theFactoryUsuarioDemo") ||
     !existingUserModel.schema.path("empresa.theFactoryClaveDemoEnc") ||
     !existingUserModel.schema.path("empresa.theFactoryUsuarioProduction") ||

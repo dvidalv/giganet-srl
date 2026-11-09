@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { normalizeUsername } from "@/utils/username";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
@@ -7,9 +8,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
+        login: {
+          label: "Email o usuario",
+          type: "text",
+          placeholder: "correo o usuario",
+        },
         email: {
           label: "Email",
-          type: "email",
+          type: "text",
           placeholder: "jsmith@example.com",
         },
         password: {
@@ -20,16 +26,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       authorize: async (credentials) => {
         try {
-          if (!credentials?.email || !credentials?.password) {
+          const rawLogin = String(
+            credentials?.login || credentials?.email || "",
+          ).trim();
+          if (!rawLogin || !credentials?.password) {
             return null;
           }
 
           const { passwordCompare } = await import("@/utils/utils");
           const User = (await import("@/app/models/user")).default;
 
-          const user = await User.findOne({
-            email: credentials.email.toLowerCase().trim(),
-          }).select("+password");
+          const looksLikeEmail = rawLogin.includes("@");
+          const user = looksLikeEmail
+            ? await User.findOne({
+                email: rawLogin.toLowerCase(),
+              }).select("+password")
+            : await User.findOne({
+                username: normalizeUsername(rawLogin),
+              }).select("+password");
 
           if (!user) {
             return null;
@@ -100,13 +114,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       try {
         const User = (await import("@/app/models/user")).default;
         const dbUser = await User.findById(token.id)
-          .select("name email image role empresa.theFactoryAmbiente")
+          .select("name email image role username empresa.theFactoryAmbiente")
           .lean();
         if (dbUser) {
           session.user.name = dbUser.name;
           session.user.email = dbUser.email;
           session.user.image = dbUser.image || "";
           session.user.role = dbUser.role;
+          session.user.username = dbUser.username || "";
           const ambiente = dbUser?.empresa?.theFactoryAmbiente;
           if (ambiente === "demo" || ambiente === "production") {
             session.user.theFactoryAmbiente = ambiente;

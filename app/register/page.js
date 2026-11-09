@@ -24,8 +24,8 @@ export default function Register() {
   }, [router]);
 
   const [state, action, isPending] = useActionState(crearUsuario, {
-    values: { name: "", email: "", password: "" },
-    errors: { name: null, email: null, password: null },
+    values: { name: "", email: "", password: "", username: "" },
+    errors: { name: null, email: null, password: null, username: null },
     success: null,
     error: null,
   });
@@ -74,6 +74,16 @@ export default function Register() {
             defaultValue={state.values?.email || ""}
           />
           <input
+            type="text"
+            name="username"
+            placeholder="Nombre de usuario (opcional)"
+            className={styles.input}
+            autoComplete="username"
+            minLength={3}
+            maxLength={30}
+            defaultValue={state.values?.username || ""}
+          />
+          <input
             type="password"
             name="password"
             placeholder="Tu contraseña"
@@ -91,6 +101,9 @@ export default function Register() {
           )}
           {state.errors?.email && (
             <p className={styles.error}>{state.errors.email}</p>
+          )}
+          {state.errors?.username && (
+            <p className={styles.error}>{state.errors.username}</p>
           )}
           {state.errors?.password && (
             <p className={styles.error}>{state.errors.password}</p>

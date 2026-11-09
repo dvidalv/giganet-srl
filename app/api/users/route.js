@@ -90,7 +90,14 @@ export async function POST(request) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { email, password, name, role = "user", isActive = true } = body;
+  const {
+    email,
+    password,
+    name,
+    username,
+    role = "user",
+    isActive = true,
+  } = body;
 
   if (!email || !password || !name) {
     return NextResponse.json(
@@ -108,12 +115,30 @@ export async function POST(request) {
   }
 
   try {
+    const { prepareOptionalUsername } = await import("@/utils/username");
+    const usernamePrep = prepareOptionalUsername(username);
+    if (!usernamePrep.ok) {
+      return NextResponse.json({ error: usernamePrep.error }, { status: 400 });
+    }
+
     const existing = await User.findOne({ email: emailNorm });
     if (existing) {
       return NextResponse.json(
         { error: "El email ya está registrado" },
         { status: 400 },
       );
+    }
+
+    if (usernamePrep.username) {
+      const existingUsername = await User.findOne({
+        username: usernamePrep.username,
+      }).select("_id");
+      if (existingUsername) {
+        return NextResponse.json(
+          { error: "Ese nombre de usuario ya está en uso" },
+          { status: 400 },
+        );
+      }
     }
 
     const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -123,6 +148,7 @@ export async function POST(request) {
       email: emailNorm,
       password: passwordHash(password),
       name: String(name).trim(),
+      ...(usernamePrep.username ? { username: usernamePrep.username } : {}),
       role: role === "admin" ? "admin" : "user",
       isActive: !!isActive,
       isVerified: false,

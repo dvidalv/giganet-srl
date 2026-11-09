@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import User from "@/app/models/user";
 import { passwordCompare, passwordHash } from "@/utils/utils";
+import { prepareOptionalUsername } from "@/utils/username";
 
 const SELECT =
   "-password -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -apiKeyHash";
@@ -19,6 +20,7 @@ function toPublicUser(user) {
     id: u.id,
     name: u.name ?? "",
     email: u.email ?? "",
+    username: u.username ?? "",
     image: u.image ?? "",
     role: u.role ?? "user",
   };
@@ -63,7 +65,7 @@ export async function PATCH(request) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { name, email, image, currentPassword, newPassword } = body;
+  const { name, email, username, image, currentPassword, newPassword } = body;
 
   try {
     const user = await User.findById(session.user.id).select("+password");
@@ -120,6 +122,32 @@ export async function PATCH(request) {
       user.email = nextEmail;
     }
 
+    if (username !== undefined) {
+      const usernamePrep = prepareOptionalUsername(username);
+      if (!usernamePrep.ok) {
+        return NextResponse.json(
+          { error: usernamePrep.error },
+          { status: 400 },
+        );
+      }
+      if (usernamePrep.username) {
+        const taken = await User.findOne({
+          username: usernamePrep.username,
+          _id: { $ne: user._id },
+        }).select("_id");
+        if (taken) {
+          return NextResponse.json(
+            { error: "Ese nombre de usuario ya está en uso" },
+            { status: 400 },
+          );
+        }
+        user.username = usernamePrep.username;
+      } else {
+        user.username = undefined;
+        user.set("username", undefined);
+      }
+    }
+
     if (image !== undefined) {
       user.image = String(image).trim();
     }
@@ -146,8 +174,14 @@ export async function PATCH(request) {
       );
     }
     if (err.code === 11000) {
+      const key = Object.keys(err.keyPattern || {})[0];
       return NextResponse.json(
-        { error: "El email ya está en uso" },
+        {
+          error:
+            key === "username"
+              ? "Ese nombre de usuario ya está en uso"
+              : "El email ya está en uso",
+        },
         { status: 400 },
       );
     }

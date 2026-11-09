@@ -75,12 +75,18 @@ export default function MiPerfilPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    username: "",
     image: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const [original, setOriginal] = useState({ name: "", email: "", image: "" });
+  const [original, setOriginal] = useState({
+    name: "",
+    email: "",
+    username: "",
+    image: "",
+  });
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,6 +113,7 @@ export default function MiPerfilPage() {
         const next = {
           name: user.name || "",
           email: user.email || "",
+          username: user.username || "",
           image: user.image || "",
         };
         setOriginal(next);
@@ -194,12 +201,22 @@ export default function MiPerfilPage() {
     const nextErrors = {};
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
+    const username = form.username.trim().toLowerCase();
 
     if (name.length < 3 || name.length > 50) {
       nextErrors.name = "El nombre debe tener entre 3 y 50 caracteres";
     }
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       nextErrors.email = "Email inválido";
+    }
+    if (username) {
+      if (username.includes("@")) {
+        nextErrors.username =
+          "El nombre de usuario no puede ser un correo electrónico";
+      } else if (!/^[a-z0-9._-]{3,30}$/.test(username)) {
+        nextErrors.username =
+          "El nombre de usuario debe tener 3 a 30 caracteres (letras, números, punto, guion o guion bajo)";
+      }
     }
 
     const emailChanging = email !== original.email.toLowerCase();
@@ -212,6 +229,7 @@ export default function MiPerfilPage() {
         ...prev,
         name: true,
         email: true,
+        username: true,
         currentPassword: true,
         newPassword: true,
         confirmPassword: true,
@@ -224,6 +242,7 @@ export default function MiPerfilPage() {
       const payload = {
         name,
         email,
+        username,
         image: form.image || "",
       };
       if (emailChanging || wantsPassword) {
@@ -251,6 +270,7 @@ export default function MiPerfilPage() {
       const next = {
         name: user.name || name,
         email: user.email || email,
+        username: user.username || "",
         image: user.image || "",
       };
       setOriginal(next);
@@ -315,7 +335,9 @@ export default function MiPerfilPage() {
           </div>
           <div className={styles.headerText}>
             <h1>Mi perfil</h1>
-            <p>Actualiza tu nombre, email, contraseña y foto de perfil.</p>
+            <p>
+              Actualiza tu nombre, usuario, email, contraseña y foto de perfil.
+            </p>
           </div>
         </header>
 
@@ -400,6 +422,35 @@ export default function MiPerfilPage() {
                 {errors.name ? (
                   <p className={styles.fieldError}>{errors.name}</p>
                 ) : null}
+              </div>
+
+              <div className={styles.fieldWrapper}>
+                <label className={styles.label} htmlFor="perfil-username">
+                  Nombre de usuario
+                </label>
+                <div className={styles.inputWrap}>
+                  <span className={styles.inputIcon}>
+                    <IconUser />
+                  </span>
+                  <input
+                    id="perfil-username"
+                    type="text"
+                    value={form.username}
+                    onChange={(e) => handleChange("username", e.target.value)}
+                    className={`${styles.input} ${errors.username ? styles.inputError : ""}`}
+                    minLength={3}
+                    maxLength={30}
+                    autoComplete="username"
+                    placeholder="Opcional"
+                  />
+                </div>
+                {errors.username ? (
+                  <p className={styles.fieldError}>{errors.username}</p>
+                ) : (
+                  <p className={styles.hint}>
+                    Opcional. Si lo defines, puedes iniciar sesión con él.
+                  </p>
+                )}
               </div>
 
               <div className={styles.fieldWrapper}>

@@ -102,10 +102,11 @@ function LoginForm() {
         <form className={styles.form} action={action}>
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <input
-            type="email"
-            name="email"
-            placeholder="Tu email"
+            type="text"
+            name="login"
+            placeholder="Email o nombre de usuario"
             className={styles.input}
+            autoComplete="username"
             required
           />
           <input

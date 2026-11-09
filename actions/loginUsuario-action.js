@@ -1,16 +1,19 @@
 "use server";
 import { signIn } from "@/auth";
 import { redirect } from "next/navigation";
+import { normalizeUsername } from "@/utils/username";
 
 const CREDENTIALS_MSG =
-  "Email o contraseña incorrectos. Verifica tus datos e intenta de nuevo.";
+  "Usuario, email o contraseña incorrectos. Verifica tus datos e intenta de nuevo.";
 
 export async function loginUsuario(prevState, formData) {
-  const email = formData.get("email");
+  const login = String(
+    formData.get("login") || formData.get("email") || "",
+  ).trim();
   const password = formData.get("password");
   const callbackUrl = formData.get("callbackUrl") || "/dashboard";
 
-  if (!email?.trim() || !password) {
+  if (!login || !password) {
     return {
       error: CREDENTIALS_MSG,
       success: null,
@@ -20,7 +23,10 @@ export async function loginUsuario(prevState, formData) {
 
   try {
     const User = (await import("@/app/models/user")).default;
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    const looksLikeEmail = login.includes("@");
+    const user = looksLikeEmail
+      ? await User.findOne({ email: login.toLowerCase() })
+      : await User.findOne({ username: normalizeUsername(login) });
 
     // Usuario no existe → mismo mensaje que contraseña incorrecta (seguridad)
     if (!user) {
@@ -50,7 +56,8 @@ export async function loginUsuario(prevState, formData) {
     }
 
     const result = await signIn("credentials", {
-      email: email.trim(),
+      login,
+      email: looksLikeEmail ? login.toLowerCase() : user.email,
       password,
       redirect: false,
     });

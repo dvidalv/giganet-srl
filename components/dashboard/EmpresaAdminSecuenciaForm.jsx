@@ -46,6 +46,44 @@ function emptyForm() {
   };
 }
 
+/** Empty → undefined so mongoose `required` can reject; otherwise parse as number. */
+function parseOptionalInt(value) {
+  if (value === "" || value == null) return undefined;
+  const n = Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Drop mongoose Cast/NaN noise; keep Spanish required-field messages, one per line. */
+function formatCreateSequenceError(data) {
+  const chunks = [];
+  if (data?.error && data.error !== "Datos del rango inválidos") {
+    chunks.push(String(data.error));
+  }
+  if (data?.details) {
+    chunks.push(String(data.details));
+  }
+  if (data?.theFactorySync?.message) {
+    chunks.push(String(data.theFactorySync.message));
+  }
+  const raw = chunks.join(" ").replace(/\s+/g, " ").trim();
+  if (!raw) return "Error al crear la secuencia";
+
+  const parts = raw
+    .split(
+      /(?=(?:El |La |Los |Ya |Cast to |Path `|The Factory))/u,
+    )
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter((s) => !/Cast to Number|value ["']?NaN["']?/i.test(s))
+    .filter((s) => s !== "Datos del rango inválidos");
+
+  const unique = [...new Set(parts)];
+  if (unique.length === 0) {
+    return "Datos del rango inválidos. Revise los campos requeridos.";
+  }
+  return unique.join("\n");
+}
+
 export default function EmpresaAdminSecuenciaForm({
   userId,
   empresa,
@@ -54,7 +92,6 @@ export default function EmpresaAdminSecuenciaForm({
 }) {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
   const [message, setMessage] = useState(null);
 
   const rnc = String(empresa?.rnc ?? "").replace(/\D/g, "");
@@ -74,75 +111,12 @@ export default function EmpresaAdminSecuenciaForm({
       }
       return next;
     });
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
     if (message) setMessage(null);
-  };
-
-  const validate = () => {
-    const next = {};
-    if (!rncOk) {
-      next._form = "Configure el RNC de la empresa antes de crear una secuencia.";
-    }
-    if (!razonOk) {
-      next._form =
-        next._form ||
-        "Configure la razón social de la empresa antes de crear una secuencia.";
-    }
-    if (!form.tipo_comprobante) {
-      next.tipo_comprobante = "Seleccione el tipo de comprobante.";
-    }
-    const ni = Number(form.numero_inicial);
-    const nf = Number(form.numero_final);
-    if (form.numero_inicial === "" || !Number.isInteger(ni) || ni < 0) {
-      next.numero_inicial = "Debe ser un entero mayor o igual a 0.";
-    }
-    if (form.numero_final === "" || !Number.isInteger(nf) || nf < 0) {
-      next.numero_final = "Debe ser un entero mayor o igual a 0.";
-    }
-    if (!next.numero_inicial && !next.numero_final && nf <= ni) {
-      next.numero_final = "El número final debe ser mayor que el inicial.";
-    }
-    if (form.proximo_numero !== "") {
-      const proximo = Number(form.proximo_numero);
-      if (!Number.isInteger(proximo)) {
-        next.proximo_numero = "Debe ser un entero.";
-      } else if (!next.numero_inicial && proximo < ni) {
-        next.proximo_numero = "No puede ser menor que el inicial.";
-      } else if (!next.numero_final && proximo > nf + 1) {
-        next.proximo_numero = "No puede superar el final del rango.";
-      }
-    }
-    if (!form.fecha_autorizacion) {
-      next.fecha_autorizacion = "La fecha de autorización es requerida.";
-    }
-    if (requiereFechaVencimiento && !form.fecha_vencimiento) {
-      next.fecha_vencimiento = "La fecha de vencimiento es requerida para este tipo.";
-    }
-    if (
-      form.fecha_autorizacion &&
-      form.fecha_vencimiento &&
-      new Date(form.fecha_autorizacion) >= new Date(form.fecha_vencimiento)
-    ) {
-      next.fecha_vencimiento = "Debe ser posterior a la fecha de autorización.";
-    }
-    if (form.prefijo && !/^[A-Z]$/.test(form.prefijo)) {
-      next.prefijo = "Una sola letra mayúscula (ej. E).";
-    }
-    const alerta = Number(form.alerta_minima_restante);
-    if (
-      form.alerta_minima_restante !== "" &&
-      (!Number.isInteger(alerta) || alerta < 1)
-    ) {
-      next.alerta_minima_restante = "Debe ser un entero mayor a 0.";
-    }
-    setErrors(next);
-    return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
-    if (!validate()) return;
 
     setSubmitting(true);
     try {
@@ -152,17 +126,21 @@ export default function EmpresaAdminSecuenciaForm({
         tipo_comprobante: form.tipo_comprobante,
         descripcion_tipo: getDescripcionByTipo(form.tipo_comprobante),
         prefijo: (form.prefijo || "E").trim().toUpperCase().slice(0, 1) || "E",
-        numero_inicial: Number(form.numero_inicial),
-        numero_final: Number(form.numero_final),
-        fecha_autorizacion: form.fecha_autorizacion,
-        fecha_vencimiento: requiereFechaVencimiento ? form.fecha_vencimiento : "",
-        alerta_minima_restante: form.alerta_minima_restante
-          ? Number(form.alerta_minima_restante)
-          : 10,
+        numero_inicial: parseOptionalInt(form.numero_inicial),
+        numero_final: parseOptionalInt(form.numero_final),
+        fecha_autorizacion: form.fecha_autorizacion || undefined,
+        fecha_vencimiento: requiereFechaVencimiento
+          ? form.fecha_vencimiento || undefined
+          : "",
+        alerta_minima_restante:
+          form.alerta_minima_restante === ""
+            ? undefined
+            : Number(form.alerta_minima_restante),
         comentario: (form.comentario || "").trim(),
       };
-      if (form.proximo_numero !== "") {
-        payload.proximo_numero = Number(form.proximo_numero);
+      const proximo = parseOptionalInt(form.proximo_numero);
+      if (proximo !== undefined) {
+        payload.proximo_numero = proximo;
       }
       const res = await fetch(`/api/users/${userId}/comprobantes`, {
         method: "POST",
@@ -171,15 +149,9 @@ export default function EmpresaAdminSecuenciaForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const extra =
-          data.theFactorySync?.message != null
-            ? ` ${data.theFactorySync.message}`
-            : data.details
-              ? ` ${data.details}`
-              : "";
         setMessage({
           type: "error",
-          text: (data.error || "Error al crear la secuencia") + extra,
+          text: formatCreateSequenceError(data),
         });
         return;
       }
@@ -192,7 +164,6 @@ export default function EmpresaAdminSecuenciaForm({
     }
   };
 
-  const disabled = submitting || !rncOk || !razonOk;
   const hintEmpresa = useMemo(() => {
     if (!rncOk) return "Falta el RNC de la empresa para crear la secuencia.";
     if (!razonOk) return "Falta la razón social de la empresa.";
@@ -206,19 +177,6 @@ export default function EmpresaAdminSecuenciaForm({
         <p className={styles.compCreateHint}>{hintEmpresa}</p>
       </div>
 
-      {(errors._form || message) && (
-        <p
-          className={
-            message?.type === "error" || errors._form
-              ? styles.compMsgError
-              : styles.compMsgSuccess
-          }
-          role="alert"
-        >
-          {message?.text || errors._form}
-        </p>
-      )}
-
       <div className={styles.compEditorGrid}>
         <label>
           Tipo de comprobante
@@ -226,7 +184,6 @@ export default function EmpresaAdminSecuenciaForm({
             value={form.tipo_comprobante}
             onChange={(e) => handleChange("tipo_comprobante", e.target.value)}
             disabled={submitting}
-            aria-invalid={!!errors.tipo_comprobante}
           >
             <option value="">Seleccione…</option>
             {TIPOS_COMPROBANTE.map((t) => (
@@ -235,9 +192,6 @@ export default function EmpresaAdminSecuenciaForm({
               </option>
             ))}
           </select>
-          {errors.tipo_comprobante && (
-            <span className={styles.compFieldError}>{errors.tipo_comprobante}</span>
-          )}
         </label>
         <label>
           Prefijo
@@ -250,9 +204,6 @@ export default function EmpresaAdminSecuenciaForm({
             }
             disabled={submitting}
           />
-          {errors.prefijo && (
-            <span className={styles.compFieldError}>{errors.prefijo}</span>
-          )}
         </label>
         <label>
           Número inicial
@@ -261,9 +212,6 @@ export default function EmpresaAdminSecuenciaForm({
             onChange={(v) => handleChange("numero_inicial", v)}
             disabled={submitting}
           />
-          {errors.numero_inicial && (
-            <span className={styles.compFieldError}>{errors.numero_inicial}</span>
-          )}
         </label>
         <label>
           Número final
@@ -272,9 +220,6 @@ export default function EmpresaAdminSecuenciaForm({
             onChange={(v) => handleChange("numero_final", v)}
             disabled={submitting}
           />
-          {errors.numero_final && (
-            <span className={styles.compFieldError}>{errors.numero_final}</span>
-          )}
         </label>
         <label>
           Próximo a emitir
@@ -284,9 +229,6 @@ export default function EmpresaAdminSecuenciaForm({
             disabled={submitting}
             placeholder="Igual al inicial si está vacío"
           />
-          {errors.proximo_numero && (
-            <span className={styles.compFieldError}>{errors.proximo_numero}</span>
-          )}
         </label>
         <label>
           Alerta mínima restante
@@ -295,9 +237,6 @@ export default function EmpresaAdminSecuenciaForm({
             onChange={(v) => handleChange("alerta_minima_restante", v)}
             disabled={submitting}
           />
-          {errors.alerta_minima_restante && (
-            <span className={styles.compFieldError}>{errors.alerta_minima_restante}</span>
-          )}
         </label>
         <label>
           Fecha de autorización
@@ -307,9 +246,6 @@ export default function EmpresaAdminSecuenciaForm({
             onChange={(e) => handleChange("fecha_autorizacion", e.target.value)}
             disabled={submitting}
           />
-          {errors.fecha_autorizacion && (
-            <span className={styles.compFieldError}>{errors.fecha_autorizacion}</span>
-          )}
         </label>
         <label>
           Fecha de vencimiento{requiereFechaVencimiento ? " *" : ""}
@@ -319,9 +255,6 @@ export default function EmpresaAdminSecuenciaForm({
             onChange={(e) => handleChange("fecha_vencimiento", e.target.value)}
             disabled={submitting}
           />
-          {errors.fecha_vencimiento && (
-            <span className={styles.compFieldError}>{errors.fecha_vencimiento}</span>
-          )}
         </label>
         <label className={styles.compEditorFull}>
           Comentario
@@ -339,7 +272,7 @@ export default function EmpresaAdminSecuenciaForm({
         <button
           type="submit"
           className={styles.compBtnPrimary}
-          disabled={disabled}
+          disabled={submitting}
         >
           {submitting ? "Creando…" : "Crear secuencia"}
         </button>
@@ -352,6 +285,19 @@ export default function EmpresaAdminSecuenciaForm({
           Cancelar
         </button>
       </div>
+
+      {message && (
+        <p
+          className={
+            message.type === "error"
+              ? `${styles.compMsgError} ${styles.compMsgMultiline}`
+              : `${styles.compMsgWarning} ${styles.compMsgMultiline}`
+          }
+          role="alert"
+        >
+          {message.text}
+        </p>
+      )}
     </form>
   );
 }

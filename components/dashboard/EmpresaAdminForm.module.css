@@ -488,7 +488,8 @@
 }
 
 .compMsgSuccess,
-.compMsgError {
+.compMsgError,
+.compMsgWarning {
   margin: 0 0 0.9rem;
   padding: 0.65rem 0.8rem;
   border-radius: 8px;
@@ -506,6 +507,16 @@
   background: #fef2f2;
   color: #b91c1c;
   border: 1px solid #fecaca;
+}
+
+.compMsgWarning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.compMsgMultiline {
+  white-space: pre-line;
 }
 
 .compList {
@@ -1049,6 +1060,12 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.85rem;
+}
+
+.compEditorActions + .compMsgError,
+.compEditorActions + .compMsgWarning,
+.compEditorActions + .compMsgSuccess {
+  margin-top: 0.75rem;
 }
 
 @media (max-width: 700px) {

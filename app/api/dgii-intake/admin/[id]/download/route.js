@@ -47,6 +47,10 @@ export async function GET(request, { params }) {
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const slot = searchParams.get("slot") || "";
+  const disposition = String(searchParams.get("disposition") || "inline")
+    .trim()
+    .toLowerCase();
+  const asAttachment = disposition === "attachment";
 
   if (!SLOTS.has(slot)) {
     return NextResponse.json({ error: "Slot inválido" }, { status: 400 });
@@ -60,7 +64,9 @@ export async function GET(request, { params }) {
   const meta = resolveFileMeta(intake, slot);
 
   try {
-    const result = await signedDownloadForFileMeta(meta, slot);
+    const result = await signedDownloadForFileMeta(meta, slot, {
+      asAttachment,
+    });
     return NextResponse.json(result);
   } catch (err) {
     const status = err?.status || 500;

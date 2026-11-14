@@ -269,6 +269,19 @@
   line-height: 1.4;
 }
 
+.docsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.docsHeader .cardTitle {
+  margin: 0;
+}
+
 .docGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -313,6 +326,29 @@
   color: var(--dgii-muted-strong);
   word-break: break-word;
   line-height: 1.35;
+}
+
+.docActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btnDocDownload {
+  padding: 0.35rem 0.65rem;
+  min-height: 32px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #475569;
+}
+
+.btnDocDownload:hover:not(:disabled) {
+  border-color: #ff4d00;
+  color: #c2410c;
+  background: #fff7ed;
 }
 
 .secretsHint {

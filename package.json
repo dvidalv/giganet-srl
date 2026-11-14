@@ -20,6 +20,7 @@
     "cloudinary": "^2.9.0",
     "dotenv": "^17.3.1",
     "http-status": "^1.7.4",
+    "jszip": "^3.10.2",
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",
     "next": "^16.1.6",

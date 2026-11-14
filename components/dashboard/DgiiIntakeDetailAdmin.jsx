@@ -90,20 +90,67 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
     }
   }
 
-  async function downloadFile(slot) {
+  async function downloadFile(slot, mode = "view") {
     setBusy(true);
     try {
+      const disposition = mode === "download" ? "attachment" : "inline";
       const res = await fetch(
-        `/api/dgii-intake/admin/${intakeId}/download?slot=${encodeURIComponent(slot)}`
+        `/api/dgii-intake/admin/${intakeId}/download?slot=${encodeURIComponent(
+          slot
+        )}&disposition=${disposition}`
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setToast({ type: "err", text: data.error || "Descarga no disponible" });
         return;
       }
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      if (mode === "download") {
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.download = data.originalName || slot;
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      }
     } catch {
       setToast({ type: "err", text: "Error al descargar" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadAllFiles() {
+    setBusy(true);
+    setToast(null);
+    try {
+      const res = await fetch(
+        `/api/dgii-intake/admin/${intakeId}/download-all`
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setToast({
+          type: "err",
+          text: data.error || "No se pudo generar el ZIP",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      const match = /filename="([^"]+)"/i.exec(cd);
+      const filename = match?.[1] || "admision-documentos.zip";
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      setToast({ type: "err", text: "Error al descargar el ZIP" });
     } finally {
       setBusy(false);
     }
@@ -360,6 +407,7 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
       <DgiiIntakeReadView
         intake={intake}
         onDownload={downloadFile}
+        onDownloadAll={downloadAllFiles}
         busy={busy}
         backHref="/dashboard/dgii-intakes"
         backLabel="Volver al listado"

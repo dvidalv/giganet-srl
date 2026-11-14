@@ -54,7 +54,8 @@ function Field({ label, value }) {
  * Shared read-only sections for admin detail + agent public page.
  * @param {{
  *   intake: object,
- *   onDownload: (slot: string) => void,
+ *   onDownload: (slot: string, mode?: "view" | "download") => void,
+ *   onDownloadAll?: () => void,
  *   busy?: boolean,
  *   headerExtra?: React.ReactNode,
  *   footer?: React.ReactNode,
@@ -68,6 +69,7 @@ function Field({ label, value }) {
 export default function DgiiIntakeReadView({
   intake,
   onDownload,
+  onDownloadAll,
   busy = false,
   headerExtra = null,
   footer = null,
@@ -81,6 +83,9 @@ export default function DgiiIntakeReadView({
   const percent = completion.percent ?? 0;
   const missing = completion.missing || [];
   const uiStatus = displayStatus(intake);
+  const hasAnyDocument = DGII_FILE_SLOTS.some(
+    ({ key }) => intake.files?.[key]?.hasFile
+  );
 
   return (
     <div
@@ -175,9 +180,21 @@ export default function DgiiIntakeReadView({
         </section>
 
         <section className={styles.card} aria-labelledby="dgii-docs">
-          <h2 id="dgii-docs" className={styles.cardTitle}>
-            Documentos
-          </h2>
+          <div className={styles.docsHeader}>
+            <h2 id="dgii-docs" className={styles.cardTitle}>
+              Documentos
+            </h2>
+            {typeof onDownloadAll === "function" ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={!hasAnyDocument || busy}
+                onClick={onDownloadAll}
+              >
+                Descargar todo
+              </button>
+            ) : null}
+          </div>
           <div className={styles.docGrid}>
             {DGII_FILE_SLOTS.map(({ key, label }) => {
               const file = intake.files?.[key];
@@ -197,14 +214,25 @@ export default function DgiiIntakeReadView({
                         : "Pendiente"}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnSecondary}`}
-                    disabled={!has || busy}
-                    onClick={() => onDownload(key)}
-                  >
-                    Descargar
-                  </button>
+                  <div className={styles.docActions}>
+                    <button
+                      type="button"
+                      className={`${styles.btn} ${styles.btnSecondary}`}
+                      disabled={!has || busy}
+                      onClick={() => onDownload(key, "view")}
+                    >
+                      Visualizar
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.btn} ${styles.btnDocDownload}`}
+                      disabled={!has || busy}
+                      onClick={() => onDownload(key, "download")}
+                      title="Descargar archivo"
+                    >
+                      Descargar
+                    </button>
+                  </div>
                 </article>
               );
             })}

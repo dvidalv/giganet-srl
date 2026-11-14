@@ -78,7 +78,10 @@ const dgiiIntakeSchema = new Schema(
       direccion: { type: String, default: "", maxlength: 400 },
     },
     files: {
+      /** @deprecated Prefer cedulaFrente; kept for intakes uploaded before two-sided split */
       cedula: { type: fileMetaSchema, default: () => ({}) },
+      cedulaFrente: { type: fileMetaSchema, default: () => ({}) },
+      cedulaReverso: { type: fileMetaSchema, default: () => ({}) },
       factura1: { type: fileMetaSchema, default: () => ({}) },
       factura2: { type: fileMetaSchema, default: () => ({}) },
       factura3: { type: fileMetaSchema, default: () => ({}) },

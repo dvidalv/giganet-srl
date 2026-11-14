@@ -5,6 +5,8 @@ import { serializeIntakeForClient } from "@/lib/dgiiIntake/serialize";
 
 const ALLOWED_SLOTS = new Set([
   "cedula",
+  "cedulaFrente",
+  "cedulaReverso",
   "factura1",
   "factura2",
   "factura3",

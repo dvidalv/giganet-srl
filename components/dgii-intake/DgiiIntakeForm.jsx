@@ -4,19 +4,62 @@ import { useCallback, useEffect, useState } from "react";
 import styles from "./DgiiIntakeForm.module.css";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/status";
 
-const FILE_SLOTS = [
-  { key: "cedula", label: "Cédula", accept: "image/*,.pdf,application/pdf" },
-  { key: "factura1", label: "Factura 1", accept: "image/*,.pdf,application/pdf" },
-  { key: "factura2", label: "Factura 2", accept: "image/*,.pdf,application/pdf" },
-  { key: "factura3", label: "Factura 3", accept: "image/*,.pdf,application/pdf" },
-  { key: "factura4", label: "Factura 4", accept: "image/*,.pdf,application/pdf" },
-  { key: "factura5", label: "Factura 5", accept: "image/*,.pdf,application/pdf" },
+const DOC_ACCEPT = "image/*,.pdf,application/pdf";
+
+const CEDULA_SLOTS = [
   {
-    key: "certificadoP12",
-    label: "Certificado P-12",
-    accept: ".p12,.pfx,application/x-pkcs12,application/octet-stream",
+    key: "cedulaFrente",
+    label: "Anverso",
+    hint: "Cara frontal (anverso) de la cédula",
+    accept: DOC_ACCEPT,
+  },
+  {
+    key: "cedulaReverso",
+    label: "Reverso",
+    hint: "Cara posterior (reverso) de la cédula",
+    accept: DOC_ACCEPT,
   },
 ];
+
+const FACTURA_SLOTS = [
+  { key: "factura1", label: "Factura 1", accept: DOC_ACCEPT },
+  { key: "factura2", label: "Factura 2", accept: DOC_ACCEPT },
+  { key: "factura3", label: "Factura 3", accept: DOC_ACCEPT },
+  { key: "factura4", label: "Factura 4", accept: DOC_ACCEPT },
+  { key: "factura5", label: "Factura 5", accept: DOC_ACCEPT },
+];
+
+const P12_SLOT = {
+  key: "certificadoP12",
+  label: "Certificado P-12",
+  hint: "Archivo .p12 o .pfx — sin vista previa",
+  accept: ".p12,.pfx,application/x-pkcs12,application/octet-stream",
+};
+
+function isP12Slot(slotKey) {
+  return slotKey === "certificadoP12";
+}
+
+function getPreviewKind(file) {
+  if (!file?.uploaded || !file?.url) return null;
+  const mime = String(file.mimeType || "").toLowerCase();
+  const name = String(file.originalName || "").toLowerCase();
+  if (
+    mime.includes("pkcs12") ||
+    name.endsWith(".p12") ||
+    name.endsWith(".pfx")
+  ) {
+    return null;
+  }
+  if (mime.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp)$/i.test(name)) {
+    return "image";
+  }
+  if (mime === "application/pdf" || name.endsWith(".pdf")) {
+    return "pdf";
+  }
+  // Unknown but has URL — try generic embed (not P12)
+  return "other";
+}
 
 export default function DgiiIntakeForm({ token }) {
   const [loading, setLoading] = useState(true);
@@ -26,6 +69,7 @@ export default function DgiiIntakeForm({ token }) {
   const [message, setMessage] = useState(null);
   const [intake, setIntake] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [preview, setPreview] = useState(null);
 
   const [empresa, setEmpresa] = useState({
     rnc: "",
@@ -186,6 +230,99 @@ export default function DgiiIntakeForm({ token }) {
   const isMarkedComplete = intake?.status === "complete";
   const canMarkComplete = completion.isComplete && !isMarkedComplete;
 
+  function renderFileSlot({ key, label, hint, accept }) {
+    const file = intake?.files?.[key];
+    const missing = completion.missing?.includes(key);
+    const previewKind = isP12Slot(key) ? null : getPreviewKind(file);
+    const canPreview = Boolean(previewKind && file?.url);
+    return (
+      <li
+        key={key}
+        className={`${styles.fileCard} ${
+          missing ? styles.fileCardMissing : ""
+        } ${file?.uploaded ? styles.fileCardDone : ""}`}
+      >
+        <div className={styles.fileCardTop}>
+          <span className={styles.label}>
+            {label}
+            <span className={styles.requiredMark} aria-hidden="true">
+              {" "}
+              *
+            </span>
+          </span>
+          {file?.uploaded ? (
+            <span className={`${styles.fileStatus} ${styles.okHint}`}>
+              Subido
+            </span>
+          ) : (
+            <span
+              className={`${styles.fileStatus} ${styles.fileStatusPending}`}
+            >
+              Pendiente
+            </span>
+          )}
+        </div>
+        {hint ? <p className={styles.hint}>{hint}</p> : null}
+        {file?.uploaded ? (
+          <div className={styles.filePreviewRow}>
+            {canPreview && previewKind === "image" ? (
+              <button
+                type="button"
+                className={styles.thumbBtn}
+                onClick={() =>
+                  setPreview({
+                    kind: "image",
+                    url: file.url,
+                    title: label,
+                    name: file.originalName || label,
+                  })
+                }
+                aria-label={`Ver vista previa: ${label}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={file.url} alt="" className={styles.thumbImg} />
+              </button>
+            ) : null}
+            {canPreview ? (
+              <button
+                type="button"
+                className={styles.previewLink}
+                onClick={() =>
+                  setPreview({
+                    kind: previewKind,
+                    url: file.url,
+                    title: label,
+                    name: file.originalName || label,
+                  })
+                }
+              >
+                {file.originalName || "Ver archivo"}
+                <span className={styles.previewHint}> · ver</span>
+              </button>
+            ) : (
+              <p className={`${styles.hint} ${styles.okHint}`}>
+                {file.originalName || "archivo"}
+                {isP12Slot(key) ? " (sin vista previa)" : ""}
+              </p>
+            )}
+          </div>
+        ) : null}
+        <input
+          type="file"
+          accept={accept}
+          aria-required="true"
+          aria-label={label}
+          disabled={uploading === key || saving}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            uploadFile(key, f);
+            e.target.value = "";
+          }}
+        />
+      </li>
+    );
+  }
+
   return (
     <div className={styles.wrap}>
       <h1 className={styles.title}>Admisión facturación electrónica DGII</h1>
@@ -213,24 +350,21 @@ export default function DgiiIntakeForm({ token }) {
           />
         </div>
         {completion.missing?.length ? (
-          <ul className={styles.missingList}>
-            {completion.missing.map((k) => (
-              <li key={k}>{FIELD_LABELS[k] || k}</li>
-            ))}
-          </ul>
+          <>
+            <p className={styles.missingListTitle}>
+              Faltan {completion.missing.length} requeridos:
+            </p>
+            <ul className={styles.missingList}>
+              {completion.missing.map((k) => (
+                <li key={k}>{FIELD_LABELS[k] || k}</li>
+              ))}
+            </ul>
+          </>
         ) : (
           <p className={styles.okHint} style={{ margin: 0 }}>
             Todos los campos requeridos están completos.
           </p>
         )}
-      </div>
-
-      <div className={styles.warning} role="note">
-        <strong>Información sensible.</strong> La contraseña del certificado
-        digital y las credenciales del portal DGII se solicitan porque The
-        Factory las requiere para la integración. Se envían cifradas al servidor,
-        se almacenan encriptadas y nunca se registran en logs ni se muestran de
-        nuevo en texto plano.
       </div>
 
       <section className={styles.section}>
@@ -374,104 +508,143 @@ export default function DgiiIntakeForm({ token }) {
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Documentos</h2>
-        <div className={styles.grid}>
-          {FILE_SLOTS.map(({ key, label, accept }) => {
-            const file = intake?.files?.[key];
-            return (
-              <div key={key} className={styles.fileCard}>
-                <span className={styles.label}>{label}</span>
-                {file?.uploaded ? (
-                  <span className={`${styles.hint} ${styles.okHint}`}>
-                    Subido: {file.originalName || "archivo"}
-                  </span>
-                ) : (
-                  <span className={styles.hint}>Pendiente</span>
-                )}
-                <input
-                  type="file"
-                  accept={accept}
-                  disabled={uploading === key || saving}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    uploadFile(key, f);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <section className={styles.section} aria-labelledby="docs-heading">
+        <h2 id="docs-heading" className={styles.sectionTitle}>
+          Documentos
+        </h2>
+        <p className={styles.sectionLead}>
+          Complete cada bloque. La cédula requiere anverso y reverso por
+          separado.
+        </p>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Certificado y portal DGII</h2>
-        <div className={styles.grid}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="cert-pass">
-              Contraseña del certificado
-            </label>
-            <input
-              id="cert-pass"
-              type="password"
-              className={styles.input}
-              value={secrets.certPassword}
-              onChange={(e) =>
-                setSecrets((s) => ({ ...s, certPassword: e.target.value }))
-              }
-              placeholder={
-                intake?.secretsStatus?.certPassword
-                  ? "•••••••• (ya guardada; escriba para reemplazar)"
-                  : ""
-              }
-              autoComplete="new-password"
-            />
+        <div className={styles.docGroup}>
+          <div className={styles.docGroupHeader}>
+            <h3 className={styles.docGroupTitle}>1. Cédula</h3>
+            <p className={styles.docGroupDesc}>
+              Anverso y reverso como dos archivos distintos (imagen o PDF).
+            </p>
           </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="portal-rnc">
-              RNC portal certificación DGII
-            </label>
-            <input
-              id="portal-rnc"
-              className={styles.input}
-              value={secrets.dgiiPortalRnc}
-              onChange={(e) =>
-                setSecrets((s) => ({
-                  ...s,
-                  dgiiPortalRnc: e.target.value.replace(/\D/g, "").slice(0, 11),
-                }))
-              }
-              placeholder={
-                intake?.secretsStatus?.dgiiPortalRnc
-                  ? "Ya guardado; escriba para reemplazar"
-                  : ""
-              }
-              autoComplete="off"
-            />
+          <ul className={styles.docChecklist}>
+            {CEDULA_SLOTS.map(renderFileSlot)}
+          </ul>
+        </div>
+
+        <div className={styles.docGroup}>
+          <div className={styles.docGroupHeader}>
+            <h3 className={styles.docGroupTitle}>2. Facturas</h3>
+            <p className={styles.docGroupDesc}>
+              Cinco facturas, una en cada casilla (imagen o PDF).
+            </p>
           </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="portal-pass">
-              Contraseña portal DGII
-            </label>
-            <input
-              id="portal-pass"
-              type="password"
-              className={styles.input}
-              value={secrets.dgiiPortalPassword}
-              onChange={(e) =>
-                setSecrets((s) => ({
-                  ...s,
-                  dgiiPortalPassword: e.target.value,
-                }))
-              }
-              placeholder={
-                intake?.secretsStatus?.dgiiPortalPassword
-                  ? "•••••••• (ya guardada; escriba para reemplazar)"
-                  : ""
-              }
-              autoComplete="new-password"
-            />
+          <ul className={styles.docChecklist}>
+            {FACTURA_SLOTS.map(renderFileSlot)}
+          </ul>
+        </div>
+
+        <div className={styles.docGroup}>
+          <div className={styles.docGroupHeader}>
+            <h3 className={styles.docGroupTitle}>3. Certificado P-12</h3>
+            <p className={styles.docGroupDesc}>
+              Suba el certificado digital (.p12 / .pfx). No tiene vista previa.
+            </p>
+          </div>
+          <ul className={`${styles.docChecklist} ${styles.docChecklistSingle}`}>
+            {renderFileSlot(P12_SLOT)}
+          </ul>
+          <div className={`${styles.grid} ${styles.docGroupFields}`}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="cert-pass">
+                Contraseña del certificado
+                <span className={styles.requiredMark} aria-hidden="true">
+                  {" "}
+                  *
+                </span>
+              </label>
+              <input
+                id="cert-pass"
+                type="password"
+                className={styles.input}
+                value={secrets.certPassword}
+                onChange={(e) =>
+                  setSecrets((s) => ({ ...s, certPassword: e.target.value }))
+                }
+                placeholder={
+                  intake?.secretsStatus?.certPassword
+                    ? "•••••••• (ya guardada; escriba para reemplazar)"
+                    : ""
+                }
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.docGroup}>
+          <div className={styles.docGroupHeader}>
+            <h3 className={styles.docGroupTitle}>
+              4. Certificación de portal e-CF
+            </h3>
+            <p className={styles.docGroupDesc}>
+              Credenciales del portal de certificación DGII (usuario RNC y
+              contraseña).
+            </p>
+          </div>
+          <div className={styles.grid}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="portal-rnc">
+                RNC portal certificación DGII
+                <span className={styles.requiredMark} aria-hidden="true">
+                  {" "}
+                  *
+                </span>
+              </label>
+              <input
+                id="portal-rnc"
+                className={styles.input}
+                value={secrets.dgiiPortalRnc}
+                onChange={(e) =>
+                  setSecrets((s) => ({
+                    ...s,
+                    dgiiPortalRnc: e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 11),
+                  }))
+                }
+                placeholder={
+                  intake?.secretsStatus?.dgiiPortalRnc
+                    ? "Ya guardado; escriba para reemplazar"
+                    : ""
+                }
+                autoComplete="off"
+              />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="portal-pass">
+                Contraseña portal DGII
+                <span className={styles.requiredMark} aria-hidden="true">
+                  {" "}
+                  *
+                </span>
+              </label>
+              <input
+                id="portal-pass"
+                type="password"
+                className={styles.input}
+                value={secrets.dgiiPortalPassword}
+                onChange={(e) =>
+                  setSecrets((s) => ({
+                    ...s,
+                    dgiiPortalPassword: e.target.value,
+                  }))
+                }
+                placeholder={
+                  intake?.secretsStatus?.dgiiPortalPassword
+                    ? "•••••••• (ya guardada; escriba para reemplazar)"
+                    : ""
+                }
+                autoComplete="new-password"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -546,6 +719,68 @@ export default function DgiiIntakeForm({ token }) {
                 onClick={confirmComplete}
               >
                 Sí, confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {preview ? (
+        <div
+          className={styles.overlay}
+          onClick={() => setPreview(null)}
+          role="presentation"
+        >
+          <div
+            className={`${styles.modal} ${styles.previewModal}`}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dgii-preview-title"
+          >
+            <div className={styles.previewHeader}>
+              <h2 id="dgii-preview-title">{preview.title}</h2>
+              <button
+                type="button"
+                className={styles.previewClose}
+                onClick={() => setPreview(null)}
+                aria-label="Cerrar vista previa"
+              >
+                ×
+              </button>
+            </div>
+            <p className={styles.previewFileName}>{preview.name}</p>
+            <div className={styles.previewBody}>
+              {preview.kind === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={preview.url}
+                  alt={preview.name}
+                  className={styles.previewImg}
+                />
+              ) : (
+                <iframe
+                  title={preview.name}
+                  src={preview.url}
+                  className={styles.previewFrame}
+                />
+              )}
+            </div>
+            <div className={styles.actions}>
+              <a
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                href={preview.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Abrir en nueva pestaña
+              </a>
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={() => setPreview(null)}
+              >
+                Cerrar
               </button>
             </div>
           </div>

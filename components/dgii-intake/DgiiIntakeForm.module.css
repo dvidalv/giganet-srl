@@ -47,17 +47,6 @@
   transition: width 0.3s ease;
 }
 
-.warning {
-  margin: 0 0 1.25rem;
-  padding: 0.9rem 1rem;
-  border-radius: 12px;
-  background: rgba(255, 196, 0, 0.1);
-  border: 1px solid rgba(255, 196, 0, 0.35);
-  color: #ffe08a;
-  font-size: 0.875rem;
-  line-height: 1.45;
-}
-
 .section {
   margin-bottom: 1.5rem;
 }
@@ -69,6 +58,231 @@
   text-transform: uppercase;
   color: #ffaa70;
   font-weight: 700;
+}
+
+.sectionLead {
+  margin: -0.35rem 0 1rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.docGroup {
+  margin-bottom: 1rem;
+  padding: 1rem 1.05rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 77, 0, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 77, 0, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 48%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.docGroup + .docGroup {
+  margin-top: 0.15rem;
+}
+
+.docGroupHeader {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.docGroupTitle {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.docGroupDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.docChecklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.docChecklistSingle {
+  grid-template-columns: 1fr;
+  max-width: 100%;
+}
+
+.docGroupFields {
+  margin-top: 0.85rem;
+}
+
+.requiredMark {
+  color: #ff6a25;
+  font-weight: 800;
+}
+
+.fileCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fileStatus {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fileStatusPending {
+  color: #fbbf24;
+}
+
+.fileCardMissing {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.fileCardDone {
+  border-style: solid;
+  border-color: rgba(134, 239, 172, 0.35);
+}
+
+.filePreviewRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.thumbBtn {
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: #0a0a0a;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.thumbBtn:hover,
+.thumbBtn:focus-visible {
+  border-color: #ff4d00;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 77, 0, 0.25);
+}
+
+.thumbImg {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+}
+
+.previewLink {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #86efac;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.previewLink:hover,
+.previewLink:focus-visible {
+  color: #bbf7d0;
+  outline: none;
+}
+
+.previewHint {
+  color: #94a3b8;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.previewModal {
+  width: min(920px, 100%);
+  max-height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.previewHeader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #fff;
+}
+
+.previewClose {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.previewClose:hover,
+.previewClose:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.previewFileName {
+  margin: 0.35rem 0 0.75rem;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.previewBody {
+  flex: 1;
+  min-height: 240px;
+  max-height: min(65vh, 640px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0a0a0a;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.previewImg {
+  max-width: 100%;
+  max-height: min(65vh, 640px);
+  object-fit: contain;
+  display: block;
+}
+
+.previewFrame {
+  width: 100%;
+  height: min(65vh, 640px);
+  border: none;
+  background: #fff;
 }
 
 .grid {
@@ -194,8 +408,15 @@
 .missingList {
   margin: 0.5rem 0 0;
   padding-left: 1.1rem;
-  color: #94a3b8;
+  color: #fde68a;
   font-size: 0.8rem;
+}
+
+.missingListTitle {
+  margin: 0.55rem 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fbbf24;
 }
 
 .overlay {
@@ -241,7 +462,8 @@
 }
 
 @media (max-width: 640px) {
-  .grid {
+  .grid,
+  .docChecklist {
     grid-template-columns: 1fr;
   }
 

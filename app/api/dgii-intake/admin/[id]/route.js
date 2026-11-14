@@ -73,6 +73,12 @@ export async function GET(_request, { params }) {
       representante: plain.representante || {},
       files: {
         cedula: fileSummary(plain.files?.cedula),
+        cedulaFrente: fileSummary(
+          plain.files?.cedulaFrente?.url
+            ? plain.files.cedulaFrente
+            : plain.files?.cedula
+        ),
+        cedulaReverso: fileSummary(plain.files?.cedulaReverso),
         factura1: fileSummary(plain.files?.factura1),
         factura2: fileSummary(plain.files?.factura2),
         factura3: fileSummary(plain.files?.factura3),

@@ -5,7 +5,8 @@ import styles from "./DgiiIntakesList.module.css";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/status";
 
 const FILE_SLOTS = [
-  { key: "cedula", label: "Cédula" },
+  { key: "cedulaFrente", label: "Cédula — anverso" },
+  { key: "cedulaReverso", label: "Cédula — reverso" },
   { key: "factura1", label: "Factura 1" },
   { key: "factura2", label: "Factura 2" },
   { key: "factura3", label: "Factura 3" },

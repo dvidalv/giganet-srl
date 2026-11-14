@@ -5,6 +5,8 @@ import { getCloudinary } from "@/utils/cloudinary";
 
 const SLOTS = new Set([
   "cedula",
+  "cedulaFrente",
+  "cedulaReverso",
   "factura1",
   "factura2",
   "factura3",

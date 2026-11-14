@@ -91,7 +91,10 @@ export async function GET(request) {
         url: buildIntakePublicUrl(root, plain.token),
         tokenPreview: `${String(plain.token || "").slice(0, 8)}…`,
         hasFiles: {
-          cedula: Boolean(plain.files?.cedula?.url),
+          cedulaFrente: Boolean(
+            plain.files?.cedulaFrente?.url || plain.files?.cedula?.url
+          ),
+          cedulaReverso: Boolean(plain.files?.cedulaReverso?.url),
           factura1: Boolean(plain.files?.factura1?.url),
           factura2: Boolean(plain.files?.factura2?.url),
           factura3: Boolean(plain.files?.factura3?.url),

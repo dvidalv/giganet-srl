@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import DgiiIntake from "@/app/models/dgiiIntake";
-import { getCloudinary } from "@/utils/cloudinary";
+import { signedDownloadForFileMeta } from "@/lib/dgiiIntake/signedDownload";
 
 const SLOTS = new Set([
   "cedula",
@@ -25,6 +25,20 @@ async function requireAdmin() {
   return { session };
 }
 
+function resolveFileMeta(intake, slot) {
+  if (slot === "cedulaFrente") {
+    const frente = intake.files?.cedulaFrente;
+    if (frente?.publicId || frente?.url) return frente;
+    return intake.files?.cedula;
+  }
+  if (slot === "cedula") {
+    return intake.files?.cedulaFrente?.publicId || intake.files?.cedulaFrente?.url
+      ? intake.files.cedulaFrente
+      : intake.files?.cedula;
+  }
+  return intake.files?.[slot];
+}
+
 /** GET ?slot=cedula — signed download URL for authenticated Cloudinary asset */
 export async function GET(request, { params }) {
   const check = await requireAdmin();
@@ -43,50 +57,22 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  const meta = intake.files?.[slot];
-  if (!meta?.publicId && !meta?.url) {
-    return NextResponse.json(
-      { error: "Archivo no subido todavía" },
-      { status: 404 }
-    );
-  }
+  const meta = resolveFileMeta(intake, slot);
 
   try {
-    if (meta.publicId) {
-      const cloudinary = await getCloudinary();
-      const isRaw =
-        slot === "certificadoP12" ||
-        (meta.mimeType || "").includes("pdf") ||
-        (meta.originalName || "").toLowerCase().endsWith(".pdf") ||
-        (meta.originalName || "").toLowerCase().endsWith(".p12") ||
-        (meta.originalName || "").toLowerCase().endsWith(".pfx");
-
-      const resourceType = isRaw ? "raw" : "image";
-      const url = cloudinary.url(meta.publicId, {
-        resource_type: resourceType,
-        type: "authenticated",
-        sign_url: true,
-        secure: true,
-        expires_at: Math.floor(Date.now() / 1000) + 60 * 10,
-      });
-
-      return NextResponse.json({
-        url,
-        originalName: meta.originalName || slot,
-        mimeType: meta.mimeType || "",
-      });
-    }
-
-    return NextResponse.json({
-      url: meta.url,
-      originalName: meta.originalName || slot,
-      mimeType: meta.mimeType || "",
-    });
+    const result = await signedDownloadForFileMeta(meta, slot);
+    return NextResponse.json(result);
   } catch (err) {
+    const status = err?.status || 500;
     console.error("DGII intake download URL:", err?.message || err);
     return NextResponse.json(
-      { error: "No se pudo generar el enlace de descarga" },
-      { status: 500 }
+      {
+        error:
+          status === 404
+            ? "Archivo no subido todavía"
+            : "No se pudo generar el enlace de descarga",
+      },
+      { status }
     );
   }
 }

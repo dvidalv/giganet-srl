@@ -50,6 +50,16 @@ const dgiiIntakeSchema = new Schema(
       unique: true,
       index: true,
     },
+    /** Separate 30-day access for The Factory agent (independent of client token) */
+    agentToken: {
+      type: String,
+      default: "",
+      index: true,
+      sparse: true,
+    },
+    agentExpiresAt: { type: Date, default: null },
+    agentEmail: { type: String, default: "", maxlength: 254 },
+    agentSentAt: { type: Date, default: null },
     status: {
       type: String,
       enum: ["open", "submitted", "complete", "expired"],
@@ -140,6 +150,9 @@ if (!DgiiIntake._connectionWrapped) {
   DgiiIntake.findById = wrapQuery(DgiiIntake.findById.bind(DgiiIntake));
   DgiiIntake.findOneAndUpdate = wrapQuery(
     DgiiIntake.findOneAndUpdate.bind(DgiiIntake)
+  );
+  DgiiIntake.findByIdAndDelete = wrapQuery(
+    DgiiIntake.findByIdAndDelete.bind(DgiiIntake)
   );
   DgiiIntake.countDocuments = wrap(
     DgiiIntake.countDocuments.bind(DgiiIntake)

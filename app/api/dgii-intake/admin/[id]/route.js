@@ -4,13 +4,14 @@ import { auth } from "@/auth";
 import DgiiIntake from "@/app/models/dgiiIntake";
 import User from "@/app/models/user";
 import { sendEmail } from "@/api-mail_brevo";
-import { buildCompletionStatus } from "@/lib/dgiiIntake/status";
 import {
   buildIntakePublicUrl,
   createOrRotateIntakeForUser,
   resolveDgiiIntakePublicBaseUrl,
 } from "@/lib/dgiiIntake/createForUser";
-import { hasEncryptedSecret } from "@/lib/dgiiIntake/crypto";
+import { buildIntakeViewPayload } from "@/lib/dgiiIntake/viewPayload";
+import { normalizeRnc } from "@/lib/dgiiIntake/normalizeRnc";
+import { deleteDgiiIntakeFile } from "@/utils/cloudinary";
 
 async function requireAdmin() {
   const session = await auth();
@@ -29,19 +30,39 @@ async function baseUrl() {
   return resolveDgiiIntakePublicBaseUrl(`${proto}://${host}`);
 }
 
-function fileSummary(meta) {
-  if (!meta?.url && !meta?.publicId) return null;
-  return {
-    originalName: meta.originalName || "",
-    mimeType: meta.mimeType || "",
-    bytes: meta.bytes || 0,
-    uploadedAt: meta.uploadedAt || null,
-    publicId: meta.publicId || "",
-    hasFile: Boolean(meta.publicId || meta.url),
-  };
+const FILE_SLOT_KEYS = [
+  "cedula",
+  "cedulaFrente",
+  "cedulaReverso",
+  "factura1",
+  "factura2",
+  "factura3",
+  "factura4",
+  "factura5",
+  "certificadoP12",
+];
+
+async function deleteIntakeCloudinaryFiles(intake) {
+  const files = intake.files || {};
+  await Promise.all(
+    FILE_SLOT_KEYS.map(async (slot) => {
+      const meta = files[slot];
+      if (!meta?.publicId) return;
+      try {
+        await deleteDgiiIntakeFile(meta.publicId, {
+          resourceType: slot === "certificadoP12" ? "raw" : "image",
+        });
+      } catch (err) {
+        console.error(
+          `DGII intake delete file ${slot}:`,
+          err?.message || err
+        );
+      }
+    })
+  );
 }
 
-/** GET — intake detail (no decrypted passwords) */
+/** GET — intake detail (no decrypted passwords); includes agent link fields */
 export async function GET(_request, { params }) {
   const check = await requireAdmin();
   if (check.error) return check.error;
@@ -52,52 +73,15 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  const plain = intake.toObject();
   const root = await baseUrl();
-  const secrets = plain.secrets || {};
-
   return NextResponse.json({
-    intake: {
-      id: String(plain._id),
-      userId: String(plain.userId),
-      clientName: plain.clientName || "",
-      clientEmail: plain.clientEmail || "",
-      status: plain.status,
-      createdAt: plain.createdAt,
-      expiresAt: plain.expiresAt,
-      completedAt: plain.completedAt,
-      lastSavedAt: plain.lastSavedAt,
-      url: buildIntakePublicUrl(root, plain.token),
-      token: plain.token,
-      empresa: plain.empresa || {},
-      representante: plain.representante || {},
-      files: {
-        cedula: fileSummary(plain.files?.cedula),
-        cedulaFrente: fileSummary(
-          plain.files?.cedulaFrente?.url
-            ? plain.files.cedulaFrente
-            : plain.files?.cedula
-        ),
-        cedulaReverso: fileSummary(plain.files?.cedulaReverso),
-        factura1: fileSummary(plain.files?.factura1),
-        factura2: fileSummary(plain.files?.factura2),
-        factura3: fileSummary(plain.files?.factura3),
-        factura4: fileSummary(plain.files?.factura4),
-        factura5: fileSummary(plain.files?.factura5),
-        certificadoP12: fileSummary(plain.files?.certificadoP12),
-      },
-      secretsStatus: {
-        certPassword: hasEncryptedSecret(secrets.certPasswordEnc),
-        dgiiPortalRnc: hasEncryptedSecret(secrets.dgiiPortalRncEnc),
-        dgiiPortalPassword: hasEncryptedSecret(secrets.dgiiPortalPasswordEnc),
-      },
-      completion: buildCompletionStatus(plain),
-    },
+    intake: buildIntakeViewPayload(intake, root),
   });
 }
 
 /**
  * POST actions: regenerate | revoke | resend
+ * Client token only — never clears agentToken / agentExpiresAt / agentEmail.
  * body: { action }
  */
 export async function POST(request, { params }) {
@@ -126,12 +110,8 @@ export async function POST(request, { params }) {
     await intake.save();
     return NextResponse.json({
       ok: true,
-      message: "Enlace revocado",
-      intake: {
-        id: String(intake._id),
-        status: intake.status,
-        expiresAt: intake.expiresAt,
-      },
+      message: "Enlace del cliente revocado",
+      intake: buildIntakeViewPayload(intake, root),
     });
   }
 
@@ -146,11 +126,12 @@ export async function POST(request, { params }) {
     const url = buildIntakePublicUrl(root, rotated.token);
     return NextResponse.json({
       ok: true,
-      message: "Nuevo enlace generado (30 días)",
+      message: "Nuevo enlace de cliente generado (30 días)",
       url,
       expiresAt: rotated.expiresAt,
       token: rotated.token,
       intakeId: String(rotated._id),
+      intake: buildIntakeViewPayload(rotated, root),
     });
   }
 
@@ -192,8 +173,63 @@ export async function POST(request, { params }) {
         { status: 500 }
       );
     }
-    return NextResponse.json({ ok: true, message: `Enlace reenviado a ${to}`, url });
+    return NextResponse.json({
+      ok: true,
+      message: `Enlace reenviado a ${to}`,
+      url,
+      intake: buildIntakeViewPayload(intake, root),
+    });
   }
 
   return NextResponse.json({ error: "Acción no válida" }, { status: 400 });
+}
+
+/**
+ * DELETE — permanent remove. Body: { rnc }
+ * Requires typed RNC to match empresa.rnc after normalizing dashes/spaces.
+ */
+export async function DELETE(request, { params }) {
+  const check = await requireAdmin();
+  if (check.error) return check.error;
+
+  const { id } = await params;
+  const intake = await DgiiIntake.findById(id);
+  if (!intake) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
+  }
+
+  const typed = normalizeRnc(body?.rnc);
+  const stored = normalizeRnc(intake.empresa?.rnc);
+
+  if (!stored) {
+    return NextResponse.json(
+      {
+        error:
+          "Este formulario no tiene RNC de empresa. No se puede confirmar la eliminación.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (!typed || typed !== stored) {
+    return NextResponse.json(
+      { error: "El RNC no coincide. Escriba el RNC de la empresa para confirmar." },
+      { status: 400 }
+    );
+  }
+
+  await deleteIntakeCloudinaryFiles(intake);
+  await DgiiIntake.findByIdAndDelete(id);
+
+  return NextResponse.json({
+    ok: true,
+    message: "Formulario DGII eliminado",
+  });
 }

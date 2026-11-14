@@ -216,13 +216,15 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  /* Beat dark-mode body --foreground on white dialogs */
+  color: #0f172a;
 }
 
 .modal {
   width: min(720px, 100%);
   max-height: min(90vh, 900px);
   overflow: auto;
-  background: #fff;
+  background: #ffffff;
   color: #0f172a;
   border-radius: 16px;
   border: 1px solid #e2e8f0;
@@ -245,6 +247,7 @@
   font-size: 1.2rem;
   font-weight: 700;
   color: #0f172a;
+  line-height: 1.3;
 }
 
 .modalBodyText {
@@ -256,20 +259,51 @@
 }
 
 .modalClose {
-  border: none;
-  background: transparent;
-  color: #475569;
-  font-size: 1.5rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
   min-width: 36px;
   min-height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .modalClose:hover,
 .modalClose:focus-visible {
   color: #0f172a;
+  background: #fff7ed;
+  border-color: #fed7aa;
   outline: none;
+}
+
+.modal .btn {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+
+.modal .btn:hover:not(:disabled) {
+  border-color: #ff4d00;
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.modal .btnDanger {
+  border-color: #fca5a5;
+  color: #b91c1c;
+  background: #ffffff;
+}
+
+.modal .btnDanger:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #f87171;
 }
 
 .section {

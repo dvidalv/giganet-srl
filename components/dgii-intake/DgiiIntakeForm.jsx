@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiUpload } from "react-icons/fi";
 import styles from "./DgiiIntakeForm.module.css";
-import { FIELD_LABELS } from "@/lib/dgiiIntake/status";
+import { FIELD_LABELS } from "@/lib/dgiiIntake/labels";
 
 const DOC_ACCEPT = "image/*,.pdf,application/pdf";
 

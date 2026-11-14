@@ -1,7 +1,7 @@
 "use client";
 
-import { DGII_FILE_SLOTS } from "@/lib/dgiiIntake/viewPayload";
-import { FIELD_LABELS } from "@/lib/dgiiIntake/status";
+import { DGII_FILE_SLOTS } from "@/lib/dgiiIntake/fileSlots";
+import { FIELD_LABELS } from "@/lib/dgiiIntake/labels";
 import styles from "./DgiiIntakeReadView.module.css";
 
 export function formatDate(d) {

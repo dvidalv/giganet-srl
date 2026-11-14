@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import DgiiIntake from "@/app/models/dgiiIntake";
-import { uploadDgiiIntakeFile } from "@/utils/cloudinary";
+import {
+  deleteDgiiIntakeFile,
+  uploadDgiiIntakeFile,
+} from "@/utils/cloudinary";
 import { serializeIntakeForClient } from "@/lib/dgiiIntake/serialize";
 
 const ALLOWED_SLOTS = new Set([
@@ -81,6 +84,15 @@ export async function POST(request, { params }) {
   if (!ALLOWED_SLOTS.has(slot)) {
     return NextResponse.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
   }
+  if (intake.files?.[slot]?.url || intake.files?.[slot]?.publicId) {
+    return NextResponse.json(
+      {
+        error:
+          "Ya hay un archivo en esta casilla. Elimínelo antes de subir uno nuevo.",
+      },
+      { status: 409 },
+    );
+  }
   if (!file || typeof file === "string" || !file.arrayBuffer) {
     return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
   }
@@ -160,6 +172,100 @@ export async function POST(request, { params }) {
       uploadedAt: intake.files[slot].uploadedAt,
       url: uploaded.url,
     },
+    intake: serializeIntakeForClient(intake),
+  });
+}
+
+function emptyFileMeta() {
+  return {
+    url: "",
+    publicId: "",
+    originalName: "",
+    mimeType: "",
+    bytes: 0,
+    uploadedAt: null,
+  };
+}
+
+function resourceTypeForStoredFile(meta) {
+  const mime = String(meta?.mimeType || "").toLowerCase();
+  const name = String(meta?.originalName || "").toLowerCase();
+  if (
+    mime.includes("pkcs12") ||
+    name.endsWith(".p12") ||
+    name.endsWith(".pfx") ||
+    mime === "application/pdf" ||
+    name.endsWith(".pdf")
+  ) {
+    return "raw";
+  }
+  return "image";
+}
+
+/** DELETE ?slot=cedulaReverso — remove Cloudinary asset and clear the intake slot */
+export async function DELETE(request, { params }) {
+  const { token } = await params;
+  const loaded = await loadOpenIntake(token);
+  if (loaded.error) return loaded.error;
+  const intake = loaded.intake;
+
+  const { searchParams } = new URL(request.url);
+  const slot = String(searchParams.get("slot") || "").trim();
+  if (!ALLOWED_SLOTS.has(slot)) {
+    return NextResponse.json(
+      { error: "Tipo de archivo no permitido" },
+      { status: 400 },
+    );
+  }
+
+  const current = intake.files?.[slot];
+  const publicId = current?.publicId || "";
+  if (publicId) {
+    try {
+      await deleteDgiiIntakeFile(publicId, {
+        resourceType: resourceTypeForStoredFile(current),
+      });
+    } catch (err) {
+      console.error(
+        "DGII intake delete failed:",
+        err?.message || "delete error",
+      );
+      return NextResponse.json(
+        { error: "No se pudo eliminar el archivo. Intente de nuevo." },
+        { status: 500 },
+      );
+    }
+  }
+
+  intake.files[slot] = emptyFileMeta();
+
+  // Clearing frente also clears legacy single-slot `cedula` if present
+  if (slot === "cedulaFrente" || slot === "cedula") {
+    const legacy = intake.files?.cedula;
+    if (slot === "cedulaFrente" && legacy?.publicId && legacy.publicId !== publicId) {
+      try {
+        await deleteDgiiIntakeFile(legacy.publicId, {
+          resourceType: resourceTypeForStoredFile(legacy),
+        });
+      } catch {
+        /* best-effort */
+      }
+    }
+    intake.files.cedula = emptyFileMeta();
+    if (slot === "cedula") {
+      intake.files.cedulaFrente = emptyFileMeta();
+    }
+  }
+
+  intake.lastSavedAt = new Date();
+  if (intake.status !== "complete") {
+    intake.status = "open";
+  }
+  await intake.save();
+
+  return NextResponse.json({
+    slot,
+    deleted: true,
     intake: serializeIntakeForClient(intake),
   });
 }

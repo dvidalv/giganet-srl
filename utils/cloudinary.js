@@ -103,3 +103,37 @@ export async function uploadDgiiIntakeFile(dataUri, opts = {}) {
     resourceType: result.resource_type || resourceType,
   };
 }
+
+/**
+ * Delete a DGII intake Cloudinary asset (authenticated image or raw).
+ * Best-effort: missing assets are treated as already gone.
+ * @param {string} publicId
+ * @param {{ resourceType?: "image"|"raw"|"auto" }} [opts]
+ */
+export async function deleteDgiiIntakeFile(publicId, opts = {}) {
+  if (!publicId) return { result: "not_found" };
+  const cloudinary = await getCloudinary();
+  const resourceType = opts.resourceType || "image";
+  try {
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: resourceType,
+      type: "authenticated",
+      invalidate: true,
+    });
+    // Retry as raw if image destroy missed (PDFs / P-12)
+    if (result?.result === "not found" && resourceType !== "raw") {
+      return cloudinary.uploader.destroy(publicId, {
+        resource_type: "raw",
+        type: "authenticated",
+        invalidate: true,
+      });
+    }
+    return result;
+  } catch (err) {
+    console.error(
+      "deleteDgiiIntakeFile failed:",
+      err?.message || "destroy error",
+    );
+    throw err;
+  }
+}

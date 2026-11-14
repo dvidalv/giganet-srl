@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { FiUpload } from "react-icons/fi";
 import styles from "./DgiiIntakeForm.module.css";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/status";
 
@@ -186,6 +187,13 @@ export default function DgiiIntakeForm({ token }) {
 
   async function uploadFile(slot, file) {
     if (!file) return;
+    // Must remove existing file first — no silent overwrite
+    if (intake?.files?.[slot]?.uploaded) {
+      setError(
+        "Elimine el archivo actual antes de subir uno nuevo en esta casilla.",
+      );
+      return;
+    }
     setUploading(slot);
     setError(null);
     try {
@@ -205,6 +213,32 @@ export default function DgiiIntakeForm({ token }) {
       setMessage({ type: "ok", text: `${FIELD_LABELS[slot] || slot} subido` });
     } catch {
       setError("Error al subir archivo");
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function removeFile(slot) {
+    setUploading(slot);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/dgii-intake/${token}/upload?slot=${encodeURIComponent(slot)}`,
+        { method: "DELETE" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "No se pudo eliminar el archivo");
+        return;
+      }
+      applyIntake(data.intake);
+      setMessage({
+        type: "ok",
+        text: `${FIELD_LABELS[slot] || slot} eliminado`,
+      });
+    } catch {
+      setError("Error al eliminar archivo");
     } finally {
       setUploading(null);
     }
@@ -313,20 +347,48 @@ export default function DgiiIntakeForm({ token }) {
                 {isP12Slot(key) ? " (sin vista previa)" : ""}
               </p>
             )}
+            <button
+              type="button"
+              className={styles.removeFileBtn}
+              disabled={uploading === key || saving}
+              onClick={() => removeFile(key)}
+            >
+              {uploading === key ? "Eliminando…" : "Eliminar"}
+            </button>
           </div>
+        ) : (
+          <div className={styles.filePicker}>
+            <input
+              id={`file-${key}`}
+              type="file"
+              className={styles.fileInputNative}
+              accept={accept}
+              aria-required="true"
+              aria-label={label}
+              disabled={uploading === key || saving}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                uploadFile(key, f);
+                e.target.value = "";
+              }}
+            />
+            <label
+              htmlFor={`file-${key}`}
+              className={`${styles.filePickerBtn} ${
+                uploading === key || saving ? styles.filePickerBtnDisabled : ""
+              }`}
+            >
+              <FiUpload className={styles.filePickerIcon} aria-hidden="true" />
+              {uploading === key ? "Subiendo…" : "Elegir archivo"}
+            </label>
+            <span className={styles.filePickerHint}>Ningún archivo elegido</span>
+          </div>
+        )}
+        {file?.uploaded ? (
+          <p className={styles.hint}>
+            Para subir otro archivo, elimine el actual primero.
+          </p>
         ) : null}
-        <input
-          type="file"
-          accept={accept}
-          aria-required="true"
-          aria-label={label}
-          disabled={uploading === key || saving}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            uploadFile(key, f);
-            e.target.value = "";
-          }}
-        />
       </li>
     );
   }

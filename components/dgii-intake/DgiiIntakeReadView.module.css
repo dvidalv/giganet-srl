@@ -322,6 +322,25 @@
   line-height: 1.45;
 }
 
+.secretsRevealCard {
+  border-color: #fbbf24;
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.25),
+    var(--dgii-shadow);
+}
+
+.secretsSensitiveBanner {
+  margin: -0.35rem 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
 .secretFlags {
   display: flex;
   flex-direction: column;

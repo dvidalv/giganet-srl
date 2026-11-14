@@ -135,6 +135,7 @@ export default function DgiiAgentIntakeView({ agentToken }) {
       eyebrow="The Factory · Admisión DGII"
       footer={footer}
       publicLayout
+      revealSecrets
     />
   );
 }

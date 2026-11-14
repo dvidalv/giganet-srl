@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import DgiiIntake from "@/app/models/dgiiIntake";
 import { resolveDgiiIntakePublicBaseUrl } from "@/lib/dgiiIntake/createForUser";
-import { buildIntakeViewPayload } from "@/lib/dgiiIntake/viewPayload";
+import { buildAgentIntakeViewPayload } from "@/lib/dgiiIntake/viewPayload";
 
 function badToken() {
   return NextResponse.json({ error: "Enlace no válido" }, { status: 404 });
@@ -42,6 +42,7 @@ async function baseUrl() {
 /**
  * GET — public agent view (NO session). Gated only by agentToken + agentExpiresAt.
  * Client token status is ignored.
+ * Includes decrypted secrets for The Factory only (not used by admin/client APIs).
  */
 export async function GET(_request, { params }) {
   const { agentToken } = await params;
@@ -50,6 +51,6 @@ export async function GET(_request, { params }) {
 
   const root = await baseUrl();
   return NextResponse.json({
-    intake: buildIntakeViewPayload(loaded.intake, root),
+    intake: buildAgentIntakeViewPayload(loaded.intake, root),
   });
 }

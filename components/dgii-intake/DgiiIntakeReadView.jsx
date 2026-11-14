@@ -62,6 +62,7 @@ function Field({ label, value }) {
  *   backLabel?: string,
  *   eyebrow?: string,
  *   publicLayout?: boolean,
+ *   revealSecrets?: boolean,
  * }} props
  */
 export default function DgiiIntakeReadView({
@@ -74,6 +75,7 @@ export default function DgiiIntakeReadView({
   backLabel = "Volver",
   eyebrow = "Admisión DGII e-CF",
   publicLayout = false,
+  revealSecrets = false,
 }) {
   const completion = intake?.completion || {};
   const percent = completion.percent ?? 0;
@@ -209,48 +211,97 @@ export default function DgiiIntakeReadView({
           </div>
         </section>
 
-        <section className={styles.card} aria-labelledby="dgii-secrets">
+        <section
+          className={`${styles.card}${
+            revealSecrets ? ` ${styles.secretsRevealCard}` : ""
+          }`}
+          aria-labelledby="dgii-secrets"
+        >
           <h2 id="dgii-secrets" className={styles.cardTitle}>
             Certificado / portal e-CF
           </h2>
-          <p className={styles.secretsHint}>
-            Solo se muestra si están configurados. Las contraseñas nunca se
-            revelan.
-          </p>
-          <div className={styles.secretFlags}>
-            <span
-              className={
-                intake.secretsStatus?.certPassword
-                  ? styles.flagOk
-                  : styles.flagPending
-              }
-            >
-              Contraseña certificado:{" "}
-              {intake.secretsStatus?.certPassword ? "configurada" : "pendiente"}
-            </span>
-            <span
-              className={
-                intake.secretsStatus?.dgiiPortalRnc
-                  ? styles.flagOk
-                  : styles.flagPending
-              }
-            >
-              RNC portal DGII:{" "}
-              {intake.secretsStatus?.dgiiPortalRnc ? "configurado" : "pendiente"}
-            </span>
-            <span
-              className={
-                intake.secretsStatus?.dgiiPortalPassword
-                  ? styles.flagOk
-                  : styles.flagPending
-              }
-            >
-              Contraseña portal:{" "}
-              {intake.secretsStatus?.dgiiPortalPassword
-                ? "configurada"
-                : "pendiente"}
-            </span>
-          </div>
+          {revealSecrets ? (
+            <>
+              <p className={styles.secretsSensitiveBanner} role="status">
+                Datos sensibles — solo para The Factory. Trátelos como
+                confidenciales.
+              </p>
+              <div className={styles.grid}>
+                <Field
+                  label="Contraseña del certificado"
+                  value={
+                    intake.secretsReveal?.certPassword ??
+                    (intake.secretsStatus?.certPassword
+                      ? "(no se pudo descifrar)"
+                      : null)
+                  }
+                />
+                <Field
+                  label="RNC portal DGII"
+                  value={
+                    intake.secretsReveal?.dgiiPortalRnc ??
+                    (intake.secretsStatus?.dgiiPortalRnc
+                      ? "(no se pudo descifrar)"
+                      : null)
+                  }
+                />
+                <Field
+                  label="Contraseña portal DGII"
+                  value={
+                    intake.secretsReveal?.dgiiPortalPassword ??
+                    (intake.secretsStatus?.dgiiPortalPassword
+                      ? "(no se pudo descifrar)"
+                      : null)
+                  }
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className={styles.secretsHint}>
+                Solo se muestra si están configurados. Las contraseñas nunca se
+                revelan.
+              </p>
+              <div className={styles.secretFlags}>
+                <span
+                  className={
+                    intake.secretsStatus?.certPassword
+                      ? styles.flagOk
+                      : styles.flagPending
+                  }
+                >
+                  Contraseña certificado:{" "}
+                  {intake.secretsStatus?.certPassword
+                    ? "configurada"
+                    : "pendiente"}
+                </span>
+                <span
+                  className={
+                    intake.secretsStatus?.dgiiPortalRnc
+                      ? styles.flagOk
+                      : styles.flagPending
+                  }
+                >
+                  RNC portal DGII:{" "}
+                  {intake.secretsStatus?.dgiiPortalRnc
+                    ? "configurado"
+                    : "pendiente"}
+                </span>
+                <span
+                  className={
+                    intake.secretsStatus?.dgiiPortalPassword
+                      ? styles.flagOk
+                      : styles.flagPending
+                  }
+                >
+                  Contraseña portal:{" "}
+                  {intake.secretsStatus?.dgiiPortalPassword
+                    ? "configurada"
+                    : "pendiente"}
+                </span>
+              </div>
+            </>
+          )}
         </section>
 
         {footer}

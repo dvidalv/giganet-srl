@@ -114,6 +114,12 @@ const dgiiIntakeSchema = new Schema(
   }
 );
 
+// HMR can leave a cached model compiled before agentToken existed; recreate
+// so strict updates no longer strip those paths.
+if (models.DgiiIntake && !models.DgiiIntake.schema.path("agentToken")) {
+  delete models.DgiiIntake;
+}
+
 const DgiiIntake = models.DgiiIntake || model("DgiiIntake", dgiiIntakeSchema);
 
 if (!DgiiIntake._connectionWrapped) {
@@ -157,6 +163,8 @@ if (!DgiiIntake._connectionWrapped) {
   DgiiIntake.countDocuments = wrap(
     DgiiIntake.countDocuments.bind(DgiiIntake)
   );
+  DgiiIntake.updateOne = wrap(DgiiIntake.updateOne.bind(DgiiIntake));
+  DgiiIntake.updateMany = wrap(DgiiIntake.updateMany.bind(DgiiIntake));
 }
 
 export default DgiiIntake;

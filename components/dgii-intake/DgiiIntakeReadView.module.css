@@ -38,6 +38,19 @@
     var(--dgii-canvas);
 }
 
+/**
+ * Public routes sit under the fixed site Header (app/layout).
+ * Dashboard admin already offsets via layout.mainContent — do not use there.
+ */
+.pagePublic {
+  padding-top: calc(var(--fixedTopOffset, var(--hero-header-offset, 120px)) + 1rem);
+  box-sizing: border-box;
+}
+
+.pagePublic .stickyHeader {
+  top: var(--fixedTopOffset, var(--hero-header-offset, 120px));
+}
+
 .stickyHeader {
   position: sticky;
   top: 0;

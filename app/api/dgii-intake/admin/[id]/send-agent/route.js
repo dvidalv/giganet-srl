@@ -59,7 +59,21 @@ export async function POST(request, { params }) {
   }
 
   const root = await baseUrl();
-  await issueOrRotateAgentAccess(intake, { email });
+
+  try {
+    await issueOrRotateAgentAccess(intake, { email });
+  } catch (err) {
+    console.error("DGII agent issue token:", err?.message || err);
+    return NextResponse.json(
+      {
+        error:
+          err?.message ||
+          "No se pudo generar el enlace de agente. Intente de nuevo.",
+      },
+      { status: 500 }
+    );
+  }
+
   const agentUrl = buildAgentPublicUrl(root, intake.agentToken);
 
   try {

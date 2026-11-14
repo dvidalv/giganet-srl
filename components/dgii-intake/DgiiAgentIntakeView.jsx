@@ -76,9 +76,11 @@ export default function DgiiAgentIntakeView({ agentToken }) {
     }
   }
 
+  const pageClass = `${styles.page} ${styles.pagePublic}`;
+
   if (loading) {
     return (
-      <div className={styles.page}>
+      <div className={pageClass}>
         <div className={styles.loading}>Cargando ficha DGII…</div>
       </div>
     );
@@ -86,7 +88,7 @@ export default function DgiiAgentIntakeView({ agentToken }) {
 
   if (error || !intake) {
     return (
-      <div className={styles.page}>
+      <div className={pageClass}>
         <div className={styles.stateCard}>
           <h1>{expired ? "Enlace expirado" : "Enlace no válido"}</h1>
           <p>
@@ -132,6 +134,7 @@ export default function DgiiAgentIntakeView({ agentToken }) {
       busy={busy}
       eyebrow="The Factory · Admisión DGII"
       footer={footer}
+      publicLayout
     />
   );
 }

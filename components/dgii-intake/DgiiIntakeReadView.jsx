@@ -61,6 +61,7 @@ function Field({ label, value }) {
  *   backHref?: string,
  *   backLabel?: string,
  *   eyebrow?: string,
+ *   publicLayout?: boolean,
  * }} props
  */
 export default function DgiiIntakeReadView({
@@ -72,6 +73,7 @@ export default function DgiiIntakeReadView({
   backHref,
   backLabel = "Volver",
   eyebrow = "Admisión DGII e-CF",
+  publicLayout = false,
 }) {
   const completion = intake?.completion || {};
   const percent = completion.percent ?? 0;
@@ -79,7 +81,9 @@ export default function DgiiIntakeReadView({
   const uiStatus = displayStatus(intake);
 
   return (
-    <div className={styles.page}>
+    <div
+      className={`${styles.page}${publicLayout ? ` ${styles.pagePublic}` : ""}`}
+    >
       <header className={styles.stickyHeader}>
         <div className={styles.headerInner}>
           <div className={styles.headerTop}>

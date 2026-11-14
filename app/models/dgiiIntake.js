@@ -57,6 +57,7 @@ const dgiiIntakeSchema = new Schema(
     empresa: {
       rnc: { type: String, default: "", maxlength: 11 },
       nombre: { type: String, default: "", maxlength: 200 },
+      razonSocial: { type: String, default: "", maxlength: 200 },
       telefono: { type: String, default: "", maxlength: 32 },
       direccion: { type: String, default: "", maxlength: 400 },
     },

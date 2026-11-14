@@ -365,6 +365,12 @@ export default function DgiiIntakesList() {
                   </span>
                 </div>
                 <div>
+                  <span className={styles.label}>Razón social</span>
+                  <span className={styles.value}>
+                    {detail.empresa?.razonSocial || "—"}
+                  </span>
+                </div>
+                <div>
                   <span className={styles.label}>Teléfono</span>
                   <span className={styles.value}>
                     {detail.empresa?.telefono || "—"}

@@ -87,6 +87,11 @@ export async function PATCH(request, { params }) {
     if (e.nombre !== undefined) {
       intake.empresa.nombre = String(e.nombre || "").trim().slice(0, 200);
     }
+    if (e.razonSocial !== undefined) {
+      intake.empresa.razonSocial = String(e.razonSocial || "")
+        .trim()
+        .slice(0, 200);
+    }
     if (e.telefono !== undefined) {
       intake.empresa.telefono = String(e.telefono || "").trim().slice(0, 32);
     }

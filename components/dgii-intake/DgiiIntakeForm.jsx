@@ -30,6 +30,7 @@ export default function DgiiIntakeForm({ token }) {
   const [empresa, setEmpresa] = useState({
     rnc: "",
     nombre: "",
+    razonSocial: "",
     telefono: "",
     direccion: "",
   });
@@ -50,6 +51,7 @@ export default function DgiiIntakeForm({ token }) {
     setEmpresa({
       rnc: data.empresa?.rnc || "",
       nombre: data.empresa?.nombre || "",
+      razonSocial: data.empresa?.razonSocial || "",
       telefono: data.empresa?.telefono || "",
       direccion: data.empresa?.direccion || "",
     });
@@ -262,6 +264,20 @@ export default function DgiiIntakeForm({ token }) {
               value={empresa.nombre}
               onChange={(e) =>
                 setEmpresa((s) => ({ ...s, nombre: e.target.value }))
+              }
+              autoComplete="organization"
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="emp-razon">
+              Razón social
+            </label>
+            <input
+              id="emp-razon"
+              className={styles.input}
+              value={empresa.razonSocial}
+              onChange={(e) =>
+                setEmpresa((s) => ({ ...s, razonSocial: e.target.value }))
               }
               autoComplete="organization"
             />

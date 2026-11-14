@@ -60,6 +60,7 @@ export async function GET(request) {
         { clientName: re },
         { clientEmail: re },
         { "empresa.nombre": re },
+        { "empresa.razonSocial": re },
         { "empresa.rnc": re },
       ];
     }

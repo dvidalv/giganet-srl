@@ -69,6 +69,7 @@ export default function DgiiIntakeForm({ token }) {
   const [message, setMessage] = useState(null);
   const [intake, setIntake] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
   const [preview, setPreview] = useState(null);
 
   const [empresa, setEmpresa] = useState({
@@ -166,7 +167,14 @@ export default function DgiiIntakeForm({ token }) {
         return false;
       }
       applyIntake(data.intake);
-      setMessage({ type: "ok", text: data.message || "Guardado" });
+      const fullyComplete = Boolean(data.intake?.completion?.isComplete);
+      // Success modal only for "Guardar progreso" when everything required is filled
+      if (!extra.markComplete && fullyComplete) {
+        setSuccessOpen(true);
+        setMessage(null);
+      } else {
+        setMessage({ type: "ok", text: data.message || "Guardado" });
+      }
       return true;
     } catch {
       setError("Error de conexión");
@@ -719,6 +727,41 @@ export default function DgiiIntakeForm({ token }) {
                 onClick={confirmComplete}
               >
                 Sí, confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {successOpen ? (
+        <div
+          className={styles.overlay}
+          onClick={() => setSuccessOpen(false)}
+          role="presentation"
+        >
+          <div
+            className={`${styles.modal} ${styles.successModal}`}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dgii-success-title"
+            aria-describedby="dgii-success-desc"
+          >
+            <div className={styles.successIcon} aria-hidden="true">
+              ✓
+            </div>
+            <h2 id="dgii-success-title">Completado exitosamente</h2>
+            <p id="dgii-success-desc">
+              Todos los datos están completados. Ya puede marcar el formulario
+              como completado para notificar a Giganet.
+            </p>
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnComplete}`}
+                onClick={() => setSuccessOpen(false)}
+              >
+                Entendido
               </button>
             </div>
           </div>

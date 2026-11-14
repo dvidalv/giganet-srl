@@ -451,6 +451,35 @@
   line-height: 1.45;
 }
 
+.successModal {
+  text-align: center;
+  border-color: rgba(34, 197, 94, 0.45);
+  background: linear-gradient(180deg, rgba(22, 101, 52, 0.28) 0%, #111 55%);
+}
+
+.successModal h2 {
+  margin-top: 0.35rem;
+}
+
+.successModal .actions {
+  justify-content: center;
+}
+
+.successIcon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 0.65rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #052e16;
+  background: linear-gradient(135deg, #22c55e, #86efac);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.35);
+}
+
 .completeBanner {
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;

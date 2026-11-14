@@ -95,6 +95,7 @@ export async function POST(request) {
     password,
     name,
     username,
+    whatsappPhone,
     role = "user",
     isActive = true,
   } = body;
@@ -102,6 +103,21 @@ export async function POST(request) {
   if (!email || !password || !name) {
     return NextResponse.json(
       { error: "Faltan campos requeridos: email, password, name" },
+      { status: 400 },
+    );
+  }
+
+  const {
+    normalizeWhatsappPhone,
+    isValidWhatsappPhone,
+  } = await import("@/utils/whatsappPhone");
+  const whatsappNorm = normalizeWhatsappPhone(whatsappPhone);
+  if (whatsappNorm && !isValidWhatsappPhone(whatsappNorm)) {
+    return NextResponse.json(
+      {
+        error:
+          "Teléfono WhatsApp inválido. Ingrese 10 dígitos (ej. 8095551234).",
+      },
       { status: 400 },
     );
   }
@@ -149,6 +165,7 @@ export async function POST(request) {
       password: passwordHash(password),
       name: String(name).trim(),
       ...(usernamePrep.username ? { username: usernamePrep.username } : {}),
+      ...(whatsappNorm ? { whatsappPhone: whatsappNorm } : {}),
       role: role === "admin" ? "admin" : "user",
       isActive: !!isActive,
       isVerified: false,
@@ -200,7 +217,37 @@ export async function POST(request) {
     delete u.verificationTokenExpires;
     u.id = u._id.toString();
 
-    return NextResponse.json({ user: u }, { status: 201 });
+    let dgiiIntake = null;
+    if (u.role !== "admin") {
+      try {
+        const {
+          createOrRotateIntakeForUser,
+          buildIntakePublicUrl,
+          resolveDgiiIntakePublicBaseUrl,
+        } = await import("@/lib/dgiiIntake/createForUser");
+        const intake = await createOrRotateIntakeForUser({
+          userId: user._id,
+          clientEmail: emailNorm,
+          clientName: userName,
+          regenerate: false,
+        });
+        dgiiIntake = {
+          url: buildIntakePublicUrl(
+            resolveDgiiIntakePublicBaseUrl(baseUrl),
+            intake.token
+          ),
+          expiresAt: intake.expiresAt,
+          token: intake.token,
+        };
+      } catch (intakeErr) {
+        console.error(
+          "DGII intake link on user create:",
+          intakeErr?.message || intakeErr
+        );
+      }
+    }
+
+    return NextResponse.json({ user: u, dgiiIntake }, { status: 201 });
   } catch (err) {
     if (err.name === "ValidationError") {
       const details = Object.values(err.errors).map((e) => e.message);

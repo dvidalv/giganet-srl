@@ -3,7 +3,6 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import styles from "./layout.module.css";
 import Header from "@/components/header";
-import AnnouncementBanner from "@/components/AnnouncementBanner";
 import Footer from "@/components/footer/Footer";
 import JsonLd from "@/components/JsonLd";
 
@@ -118,7 +117,6 @@ export default function RootLayout({ children }) {
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Header />
-        <AnnouncementBanner />
         <div className={styles.bodyShell}>{children}</div>
         <Footer />
       </body>

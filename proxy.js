@@ -12,6 +12,7 @@ const EXISTING_ROUTES = [
   "/reset-password",
   "/dashboard",
   "/encuesta",
+  "/dgii-intake",
 ]
 
 // Rutas públicas (no requieren autenticación)
@@ -24,6 +25,7 @@ const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/encuesta",
+  "/dgii-intake",
 ]
 
 function routeExists(pathname) {

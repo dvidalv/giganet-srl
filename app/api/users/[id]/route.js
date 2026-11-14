@@ -58,7 +58,8 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { name, email, role, isActive, isVerified, password } = body;
+  const { name, email, role, isActive, isVerified, password, whatsappPhone } =
+    body;
 
   try {
     const user = await User.findById(id);
@@ -73,6 +74,23 @@ export async function PUT(request, { params }) {
     if (role !== undefined) user.role = role === "admin" ? "admin" : "user";
     if (typeof isActive === "boolean") user.isActive = isActive;
     if (typeof isVerified === "boolean") user.isVerified = isVerified;
+    if (whatsappPhone !== undefined) {
+      const {
+        normalizeWhatsappPhone,
+        isValidWhatsappPhone,
+      } = await import("@/utils/whatsappPhone");
+      const whatsappNorm = normalizeWhatsappPhone(whatsappPhone);
+      if (whatsappNorm && !isValidWhatsappPhone(whatsappNorm)) {
+        return NextResponse.json(
+          {
+            error:
+              "Teléfono WhatsApp inválido. Ingrese 10 dígitos (ej. 8095551234).",
+          },
+          { status: 400 },
+        );
+      }
+      user.whatsappPhone = whatsappNorm;
+    }
     if (password !== undefined && password !== "") {
       if (password.length < 8) {
         return NextResponse.json(

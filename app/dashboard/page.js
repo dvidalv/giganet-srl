@@ -55,6 +55,9 @@ export default async function Dashboard() {
           <Link href="/dashboard/empresas" className={foliosStyles.linkBtn}>
             Empresas
           </Link>
+          <Link href="/dashboard/dgii-intakes" className={foliosStyles.linkBtn}>
+            DGII intake
+          </Link>
         </div>
       </header>
 

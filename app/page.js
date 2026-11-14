@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AppsShowcase from "@/components/AppsShowcase";
 import ClientsCarousel from "@/components/ClientsCarousel";
+import DgiiPromoBanner from "@/components/DgiiPromoBanner";
 import {
   FaArrowRight,
   FaAws,
@@ -61,6 +62,7 @@ export default async function Home() {
         <div className={styles.heroOrb} aria-hidden />
 
         <div className={styles.heroInner}>
+          <DgiiPromoBanner />
           <div className={styles.heroContent}>
             <div className={styles.heroText}>
               <div className={styles.badgePill}>
@@ -135,10 +137,10 @@ export default async function Home() {
 
                 <div className={styles.heroImage}>
                   <Image
-                    src="/images/hero.png"
-                    alt="Desarrollador trabajando en GigaNet"
-                    width={656}
-                    height={420}
+                    src="/images/hero.webp"
+                    alt="Equipo de GigaNet Systems"
+                    width={1200}
+                    height={800}
                     priority
                     className={styles.image}
                   />

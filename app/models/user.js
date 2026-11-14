@@ -50,6 +50,17 @@ const userSchema = new Schema(
       minlength: [3, "Name must be at least 3 characters long"],
       maxlength: [50, "Name must be less than 50 characters long"],
     },
+    /** Teléfono WhatsApp E.164 RD/NANP, ej. +18095551234 (UI: 10 dígitos locales) */
+    whatsappPhone: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: [20, "El teléfono de WhatsApp no puede exceder 20 caracteres"],
+      match: [
+        /^$|^\+1\d{10}$/,
+        "Teléfono WhatsApp inválido (se espera +1 y 10 dígitos, ej. +18095551234)",
+      ],
+    },
     image: {
       type: String,
       default: "",
@@ -227,6 +238,7 @@ const needsUserModelRecompile =
   !!existingUserModel &&
   (
     !existingUserModel.schema.path("username") ||
+    !existingUserModel.schema.path("whatsappPhone") ||
     !existingUserModel.schema.path("empresa.theFactoryUsuarioDemo") ||
     !existingUserModel.schema.path("empresa.theFactoryClaveDemoEnc") ||
     !existingUserModel.schema.path("empresa.theFactoryUsuarioProduction") ||

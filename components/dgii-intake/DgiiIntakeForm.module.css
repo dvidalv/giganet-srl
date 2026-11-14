@@ -1,0 +1,251 @@
+.wrap {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  background: #0a0a0a;
+  color: #f1f5f9;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 77, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  padding: 1.75rem 1.5rem 2rem;
+}
+
+.title {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.subtitle {
+  margin: 0 0 1.25rem;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.progress {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 77, 0, 0.08);
+  border: 1px solid rgba(255, 77, 0, 0.25);
+}
+
+.progressBar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff4d00, #ffaa70);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.warning {
+  margin: 0 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 196, 0, 0.1);
+  border: 1px solid rgba(255, 196, 0, 0.35);
+  color: #ffe08a;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffaa70;
+  font-weight: 700;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.input,
+.textarea {
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #141414;
+  color: #fff;
+  font: inherit;
+}
+
+.textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #ff4d00;
+  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.2);
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.okHint {
+  color: #86efac;
+}
+
+.fileCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  background: #121212;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.btn {
+  padding: 0.8rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, #ff4d00, #ff6a25);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(255, 77, 0, 0.3);
+}
+
+.btnComplete {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  border-color: transparent;
+  color: #fff;
+}
+
+.btnComplete:disabled,
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+  box-shadow: none;
+}
+
+.message {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+}
+
+.messageOk {
+  background: rgba(22, 101, 52, 0.25);
+  color: #86efac;
+}
+
+.messageErr {
+  background: rgba(185, 28, 28, 0.2);
+  color: #fecaca;
+}
+
+.missingList {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  width: min(420px, 100%);
+  background: #111;
+  border: 1px solid rgba(255, 77, 0, 0.35);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.modal h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  color: #fff;
+}
+
+.modal p {
+  margin: 0 0 1.15rem;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.completeBanner {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(22, 101, 52, 0.2);
+  border: 1px solid rgba(134, 239, 172, 0.35);
+  color: #bbf7d0;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wrap {
+    padding: 1.25rem 1rem 1.5rem;
+  }
+}

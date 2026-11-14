@@ -5,6 +5,13 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { FaEllipsisV, FaEye, FaPencilAlt, FaTrash } from "react-icons/fa";
 import styles from "./UserManagement.module.css";
+import {
+  buildWhatsappIntakeLink,
+  formatWhatsappPhoneRealtime,
+  isValidWhatsappPhone,
+  normalizeWhatsappPhone,
+  toLocalDisplay,
+} from "@/utils/whatsappPhone";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Todos los estados" },
@@ -148,6 +155,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
   const [form, setForm] = useState({
     name: user?.name ?? "",
     email: user?.email ?? "",
+    whatsappPhone: toLocalDisplay(user?.whatsappPhone ?? ""),
     password: "",
     role: user?.role ?? "user",
     isActive: user?.isActive ?? true,
@@ -157,28 +165,42 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
   const [error, setError] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
+  const [dgiiIntakeInfo, setDgiiIntakeInfo] = useState(null);
+  const [dgiiBusy, setDgiiBusy] = useState(false);
 
   useEffect(() => {
+    setDgiiIntakeInfo(null);
     if (user) {
       setForm({
         name: user.name ?? "",
         email: user.email ?? "",
+        whatsappPhone: toLocalDisplay(user.whatsappPhone ?? ""),
         password: "",
         role: user.role ?? "user",
         isActive: user.isActive ?? true,
         isVerified: user.isVerified ?? false,
       });
+      if (mode === "view" && user.role !== "admin") {
+        const userId = user.id || user._id;
+        fetch(`/api/dgii-intake/admin?userId=${encodeURIComponent(userId)}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.intake) setDgiiIntakeInfo(data.intake);
+          })
+          .catch(() => {});
+      }
     } else if (isCreate) {
       setForm({
         name: "",
         email: "",
+        whatsappPhone: "",
         password: "",
         role: "user",
         isActive: true,
         isVerified: false,
       });
     }
-  }, [user, isCreate]);
+  }, [user, isCreate, mode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -187,9 +209,18 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
     setSaving(true);
     try {
       const url = isCreate ? "/api/users" : `/api/users/${user.id}`;
+      const whatsappNorm = normalizeWhatsappPhone(form.whatsappPhone);
+      if (form.whatsappPhone.trim() && !isValidWhatsappPhone(whatsappNorm)) {
+        setError(
+          "Teléfono WhatsApp inválido. Ingrese 10 dígitos (ej. 8095551234)."
+        );
+        setSaving(false);
+        return;
+      }
       const body = {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
+        whatsappPhone: whatsappNorm,
         role: form.role,
         isActive: form.isActive,
         isVerified: form.isVerified,
@@ -217,12 +248,56 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
         setSaving(false);
         return;
       }
+      if (isCreate && data.dgiiIntake?.url) {
+        setDgiiIntakeInfo(data.dgiiIntake);
+        setResetMessage(
+          "Usuario creado. Copie el enlace DGII e-CF para el cliente."
+        );
+        onSave?.(data.user);
+        setSaving(false);
+        return;
+      }
       onSave?.(data.user);
       onClose();
     } catch (err) {
       setError("Error de conexión");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDgiiLink = async (regenerate = false) => {
+    const userId = user?.id || user?._id;
+    if (!userId) return;
+    setDgiiBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/dgii-intake/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, regenerate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "No se pudo generar el enlace DGII");
+        return;
+      }
+      setDgiiIntakeInfo({
+        url: data.url,
+        expiresAt: data.expiresAt,
+        status: data.status,
+        completion: data.completion,
+      });
+      try {
+        await navigator.clipboard.writeText(data.url);
+        setResetMessage("Enlace DGII generado y copiado al portapapeles");
+      } catch {
+        setResetMessage("Enlace DGII generado");
+      }
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setDgiiBusy(false);
     }
   };
 
@@ -282,6 +357,21 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
               <span className={styles.viewValue}>{user?.email ?? "—"}</span>
             </div>
             <div className={styles.viewRow}>
+              <span className={styles.viewLabel}>WhatsApp</span>
+              <span className={styles.viewValue}>
+                {user?.whatsappPhone ? (
+                  <div>
+                    {user.whatsappPhone}
+                    <span style={{ color: "#64748b", marginLeft: "0.35rem" }}>
+                      ({toLocalDisplay(user.whatsappPhone)})
+                    </span>
+                  </div>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </div>
+            <div className={styles.viewRow}>
               <span className={styles.viewLabel}>Rol</span>
               <Tag variant={user?.role === "admin" ? "admin" : "user"}>
                 {user?.role === "admin" ? "Admin" : "Usuario"}
@@ -308,6 +398,64 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                 </span>
               </div>
             )}
+            {user?.role !== "admin" ? (
+              <div className={styles.viewRow}>
+                <span className={styles.viewLabel}>Formulario DGII</span>
+                <span className={styles.viewValue}>
+                  {dgiiIntakeInfo?.url ? (
+                    <>
+                      <a
+                        href={dgiiIntakeInfo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ wordBreak: "break-all" }}
+                      >
+                        {dgiiIntakeInfo.url}
+                      </a>
+                      {dgiiIntakeInfo.expiresAt ? (
+                        <div style={{ marginTop: "0.35rem", fontSize: "0.85em" }}>
+                          Vence:{" "}
+                          {new Date(dgiiIntakeInfo.expiresAt).toLocaleString(
+                            "es-DO"
+                          )}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    "Sin enlace todavía"
+                  )}
+                  <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className={styles.btnResend}
+                      disabled={dgiiBusy}
+                      onClick={() => handleDgiiLink(Boolean(dgiiIntakeInfo?.url))}
+                    >
+                      {dgiiBusy
+                        ? "Generando…"
+                        : dgiiIntakeInfo?.url
+                          ? "Regenerar enlace"
+                          : "Generar enlace DGII"}
+                    </button>
+                    {user?.whatsappPhone && dgiiIntakeInfo?.url ? (
+                      <a
+                        className={styles.btnResend}
+                        href={buildWhatsappIntakeLink(
+                          user.whatsappPhone,
+                          dgiiIntakeInfo.url,
+                          user?.name || ""
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: "none" }}
+                      >
+                        enviar link
+                      </a>
+                    ) : null}
+                  </div>
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : (
           <form
@@ -319,6 +467,35 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
             {resetMessage && (
               <div className={styles.formSuccess}>{resetMessage}</div>
             )}
+            {dgiiIntakeInfo?.url ? (
+              <div className={styles.formSuccess}>
+                Enlace DGII e-CF (30 días):
+                <div style={{ wordBreak: "break-all", marginTop: "0.35rem" }}>
+                  <a
+                    href={dgiiIntakeInfo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {dgiiIntakeInfo.url}
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  className={styles.btnResend}
+                  style={{ marginTop: "0.5rem" }}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(dgiiIntakeInfo.url);
+                      setResetMessage("Enlace copiado");
+                    } catch {
+                      setResetMessage("Copie el enlace manualmente");
+                    }
+                  }}
+                >
+                  Copiar enlace
+                </button>
+              </div>
+            ) : null}
             <div className={styles.formGroup}>
               <label htmlFor="um-name">Nombre</label>
               <input
@@ -347,6 +524,46 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                 placeholder="correo@ejemplo.com"
                 autoComplete="off"
               />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="um-whatsapp">Teléfono WhatsApp</label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    fontWeight: 600,
+                    color: "#475569",
+                    fontSize: "0.9rem",
+                  }}
+                  aria-hidden
+                >
+                  +1
+                </span>
+                <input
+                  id="um-whatsapp"
+                  type="tel"
+                  value={form.whatsappPhone}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      whatsappPhone: formatWhatsappPhoneRealtime(e.target.value),
+                    }))
+                  }
+                  placeholder="8095551234"
+                  autoComplete="tel"
+                  inputMode="numeric"
+                  style={{ flex: 1 }}
+                />
+              </div>
+              <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                Solo 10 dígitos. Se guarda como +1… (ej. 8095551234 → +18095551234)
+              </span>
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="um-password">

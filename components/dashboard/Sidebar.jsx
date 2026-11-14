@@ -8,7 +8,7 @@ import { ImQrcode } from "react-icons/im";
 import { BsBuildings } from "react-icons/bs";
 import { IoPeopleCircle } from "react-icons/io5";
 import { MdOutlinePoll } from "react-icons/md";
-import { FaUserCircle } from "react-icons/fa";
+import { FaUserCircle, FaFileInvoiceDollar } from "react-icons/fa";
 
 export default function Sidebar({ user }) {
   const { name, email, role, image } = user;
@@ -22,6 +22,11 @@ export default function Sidebar({ user }) {
           { label: "Usuarios", href: "/dashboard/usuarios", icon: <IoPeopleCircle /> },
           { label: "Empresas", href: "/dashboard/empresas", icon: <BsBuildings /> },
           { label: "Encuestas", href: "/dashboard/encuestas", icon: <MdOutlinePoll /> },
+          {
+            label: "DGII intake",
+            href: "/dashboard/dgii-intakes",
+            icon: <FaFileInvoiceDollar />,
+          },
         ]
       : []),
     ...(role === "admin"

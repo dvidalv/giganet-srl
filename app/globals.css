@@ -5,7 +5,7 @@
   --headerHeightMobile: 80px;
   --headerHeightTablet: 100px;
   --headerHeightDesktop: 120px;
-  --announcementHeight: 36px;
+  --announcementHeight: 0px;
   --fixedTopOffset: calc(var(--headerHeightDesktop) + var(--announcementHeight));
   /* Hero: fixed header + cintillo for this breakpoint (min-height + optional top margin) */
   --hero-header-offset: var(--fixedTopOffset);

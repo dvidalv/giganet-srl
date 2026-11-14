@@ -71,3 +71,35 @@ export async function uploadAvatarUsuario(dataUri, publicId) {
   const url = result.eager?.[0]?.secure_url || result.secure_url;
   return { url };
 }
+
+/**
+ * Upload a DGII intake document (cédula, factura, P-12).
+ * Uses authenticated access so URLs are not publicly crawlable.
+ * @param {string} dataUri
+ * @param {{ publicId: string, folder?: string, resourceType?: "image"|"raw"|"auto" }} opts
+ */
+export async function uploadDgiiIntakeFile(dataUri, opts = {}) {
+  const cloudinary = await getCloudinary();
+  const {
+    publicId,
+    folder = "dgii-intake",
+    resourceType = "auto",
+  } = opts;
+
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder,
+    public_id: publicId,
+    resource_type: resourceType,
+    type: "authenticated",
+    overwrite: true,
+    invalidate: true,
+  });
+
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+    bytes: result.bytes || 0,
+    format: result.format || "",
+    resourceType: result.resource_type || resourceType,
+  };
+}

@@ -91,9 +91,7 @@ export default function DgiiIntakeReadView({
               <a href={backHref} className={styles.backLink}>
                 ← {backLabel}
               </a>
-            ) : (
-              <span className={styles.eyebrow}>{eyebrow}</span>
-            )}
+            ) : null}
             {headerExtra}
           </div>
           <div className={styles.headerMain}>

@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   classifyDgiiImageFiles,
   describeDgiiImageSelection,
+  DGII_IMPORT_FILE_ACCEPT,
   DGII_IMPORT_MAX_FILES,
 } from "@/lib/comprobantes/dgiiImportFiles";
 import styles from "./EmpresaAdminImportarDgii.module.css";
@@ -145,14 +146,16 @@ export default function EmpresaAdminImportarDgii({
 
   const analizar = async () => {
     if (!files.length) {
-      setError("Seleccione al menos una foto de la autorización DGII.");
+      setError(
+        "Seleccione al menos una imagen o PDF de la autorización DGII.",
+      );
       return;
     }
     setAnalyzing(true);
     setError("");
     setInfo("");
     setResultados(null);
-    const fotosEnviadas = files.length;
+    const archivosEnviados = files.length;
     try {
       const fd = new FormData();
       for (const f of files) fd.append("images", f);
@@ -162,14 +165,16 @@ export default function EmpresaAdminImportarDgii({
       );
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "No se pudieron leer las imágenes.");
+        setError(
+          json.error || "No se pudieron leer las imágenes o el PDF enviado.",
+        );
         return;
       }
       const rows = Array.isArray(json.filas) ? json.filas : [];
       if (!rows.length) {
         setFilas([]);
         setError(
-          `No se encontraron series E en las ${fotosEnviadas} foto${fotosEnviadas === 1 ? "" : "s"} enviada${fotosEnviadas === 1 ? "" : "s"}. Revise que se vean los rangos E31/E32/… o agregue filas a mano.`,
+          `No se encontraron series E en los ${archivosEnviados} archivo${archivosEnviados === 1 ? "" : "s"} enviado${archivosEnviados === 1 ? "" : "s"}. Revise que se vean los rangos E31/E32/… o agregue filas a mano.`,
         );
         return;
       }
@@ -188,10 +193,10 @@ export default function EmpresaAdminImportarDgii({
         })),
       );
       setInfo(
-        `Se enviaron ${fotosEnviadas} foto${fotosEnviadas === 1 ? "" : "s"} y se extrajeron ${rows.length} serie${rows.length === 1 ? "" : "s"} E. Revise y edite antes de crear en producción.`,
+        `Se enviaron ${archivosEnviados} archivo${archivosEnviados === 1 ? "" : "s"} (JPG, PNG, WebP o PDF) y se extrajeron ${rows.length} serie${rows.length === 1 ? "" : "s"} E. Revise y edite antes de crear en producción.`,
       );
     } catch {
-      setError("Error de conexión al analizar las imágenes.");
+      setError("Error de conexión al analizar los archivos.");
     } finally {
       setAnalyzing(false);
     }
@@ -241,10 +246,10 @@ export default function EmpresaAdminImportarDgii({
           Importar series E desde DGII
         </h2>
         <p className={styles.subtitle}>
-          Suba fotos de las autorizaciones del portal DGII. El sistema lee solo
-          series electrónicas (prefijo E), usted revisa los rangos y luego se
-          crean en producción (Giganet + The Factory) sin cambiar el ambiente
-          demo/producción de la empresa.
+          Suba imágenes (JPG, PNG, WebP) o PDF de las autorizaciones del portal
+          DGII. El sistema lee solo series electrónicas (prefijo E), usted revisa
+          los rangos y luego se crean en producción (Giganet + The Factory) sin
+          cambiar el ambiente demo/producción de la empresa.
         </p>
         <p className={styles.meta}>
           <span>
@@ -279,16 +284,16 @@ export default function EmpresaAdminImportarDgii({
             ref={inputRef}
             className={styles.fileInput}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={DGII_IMPORT_FILE_ACCEPT}
             multiple
             onChange={(e) => {
               addFiles(e.target.files);
               e.target.value = "";
             }}
           />
-          <span>Arrastre fotos aquí o haga clic para elegir</span>
+          <span>Arrastre imágenes o PDF aquí, o haga clic para elegir</span>
           <span className={styles.dropHint}>
-            JPG, PNG o WebP · máx. 8 imágenes · 8 MB c/u
+            Formatos: JPG, PNG, WebP o PDF · máx. 8 archivos · 8 MB c/u
           </span>
         </label>
       </div>
@@ -313,7 +318,7 @@ export default function EmpresaAdminImportarDgii({
           disabled={analyzing || creating || !files.length}
           onClick={analizar}
         >
-          {analyzing ? "Analizando…" : "Analizar fotos"}
+          {analyzing ? "Analizando…" : "Analizar archivos"}
         </button>
         <button
           type="button"

@@ -12,7 +12,13 @@ export const maxDuration = 120;
 
 const MAX_FILES = 8;
 const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+const ALLOWED = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
 
 /** POST /api/users/[id]/comprobantes/importar-dgii/extraer — OCR/visión de fotos DGII (admin) */
 export async function POST(request, { params }) {
@@ -56,7 +62,7 @@ export async function POST(request, { params }) {
 
     if (!files.length) {
       return NextResponse.json(
-        { error: "Suba al menos una imagen de la autorización DGII" },
+        { error: "Suba al menos una imagen o PDF de la autorización DGII" },
         { status: 400 },
       );
     }
@@ -69,7 +75,17 @@ export async function POST(request, { params }) {
 
     const images = [];
     for (const file of files) {
-      const mediaType = String(file.type || "image/jpeg").toLowerCase();
+      const name = String(file.name || "").toLowerCase();
+      let mediaType = String(file.type || "").toLowerCase();
+      if (
+        (!mediaType || mediaType === "application/octet-stream") &&
+        name.endsWith(".pdf")
+      ) {
+        mediaType = "application/pdf";
+      }
+      if (!mediaType && !name.endsWith(".pdf")) {
+        mediaType = "image/jpeg";
+      }
       if (!ALLOWED.has(mediaType)) {
         return NextResponse.json(
           { error: `Tipo de archivo no permitido: ${mediaType || "desconocido"}` },

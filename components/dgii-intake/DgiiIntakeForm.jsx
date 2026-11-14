@@ -5,7 +5,8 @@ import { FiUpload } from "react-icons/fi";
 import styles from "./DgiiIntakeForm.module.css";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/labels";
 
-const DOC_ACCEPT = "image/*,.pdf,application/pdf";
+const DOC_ACCEPT =
+  "image/jpeg,image/png,image/webp,application/pdf,.pdf";
 
 const CEDULA_SLOTS = [
   {

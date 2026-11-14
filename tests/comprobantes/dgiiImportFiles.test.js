@@ -36,7 +36,17 @@ describe("dgiiImportFiles", () => {
 
     expect(
       isAcceptedDgiiImageFile(fakeFile({ name: "doc.pdf", type: "" })),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      isAcceptedDgiiImageFile(
+        fakeFile({ name: "autorizacion.pdf", type: "application/pdf" }),
+      ),
+    ).toBe(true);
+    expect(
+      isAcceptedDgiiImageFile(
+        fakeFile({ name: "portal-dgii.pdf", type: "application/octet-stream" }),
+      ),
+    ).toBe(true);
     expect(
       isAcceptedDgiiImageFile(
         fakeFile({ name: "x.heic", type: "image/heic" }),
@@ -57,21 +67,26 @@ describe("dgiiImportFiles", () => {
   it("reporta rechazos y no pierde las válidas del mismo lote", () => {
     const { accepted, rejected } = classifyDgiiImageFiles([
       fakeFile({ name: "ok.jpg", type: "" }),
-      fakeFile({ name: "bad.pdf", type: "" }),
+      fakeFile({ name: "autorizacion.pdf", type: "" }),
       fakeFile({ name: "also.webp", type: "image/webp" }),
+      fakeFile({ name: "bad.heic", type: "image/heic" }),
     ]);
-    expect(accepted.map((f) => f.name)).toEqual(["ok.jpg", "also.webp"]);
+    expect(accepted.map((f) => f.name)).toEqual([
+      "ok.jpg",
+      "autorizacion.pdf",
+      "also.webp",
+    ]);
     expect(rejected).toHaveLength(1);
-    expect(rejected[0].name).toBe("bad.pdf");
+    expect(rejected[0].name).toBe("bad.heic");
 
     const msg = describeDgiiImageSelection({
       acceptedCount: accepted.length,
-      totalCount: 2,
+      totalCount: accepted.length,
       rejected,
       skippedDuplicate: 0,
     });
-    expect(msg).toContain("2 fotos aceptadas");
+    expect(msg).toContain("3 archivos aceptados");
     expect(msg).toContain("1 rechazada");
-    expect(msg).toContain("bad.pdf");
+    expect(msg).toContain("bad.heic");
   });
 });

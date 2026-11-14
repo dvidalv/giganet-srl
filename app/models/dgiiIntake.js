@@ -9,7 +9,17 @@ const ensureConnection = async () => {
     return;
   }
   if (!connectionPromise) {
-    connectionPromise = connectDB();
+    connectionPromise = connectDB()
+      .then(() => {
+        if (mongoose.default.connection.readyState !== 1) {
+          throw new Error(
+            "MongoDB no conectado después de connectDB (DgiiIntake)",
+          );
+        }
+      })
+      .finally(() => {
+        connectionPromise = null;
+      });
   }
   await connectionPromise;
 };

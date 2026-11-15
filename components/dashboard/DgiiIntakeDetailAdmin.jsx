@@ -333,7 +333,7 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
           Enlace The Factory (agente)
         </h2>
         <p className={styles.sectionLead}>
-          Acceso de solo lectura por 30 días. Token propio — no se afecta al
+          Acceso de solo lectura por 24 horas. Token propio — no se afecta al
           regenerar o revocar el enlace del cliente.
         </p>
         {intake.agentActive && intake.agentUrl ? (
@@ -440,7 +440,7 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
               </button>
             </div>
             <p className={styles.modalBodyText}>
-              Se generará un enlace de agente válido 30 días y se enviará por
+              Se generará un enlace de agente válido 24 horas y se enviará por
               correo.
             </p>
             <form onSubmit={submitSendAgent}>

@@ -50,7 +50,7 @@ const dgiiIntakeSchema = new Schema(
       unique: true,
       index: true,
     },
-    /** Separate 30-day access for The Factory agent (independent of client token) */
+    /** Separate 24-hour access for The Factory agent (independent of client token) */
     agentToken: {
       type: String,
       default: "",

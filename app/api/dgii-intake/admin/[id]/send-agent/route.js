@@ -29,7 +29,7 @@ async function baseUrl() {
   return resolveDgiiIntakePublicBaseUrl(`${proto}://${host}`);
 }
 
-/** POST { email } — issue/rotate agent token (30d), optional email; client token untouched */
+/** POST { email } — issue/rotate agent token (24h), optional email; client token untouched */
 export async function POST(request, { params }) {
   const check = await requireAdmin();
   if (check.error) return check.error;
@@ -79,19 +79,29 @@ export async function POST(request, { params }) {
   try {
     const name =
       intake.clientName || intake.empresa?.nombre || intake.empresa?.rnc || "cliente";
+    const expiresLabel = new Date(intake.agentExpiresAt).toLocaleString("es-DO");
     await sendEmail({
       to: email,
-      subject: `Acceso The Factory — admisión DGII (${name}) — Giganet`,
+      subject: `Urgente: acceso The Factory (válido 24 h) — DGII (${name}) — Giganet`,
       htmlContent: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#fef2f2;border:2px solid #dc2626;border-radius:10px;padding:16px 18px;margin:0 0 20px;">
+            <p style="margin:0 0 6px;color:#991b1b;font-size:18px;font-weight:700;line-height:1.3;">
+              ⏱ Este enlace solo es válido por 24 horas
+            </p>
+            <p style="margin:0;color:#7f1d1d;font-size:15px;line-height:1.45;">
+              Debe abrir la ficha <strong>antes de ${expiresLabel}</strong>.
+              Después de ese plazo el acceso caduca y tendrá que solicitar uno nuevo.
+            </p>
+          </div>
           <h2 style="color:#0f172a;">Acceso de agente — The Factory</h2>
           <p>Se le ha otorgado acceso de solo lectura a la admisión DGII e-CF de <strong>${name}</strong>.</p>
-          <p><a href="${agentUrl}" style="display:inline-block;padding:12px 20px;background:#ff4d00;color:#fff;text-decoration:none;border-radius:8px;">Abrir ficha</a></p>
-          <p style="color:#666;font-size:13px;">El enlace vence el ${new Date(intake.agentExpiresAt).toLocaleString("es-DO")} (30 días).</p>
+          <p><a href="${agentUrl}" style="display:inline-block;padding:12px 20px;background:#ff4d00;color:#fff;text-decoration:none;border-radius:8px;">Abrir ficha ahora</a></p>
+          <p style="color:#991b1b;font-size:14px;font-weight:600;">Vence: ${expiresLabel} (24 horas desde el envío).</p>
           <p style="color:#666;font-size:13px;">Si el botón no funciona, copie esta URL:<br/>${agentUrl}</p>
         </div>
       `,
-      textContent: `Acceso The Factory (DGII): ${agentUrl}`,
+      textContent: `URGENTE: este enlace de The Factory solo es válido 24 horas. Vence el ${expiresLabel}. Ábralo cuanto antes.\n\nAcceso The Factory (DGII) — ${name}:\n${agentUrl}\n\nDespués de esa fecha el enlace caduca.`,
     });
   } catch (err) {
     console.error("DGII agent send email:", err?.message || err);

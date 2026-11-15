@@ -9,15 +9,15 @@ export default function DgiiPromoBanner() {
       <div className={styles.inner}>
         <div className={styles.badge}>
           <FaFileInvoiceDollar aria-hidden />
-          <span>Desde mañana · Dom 15 nov 2026</span>
+          <span>En vigor desde hoy · DGII</span>
         </div>
         <div className={styles.copy}>
           <h2 className={styles.headline}>
-            Facturación Electrónica DGII: lista desde mañana
+            La facturación electrónica DGII ya llegó
           </h2>
           <p className={styles.support}>
-            Integramos e-CF con cumplimiento DGII. Prepárate a tiempo con la
-            experiencia de GigaNet en facturación electrónica.
+            Integra e-CF con cumplimiento DGII y evita multas. En GigaNet te
+            acompañamos con nuestra experiencia en facturación electrónica.
           </p>
         </div>
         <Link href="/contacto" className={styles.cta}>

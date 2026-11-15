@@ -7,18 +7,21 @@ import DgiiPromoBanner from "@/components/DgiiPromoBanner";
 import {
   FaArrowRight,
   FaAws,
+  FaBriefcase,
   FaCheck,
   FaCheckCircle,
   FaCloud,
   FaCode,
   FaCreditCard,
   FaDatabase,
+  FaDesktop,
   FaLaptopCode,
   FaNodeJs,
   FaPlayCircle,
   FaPython,
   FaReact,
   FaRocket,
+  FaShoppingCart,
 } from "react-icons/fa";
 import { SiMongodb } from "react-icons/si";
 
@@ -29,6 +32,48 @@ const techTags = [
   { label: "SQL / NoSQL", icon: FaDatabase, className: styles.techDb },
   { label: "MongoDB", icon: SiMongodb, className: styles.techMongo },
   { label: "AWS", icon: FaAws, className: styles.techAws },
+];
+
+const websitePlans = [
+  {
+    id: "starter",
+    name: "Starter",
+    price: "$15,000",
+    currency: "DOP",
+    icon: FaDesktop,
+    featured: false,
+    features: [
+      "Sitio de 3 páginas",
+      "Diseño responsivo",
+      "Logo gratis incluido",
+    ],
+  },
+  {
+    id: "business",
+    name: "Business",
+    price: "$30,000",
+    currency: "DOP",
+    icon: FaBriefcase,
+    featured: true,
+    features: [
+      "Sitio de 6 páginas",
+      "Sistema de citas",
+      "Configuración de redes sociales",
+    ],
+  },
+  {
+    id: "ecommerce",
+    name: "E-Commerce",
+    price: "$85,000",
+    currency: "DOP",
+    icon: FaShoppingCart,
+    featured: false,
+    features: [
+      "Tienda de 10 páginas",
+      "SEO básico",
+      "Manager dedicado",
+    ],
+  },
 ];
 
 const mainServices = [
@@ -177,6 +222,60 @@ export default async function Home() {
         </div>
 
         <div className={styles.heroBottomFade} aria-hidden />
+      </section>
+
+      <section id="diseno-web" className={styles.websiteDesignSection}>
+        <div className={styles.sectionInner}>
+          <div className={styles.sectionHeaderCenter}>
+            <h2 className={styles.sectionTitle}>
+              Diseño de <span className={styles.gradientText}>Sitios Web</span>
+            </h2>
+            <p className={styles.sectionSubtitle}>
+              Sitios profesionales para negocios y comercio electrónico, listos para
+              destacar tu marca.
+            </p>
+          </div>
+
+          <div className={styles.websitePlansGrid}>
+            {websitePlans.map((plan) => {
+              const Icon = plan.icon;
+              return (
+                <article
+                  key={plan.id}
+                  className={`${styles.websitePlanCard} ${
+                    plan.featured ? styles.websitePlanCardFeatured : ""
+                  }`}
+                >
+                  {plan.featured ? (
+                    <span className={styles.websitePlanBadge}>Más popular</span>
+                  ) : null}
+                  <div className={styles.websitePlanIcon}>
+                    <Icon aria-hidden />
+                  </div>
+                  <h3 className={styles.websitePlanName}>{plan.name}</h3>
+                  <div className={styles.websitePlanPriceRow}>
+                    <span className={styles.websitePlanPrice}>{plan.price}</span>
+                    <span className={styles.websitePlanCurrency}>{plan.currency}</span>
+                  </div>
+                  <ul className={styles.websitePlanFeatures}>
+                    {plan.features.map((feature) => (
+                      <li key={feature}>
+                        <FaCheck className={styles.checkIcon} aria-hidden />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className={styles.websiteDesignCta}>
+            <Link href="/contacto" className={styles.ctaButton}>
+              Solicitar cotización
+            </Link>
+          </div>
+        </div>
       </section>
 
       <section id="servicios" className={styles.servicesSection}>

@@ -613,6 +613,149 @@
   border-color: rgba(255, 77, 0, 0.3);
 }
 
+/* Website design plans */
+.websiteDesignSection {
+  padding: 7rem 1.5rem;
+  background: #080808;
+}
+
+.websitePlansGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.websitePlanCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 28rem;
+  padding: 3.25rem 2rem 3.5rem;
+  border-radius: 2rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.35s ease, border-color 0.35s ease, background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.websitePlanCard:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 77, 0, 0.3);
+}
+
+.websitePlanCardFeatured {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 77, 0, 0.1) 0%,
+    rgba(255, 255, 255, 0.03) 45%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 122, 61, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 77, 0, 0.12), 0 18px 40px rgba(255, 77, 0, 0.12);
+}
+
+.websitePlanCardFeatured:hover {
+  border-color: rgba(255, 170, 112, 0.75);
+  box-shadow: 0 0 0 1px rgba(255, 77, 0, 0.2), 0 22px 48px rgba(255, 77, 0, 0.18);
+}
+
+.websitePlanBadge {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #ff4d00, #ff7a3d);
+}
+
+.websitePlanIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: 1.75rem;
+  border-radius: 1rem;
+  background: rgba(255, 77, 0, 0.1);
+  color: #ff4d00;
+  font-size: 1.35rem;
+}
+
+.websitePlanCardFeatured .websitePlanIcon {
+  background: rgba(255, 77, 0, 0.18);
+  color: #ffaa70;
+}
+
+.websitePlanName {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.websitePlanPriceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.websitePlanPrice {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #fff;
+}
+
+.websitePlanCardFeatured .websitePlanPrice {
+  background: linear-gradient(135deg, #ff4d00 0%, #ff7a3d 60%, #ffaa70 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.websitePlanCurrency {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.04em;
+}
+
+.websitePlanFeatures {
+  list-style: none;
+  padding: 0;
+  margin: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.websitePlanFeatures li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.websiteDesignCta {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.5rem;
+}
+
 /* Services */
 .servicesSection {
   padding: 7rem 1.5rem;
@@ -968,7 +1111,8 @@ a.tagOrange:hover {
 }
 
 @media (max-width: 1024px) {
-  .servicesGrid {
+  .servicesGrid,
+  .websitePlansGrid {
     grid-template-columns: 1fr;
   }
 
@@ -984,6 +1128,7 @@ a.tagOrange:hover {
 }
 
 @media (max-width: 768px) {
+  .websiteDesignSection,
   .servicesSection,
   .specialtiesSection,
   .appsSection,
@@ -1001,9 +1146,19 @@ a.tagOrange:hover {
   }
 
   .glassCard,
+  .websitePlanCard,
   .dgiiCard,
   .glassCardHorizontal {
     padding: 1.5rem;
+  }
+
+  .websitePlanCard {
+    min-height: 24rem;
+    padding: 2.25rem 1.5rem 2.5rem;
+  }
+
+  .websitePlanPrice {
+    font-size: 2rem;
   }
 
   .partnerLogos {

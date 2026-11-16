@@ -96,13 +96,28 @@ export async function POST(request) {
     name,
     username,
     whatsappPhone,
+    rnc,
     role = "user",
     isActive = true,
   } = body;
 
   if (!email || !password || !name) {
     return NextResponse.json(
-      { error: "Faltan campos requeridos: email, password, name" },
+      { error: "Faltan campos requeridos: email, password, name, rnc" },
+      { status: 400 },
+    );
+  }
+
+  const roleNorm = role === "admin" ? "admin" : "user";
+  const rncNorm = String(rnc ?? body?.empresa?.rnc ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 11);
+  if (!rncNorm || (rncNorm.length !== 9 && rncNorm.length !== 11)) {
+    return NextResponse.json(
+      {
+        error:
+          "El RNC es obligatorio y debe tener 9 u 11 dígitos (sin guiones).",
+      },
       { status: 400 },
     );
   }
@@ -166,12 +181,15 @@ export async function POST(request) {
       name: String(name).trim(),
       ...(usernamePrep.username ? { username: usernamePrep.username } : {}),
       ...(whatsappNorm ? { whatsappPhone: whatsappNorm } : {}),
-      role: role === "admin" ? "admin" : "user",
+      role: roleNorm,
       isActive: !!isActive,
       isVerified: false,
       verificationToken,
       verificationTokenExpires,
-      empresa: { theFactoryAmbiente: "demo" },
+      empresa: {
+        theFactoryAmbiente: "demo",
+        rnc: rncNorm,
+      },
     });
 
     const userName = String(name).trim();

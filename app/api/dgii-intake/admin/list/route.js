@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import DgiiIntake from "@/app/models/dgiiIntake";
+import User from "@/app/models/user";
 import { buildCompletionStatus } from "@/lib/dgiiIntake/status";
+import { normalizeRnc } from "@/lib/dgiiIntake/normalizeRnc";
 import {
   buildIntakePublicUrl,
   resolveDgiiIntakePublicBaseUrl,
@@ -55,13 +57,32 @@ export async function GET(request) {
     }
 
     if (search) {
-      const re = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = { $regex: escaped, $options: "i" };
+      const digits = normalizeRnc(search);
+      const userMatchFilter = digits
+        ? {
+            $or: [
+              { "empresa.rnc": re },
+              { "empresa.rnc": digits },
+              {
+                "empresa.rnc": {
+                  $regex: digits.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+                  $options: "i",
+                },
+              },
+            ],
+          }
+        : { "empresa.rnc": re };
+      const matchingUsers = await User.find(userMatchFilter).select("_id").lean();
+      const matchedUserIds = matchingUsers.map((u) => u._id);
       filter.$or = [
         { clientName: re },
         { clientEmail: re },
         { "empresa.nombre": re },
         { "empresa.razonSocial": re },
         { "empresa.rnc": re },
+        ...(matchedUserIds.length ? [{ userId: { $in: matchedUserIds } }] : []),
       ];
     }
 
@@ -71,16 +92,34 @@ export async function GET(request) {
     ]);
 
     const root = await baseUrl();
+    const userIds = [
+      ...new Set(
+        rows
+          .map((doc) => doc.userId)
+          .filter(Boolean)
+          .map((id) => String(id))
+      ),
+    ];
+    const linkedUsers = userIds.length
+      ? await User.find({ _id: { $in: userIds } })
+          .select("empresa.rnc")
+          .lean()
+      : [];
+    const rncByUserId = new Map(
+      linkedUsers.map((u) => [String(u._id), normalizeRnc(u.empresa?.rnc)])
+    );
 
     const intakes = rows.map((doc) => {
       const plain = doc.toObject();
       const completion = buildCompletionStatus(plain);
       const uiStatus = displayStatus(plain);
+      const userId = plain.userId ? String(plain.userId) : "";
       return {
         id: String(plain._id),
         clientName: plain.clientName || plain.empresa?.nombre || "—",
         clientEmail: plain.clientEmail || "",
-        rnc: plain.empresa?.rnc || "",
+        rnc: (userId && rncByUserId.get(userId)) || "",
+        userEmpresaRnc: (userId && rncByUserId.get(userId)) || "",
         status: uiStatus,
         dbStatus: plain.status,
         createdAt: plain.createdAt,

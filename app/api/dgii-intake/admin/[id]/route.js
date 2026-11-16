@@ -11,6 +11,7 @@ import {
 } from "@/lib/dgiiIntake/createForUser";
 import { buildIntakeViewPayload } from "@/lib/dgiiIntake/viewPayload";
 import { normalizeRnc } from "@/lib/dgiiIntake/normalizeRnc";
+import { eliminarDatosDeEmpresa } from "@/lib/eliminarEmpresa";
 import { deleteDgiiIntakeFile } from "@/utils/cloudinary";
 
 async function requireAdmin() {
@@ -64,6 +65,20 @@ async function deleteIntakeCloudinaryFiles(intake) {
   );
 }
 
+/** Admin payload + linked User.empresa.rnc for delete confirmation. */
+async function adminIntakePayload(intake, root) {
+  const payload = buildIntakeViewPayload(intake, root);
+  let userEmpresaRnc = "";
+  if (intake.userId) {
+    const linked = await User.findById(intake.userId)
+      .select("empresa.rnc")
+      .lean();
+    userEmpresaRnc = normalizeRnc(linked?.empresa?.rnc);
+  }
+  payload.userEmpresaRnc = userEmpresaRnc;
+  return payload;
+}
+
 /** GET — intake detail (no decrypted passwords); includes agent link fields */
 export async function GET(_request, { params }) {
   const check = await requireAdmin();
@@ -77,7 +92,7 @@ export async function GET(_request, { params }) {
 
   const root = await baseUrl();
   return NextResponse.json({
-    intake: buildIntakeViewPayload(intake, root),
+    intake: await adminIntakePayload(intake, root),
   });
 }
 
@@ -113,7 +128,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({
       ok: true,
       message: "Enlace del cliente revocado",
-      intake: buildIntakeViewPayload(intake, root),
+      intake: await adminIntakePayload(intake, root),
     });
   }
 
@@ -133,7 +148,7 @@ export async function POST(request, { params }) {
       expiresAt: rotated.expiresAt,
       token: rotated.token,
       intakeId: String(rotated._id),
-      intake: buildIntakeViewPayload(rotated, root),
+      intake: await adminIntakePayload(rotated, root),
     });
   }
 
@@ -179,7 +194,7 @@ export async function POST(request, { params }) {
       ok: true,
       message: `Enlace reenviado a ${to}`,
       url,
-      intake: buildIntakeViewPayload(intake, root),
+      intake: await adminIntakePayload(intake, root),
     });
   }
 
@@ -188,7 +203,8 @@ export async function POST(request, { params }) {
 
 /**
  * DELETE — permanent remove. Body: { rnc }
- * Requires typed RNC to match empresa.rnc after normalizing dashes/spaces.
+ * Requires typed RNC to match the linked User.empresa.rnc (not intake.empresa.rnc).
+ * Also deletes that User when safe: not admin, not self.
  */
 export async function DELETE(request, { params }) {
   const check = await requireAdmin();
@@ -207,14 +223,33 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
+  const userId = intake.userId;
+  if (!userId) {
+    return NextResponse.json(
+      {
+        error:
+          "Este formulario no tiene usuario asociado. No se puede confirmar con RNC de usuario.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const linkedUser = await User.findById(userId).select("role empresa.rnc");
+  if (!linkedUser) {
+    return NextResponse.json(
+      { error: "Usuario asociado no encontrado" },
+      { status: 404 }
+    );
+  }
+
   const typed = normalizeRnc(body?.rnc);
-  const stored = normalizeRnc(intake.empresa?.rnc);
+  const stored = normalizeRnc(linkedUser.empresa?.rnc);
 
   if (!stored) {
     return NextResponse.json(
       {
         error:
-          "Este formulario no tiene RNC de empresa. No se puede confirmar la eliminación.",
+          "El usuario asociado no tiene RNC. No se puede confirmar la eliminación.",
       },
       { status: 400 }
     );
@@ -222,7 +257,10 @@ export async function DELETE(request, { params }) {
 
   if (!typed || typed !== stored) {
     return NextResponse.json(
-      { error: "El RNC no coincide. Escriba el RNC de la empresa para confirmar." },
+      {
+        error:
+          "El RNC no coincide. Escriba el RNC del usuario (empresa) para confirmar.",
+      },
       { status: 400 }
     );
   }
@@ -230,8 +268,34 @@ export async function DELETE(request, { params }) {
   await deleteIntakeCloudinaryFiles(intake);
   await DgiiIntake.findByIdAndDelete(id);
 
+  let userDeleted = false;
+  try {
+    const sessionUserId = check.session.user.id;
+    const canDeleteUser =
+      linkedUser.role !== "admin" &&
+      String(linkedUser._id) !== String(sessionUserId);
+
+    if (canDeleteUser) {
+      const remaining = await DgiiIntake.find({ userId });
+      for (const other of remaining) {
+        await deleteIntakeCloudinaryFiles(other);
+      }
+      if (remaining.length) {
+        await DgiiIntake.deleteMany({ userId });
+      }
+      await eliminarDatosDeEmpresa(userId);
+      await User.findByIdAndDelete(userId);
+      userDeleted = true;
+    }
+  } catch (err) {
+    console.error("DGII intake cascade user delete:", err?.message || err);
+  }
+
   return NextResponse.json({
     ok: true,
-    message: "Formulario DGII eliminado",
+    userDeleted,
+    message: userDeleted
+      ? "Formulario DGII y usuario asociado eliminados"
+      : "Formulario DGII eliminado",
   });
 }

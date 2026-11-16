@@ -218,7 +218,8 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
     }
   }
 
-  const storedRnc = intake?.empresa?.rnc || "";
+  /** Confirm against linked User.empresa.rnc, not intake.empresa.rnc */
+  const storedRnc = normalizeRnc(intake?.userEmpresaRnc) || "";
   const rncMatches =
     Boolean(normalizeRnc(storedRnc)) &&
     normalizeRnc(deleteRnc) === normalizeRnc(storedRnc);
@@ -227,7 +228,7 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
     e.preventDefault();
     if (!rncMatches) {
       setDeleteError(
-        "El RNC no coincide. Escriba el RNC de la empresa (con o sin guiones)."
+        "El RNC no coincide. Escriba el RNC del usuario (con o sin guiones)."
       );
       return;
     }
@@ -610,7 +611,7 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
               </button>
             </div>
             <p className={styles.modalBodyText}>
-              Esta acción no se puede deshacer. Escriba el RNC de la empresa
+              Esta acción no se puede deshacer. Escriba el RNC del usuario
               {storedRnc ? (
                 <>
                   {" "}
@@ -621,7 +622,7 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
             </p>
             <form onSubmit={submitDelete}>
               <label className={styles.confirmField}>
-                <span>RNC de la empresa</span>
+                <span>RNC del usuario</span>
                 <input
                   className={styles.confirmInput}
                   value={deleteRnc}
@@ -631,10 +632,16 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
                   }}
                   autoComplete="off"
                   autoFocus
-                  disabled={busy || !storedRnc}
+                  disabled={busy}
                   placeholder="123-45678-9 o 123456789"
                 />
               </label>
+              {!storedRnc ? (
+                <p className={styles.confirmError}>
+                  El usuario asociado no tiene RNC; no se puede confirmar la
+                  eliminación hasta que exista un RNC en su empresa.
+                </p>
+              ) : null}
               {deleteError ? (
                 <p className={styles.confirmError}>{deleteError}</p>
               ) : null}

@@ -104,6 +104,7 @@ export default function DgiiIntakeForm({ token }) {
     razonSocial: "",
     telefono: "",
     direccion: "",
+    ciudad: "",
   });
   const [representante, setRepresentante] = useState({
     nombre: "",
@@ -126,6 +127,7 @@ export default function DgiiIntakeForm({ token }) {
       razonSocial: data.empresa?.razonSocial || "",
       telefono: data.empresa?.telefono || "",
       direccion: data.empresa?.direccion || "",
+      ciudad: data.empresa?.ciudad || "",
     });
     setRepresentante({
       nombre: data.representante?.nombre || "",
@@ -603,13 +605,28 @@ export default function DgiiIntakeForm({ token }) {
             />
           </div>
           <div className={`${styles.field} ${styles.fieldFull}`}>
+            <label className={styles.label} htmlFor="emp-ciudad">
+              Ciudad
+            </label>
+            <input
+              id="emp-ciudad"
+              className={styles.input}
+              value={empresa.ciudad ?? ""}
+              onChange={(e) =>
+                setEmpresa((s) => ({ ...s, ciudad: e.target.value }))
+              }
+              autoComplete="address-level2"
+              placeholder="Ej. Santo Domingo"
+            />
+          </div>
+          <div className={`${styles.field} ${styles.fieldFull}`}>
             <label className={styles.label} htmlFor="emp-dir">
               Dirección
             </label>
             <textarea
               id="emp-dir"
               className={styles.textarea}
-              value={empresa.direccion}
+              value={empresa.direccion ?? ""}
               onChange={(e) =>
                 setEmpresa((s) => ({ ...s, direccion: e.target.value }))
               }

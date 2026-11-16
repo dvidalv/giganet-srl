@@ -86,6 +86,7 @@ const dgiiIntakeSchema = new Schema(
       razonSocial: { type: String, default: "", maxlength: 200 },
       telefono: { type: String, default: "", maxlength: 32 },
       direccion: { type: String, default: "", maxlength: 400 },
+      ciudad: { type: String, default: "", maxlength: 120 },
     },
     representante: {
       nombre: { type: String, default: "", maxlength: 120 },
@@ -131,7 +132,8 @@ if (
   (!models.DgiiIntake.schema.path("agentToken") ||
     !models.DgiiIntake.schema.path("tipoPersona") ||
     !models.DgiiIntake.schema.path("files.registroMercantil") ||
-    !models.DgiiIntake.schema.path("files.logo"))
+    !models.DgiiIntake.schema.path("files.logo") ||
+    !models.DgiiIntake.schema.path("empresa.ciudad"))
 ) {
   delete models.DgiiIntake;
 }

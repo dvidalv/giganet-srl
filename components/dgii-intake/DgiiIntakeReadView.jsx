@@ -173,6 +173,7 @@ export default function DgiiIntakeReadView({
             <Field label="Nombre" value={intake.empresa?.nombre} />
             <Field label="Razón social" value={intake.empresa?.razonSocial} />
             <Field label="Teléfono" value={intake.empresa?.telefono} />
+            <Field label="Ciudad" value={intake.empresa?.ciudad} />
             <Field label="Dirección" value={intake.empresa?.direccion} />
           </div>
         </section>

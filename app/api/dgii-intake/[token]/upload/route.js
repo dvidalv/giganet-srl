@@ -7,6 +7,7 @@ import {
 import { serializeIntakeForClient } from "@/lib/dgiiIntake/serialize";
 import { LOGO_MAX_BYTES } from "@/lib/dgiiIntake/fileSlots";
 import { requiresRegistroMercantil } from "@/lib/dgiiIntake/tipoPersona";
+import { syncIntakeToUserEmpresa } from "@/lib/dgiiIntake/syncToUserEmpresa";
 
 const ALLOWED_SLOTS = new Set([
   "cedula",
@@ -200,6 +201,17 @@ export async function POST(request, { params }) {
   };
   intake.lastSavedAt = new Date();
   await intake.save();
+
+  if (slot === "logo") {
+    try {
+      await syncIntakeToUserEmpresa(intake);
+    } catch (err) {
+      console.error(
+        "DGII intake logo → empresa sync failed:",
+        err?.message || err
+      );
+    }
+  }
 
   return NextResponse.json({
     slot,

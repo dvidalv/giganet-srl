@@ -10,8 +10,18 @@ import {
   resolveDgiiIntakePublicBaseUrl,
 } from "@/lib/dgiiIntake/createForUser";
 import { normalizeTipoPersona } from "@/lib/dgiiIntake/tipoPersona";
+import { syncIntakeToUserEmpresa } from "@/lib/dgiiIntake/syncToUserEmpresa";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function syncEmpresaSafe(intake) {
+  try {
+    return await syncIntakeToUserEmpresa(intake);
+  } catch (err) {
+    console.error("DGII intake → empresa sync failed:", err?.message || err);
+    return { synced: false, reason: "error" };
+  }
+}
 
 function badToken() {
   return NextResponse.json({ error: "Enlace no válido" }, { status: 404 });
@@ -108,6 +118,9 @@ export async function PATCH(request, { params }) {
     if (e.direccion !== undefined) {
       intake.empresa.direccion = String(e.direccion || "").trim().slice(0, 400);
     }
+    if (e.ciudad !== undefined) {
+      intake.empresa.ciudad = String(e.ciudad || "").trim().slice(0, 120);
+    }
   }
 
   if (body.representante && typeof body.representante === "object") {
@@ -190,6 +203,7 @@ export async function PATCH(request, { params }) {
     intake.status = "complete";
     intake.completedAt = new Date();
     await intake.save();
+    await syncEmpresaSafe(intake);
 
     const publicUrl = await resolvePublicUrl(token);
     try {
@@ -221,6 +235,7 @@ export async function PATCH(request, { params }) {
   }
 
   await intake.save();
+  await syncEmpresaSafe(intake);
 
   if (body.notifyAdmin === true) {
     try {

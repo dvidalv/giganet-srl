@@ -155,6 +155,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
   const [form, setForm] = useState({
     name: user?.name ?? "",
     email: user?.email ?? "",
+    rnc: String(user?.empresa?.rnc ?? "").replace(/\D/g, "").slice(0, 11),
     whatsappPhone: toLocalDisplay(user?.whatsappPhone ?? ""),
     password: "",
     role: user?.role ?? "user",
@@ -174,6 +175,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
       setForm({
         name: user.name ?? "",
         email: user.email ?? "",
+        rnc: String(user?.empresa?.rnc ?? "").replace(/\D/g, "").slice(0, 11),
         whatsappPhone: toLocalDisplay(user.whatsappPhone ?? ""),
         password: "",
         role: user.role ?? "user",
@@ -193,6 +195,7 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
       setForm({
         name: "",
         email: "",
+        rnc: "",
         whatsappPhone: "",
         password: "",
         role: "user",
@@ -217,9 +220,22 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
         setSaving(false);
         return;
       }
+      const rncNorm = String(form.rnc || "").replace(/\D/g, "").slice(0, 11);
+      if (isCreate || form.role !== "admin") {
+        if (!rncNorm || (rncNorm.length !== 9 && rncNorm.length !== 11)) {
+          setError("El RNC es obligatorio y debe tener 9 u 11 dígitos.");
+          setSaving(false);
+          return;
+        }
+      } else if (rncNorm && rncNorm.length !== 9 && rncNorm.length !== 11) {
+        setError("El RNC debe tener 9 u 11 dígitos.");
+        setSaving(false);
+        return;
+      }
       const body = {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
+        rnc: rncNorm,
         whatsappPhone: whatsappNorm,
         role: form.role,
         isActive: form.isActive,
@@ -355,6 +371,14 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
             <div className={styles.viewRow}>
               <span className={styles.viewLabel}>Email</span>
               <span className={styles.viewValue}>{user?.email ?? "—"}</span>
+            </div>
+            <div className={styles.viewRow}>
+              <span className={styles.viewLabel}>RNC</span>
+              <span className={styles.viewValue}>
+                {user?.empresa?.rnc
+                  ? String(user.empresa.rnc).replace(/\D/g, "")
+                  : "—"}
+              </span>
             </div>
             <div className={styles.viewRow}>
               <span className={styles.viewLabel}>WhatsApp</span>
@@ -524,6 +548,33 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
                 placeholder="correo@ejemplo.com"
                 autoComplete="off"
               />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="um-rnc">
+                RNC{" "}
+                <span aria-hidden="true" style={{ color: "#dc2626" }}>
+                  *
+                </span>
+              </label>
+              <input
+                id="um-rnc"
+                value={form.rnc}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    rnc: e.target.value.replace(/\D/g, "").slice(0, 11),
+                  }))
+                }
+                required
+                inputMode="numeric"
+                minLength={9}
+                maxLength={11}
+                placeholder="9 u 11 dígitos"
+                autoComplete="off"
+              />
+              <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                Obligatorio. Se guarda en los datos de empresa del usuario.
+              </span>
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="um-whatsapp">Teléfono WhatsApp</label>

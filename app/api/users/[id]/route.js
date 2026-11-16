@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { name, email, role, isActive, isVerified, password, whatsappPhone } =
+  const { name, email, role, isActive, isVerified, password, whatsappPhone, rnc } =
     body;
 
   try {
@@ -74,6 +74,23 @@ export async function PUT(request, { params }) {
     if (role !== undefined) user.role = role === "admin" ? "admin" : "user";
     if (typeof isActive === "boolean") user.isActive = isActive;
     if (typeof isVerified === "boolean") user.isVerified = isVerified;
+    if (rnc !== undefined || body?.empresa?.rnc !== undefined) {
+      const rncNorm = String(rnc ?? body?.empresa?.rnc ?? "")
+        .replace(/\D/g, "")
+        .slice(0, 11);
+      if (rncNorm && rncNorm.length !== 9 && rncNorm.length !== 11) {
+        return NextResponse.json(
+          {
+            error:
+              "El RNC debe tener 9 u 11 dígitos (sin guiones).",
+          },
+          { status: 400 },
+        );
+      }
+      if (!user.empresa) user.empresa = {};
+      user.empresa.rnc = rncNorm;
+      user.markModified("empresa");
+    }
     if (whatsappPhone !== undefined) {
       const {
         normalizeWhatsappPhone,

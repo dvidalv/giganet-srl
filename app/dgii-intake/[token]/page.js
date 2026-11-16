@@ -1,7 +1,15 @@
 import { notFound } from "next/navigation";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import DgiiIntake from "@/app/models/dgiiIntake";
 import DgiiIntakeForm from "@/components/dgii-intake/DgiiIntakeForm";
 import styles from "./page.module.css";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-dgii-jakarta",
+  display: "swap",
+});
 
 export default async function DgiiIntakePublicPage({ params }) {
   const { token } = await params;
@@ -25,7 +33,13 @@ export default async function DgiiIntakePublicPage({ params }) {
       ).catch(() => {});
     }
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} ${jakarta.variable}`}>
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+        />
         <div className={styles.card}>
           <h1 className={styles.title}>Enlace expirado</h1>
           <p className={styles.text}>
@@ -38,7 +52,13 @@ export default async function DgiiIntakePublicPage({ params }) {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${jakarta.variable}`}>
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
+      />
       <DgiiIntakeForm token={token} />
     </div>
   );

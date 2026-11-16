@@ -77,7 +77,6 @@ function Footer() {
 						<div>
 							<p className="contact_label">Teléfonos</p>
 						<div className="phone_links">
-							<a href="https://wa.me/18298890579" target="_blank" rel="noopener noreferrer" className="contact_text">829-889-0579 <IoLogoWhatsapp /></a>
 							<a href="https://wa.me/16825602093" target="_blank" rel="noopener noreferrer" className="contact_text">682-560-2093 <IoLogoWhatsapp /></a>
 						</div>
 						</div>

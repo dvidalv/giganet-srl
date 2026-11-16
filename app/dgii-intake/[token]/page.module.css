@@ -4,33 +4,34 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  background:
-    radial-gradient(ellipse at 12% 0%, rgba(255, 77, 0, 0.08), transparent 42%),
-    radial-gradient(ellipse at 88% 8%, rgba(255, 106, 37, 0.05), transparent 40%),
-    #f8fafc;
+  background: #0b0b0d; /* HTML bg-ink */
   padding: max(1.25rem, calc(var(--hero-header-offset) + 0.75rem)) 1rem 2rem;
   box-sizing: border-box;
 }
 
+/* Site Footer comes from root layout; hide it only on this intake page. */
+:global(body:has([data-dgii-intake-page]) .footer_modern) {
+  display: none !important;
+}
+
 .card {
   width: min(520px, 100%);
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #131316;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 16px;
   padding: 1.75rem;
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  color: #e4e4e7;
 }
 
 .title {
   margin: 0 0 0.75rem;
-  color: #0f172a;
+  color: #ffffff;
   font-size: 1.35rem;
   font-weight: 800;
 }
 
 .text {
   margin: 0;
-  color: #64748b;
+  color: #a1a1aa;
   line-height: 1.5;
 }

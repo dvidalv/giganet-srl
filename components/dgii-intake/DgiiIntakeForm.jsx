@@ -14,7 +14,7 @@ const DOC_ACCEPT =
   "image/jpeg,image/png,image/webp,application/pdf,.pdf";
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 const RING_LEN = 97.4;
-const HELP_WHATSAPP = "https://wa.me/18298890579";
+const HELP_WHATSAPP = "https://wa.me/16825602093";
 const HELP_EMAIL = "mailto:dvidalv@giganet-srl.com";
 
 const CEDULA_SLOTS = [
@@ -906,7 +906,7 @@ export default function DgiiIntakeForm({ token }) {
                 className={styles.helpContact}
               >
                 <i className="fa-brands fa-whatsapp" aria-hidden="true" />
-                829-889-0579
+                682-560-2093
               </a>
               <a href={HELP_EMAIL} className={styles.helpContact}>
                 <i className="fa-regular fa-envelope" aria-hidden="true" />
@@ -1033,9 +1033,9 @@ export default function DgiiIntakeForm({ token }) {
                     aria-label="Tipo de persona"
                   >
                     <label
-                      className={`${styles.tipoPersonaChip} ${
+                      className={`${styles.tipoPersonaChip} ${styles.personaOpt} ${
                         tipoPersona === TIPO_PERSONA_FISICA
-                          ? styles.tipoPersonaChipActive
+                          ? `${styles.tipoPersonaChipActive} ${styles.personaOptActive}`
                           : ""
                       }`}
                     >
@@ -1063,9 +1063,9 @@ export default function DgiiIntakeForm({ token }) {
                       </span>
                     </label>
                     <label
-                      className={`${styles.tipoPersonaChip} ${
+                      className={`${styles.tipoPersonaChip} ${styles.personaOpt} ${
                         tipoPersona === TIPO_PERSONA_JURIDICA
-                          ? styles.tipoPersonaChipActive
+                          ? `${styles.tipoPersonaChipActive} ${styles.personaOptActive}`
                           : ""
                       }`}
                     >

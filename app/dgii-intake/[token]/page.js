@@ -33,7 +33,10 @@ export default async function DgiiIntakePublicPage({ params }) {
       ).catch(() => {});
     }
     return (
-      <div className={`${styles.page} ${jakarta.variable}`}>
+      <div
+        className={`${styles.page} ${jakarta.variable}`}
+        data-dgii-intake-page=""
+      >
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -52,7 +55,10 @@ export default async function DgiiIntakePublicPage({ params }) {
   }
 
   return (
-    <div className={`${styles.page} ${jakarta.variable}`}>
+    <div
+      className={`${styles.page} ${jakarta.variable}`}
+      data-dgii-intake-page=""
+    >
       <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"

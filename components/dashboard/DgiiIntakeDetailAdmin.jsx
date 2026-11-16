@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FiExternalLink } from "react-icons/fi";
 import DgiiIntakeReadView, {
   formatDate,
 } from "@/components/dgii-intake/DgiiIntakeReadView";
@@ -324,6 +325,28 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
           >
             Reenviar
           </button>
+          {intake.url && intake.status !== "expired" ? (
+            <a
+              href={intake.url}
+              target="_blank"
+              rel="noreferrer"
+              className={`${styles.btn} ${styles.btnWithIcon}`}
+              title="Abrir formulario del cliente en una pestaña nueva"
+            >
+              <FiExternalLink aria-hidden="true" />
+              Abrir formulario
+            </a>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnWithIcon}`}
+              disabled
+              title="El enlace está vencido o revocado"
+            >
+              <FiExternalLink aria-hidden="true" />
+              Abrir formulario
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.btn} ${styles.btnDanger}`}

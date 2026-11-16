@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { FiExternalLink } from "react-icons/fi";
 import styles from "./DgiiIntakesList.module.css";
 
 function formatDate(d) {
@@ -196,6 +197,28 @@ export default function DgiiIntakesList() {
                         >
                           Ver
                         </Link>
+                        {row.url && row.status !== "expired" ? (
+                          <a
+                            href={row.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.btn}
+                            title="Abrir formulario del cliente en una pestaña nueva"
+                          >
+                            <FiExternalLink aria-hidden="true" />
+                            Abrir
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.btn}
+                            disabled
+                            title="El enlace está vencido o revocado"
+                          >
+                            <FiExternalLink aria-hidden="true" />
+                            Abrir
+                          </button>
+                        )}
                         <button
                           type="button"
                           className={styles.btn}

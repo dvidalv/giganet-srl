@@ -457,6 +457,14 @@
   cursor: not-allowed;
 }
 
+.btnWithIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-decoration: none;
+}
+
 .btnPrimary {
   background: linear-gradient(
     135deg,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FiUpload } from "react-icons/fi";
 import styles from "./DgiiIntakeForm.module.css";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/labels";
-import { LOGO_MAX_BYTES } from "@/lib/dgiiIntake/fileSlots";
+import { LOGO_MAX_BYTES, MAX_UPLOAD_BYTES } from "@/lib/dgiiIntake/fileSlots";
 import {
   requiresRegistroMercantil,
   TIPO_PERSONA_FISICA,
@@ -238,15 +238,60 @@ export default function DgiiIntakeForm({ token }) {
         return;
       }
     }
+    if (slot !== "logo" && file.size > MAX_UPLOAD_BYTES) {
+      setError("El archivo supera el máximo de 8 MB");
+      return;
+    }
     setUploading(slot);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append("slot", slot);
-      fd.append("file", file);
-      const res = await fetch(`/api/dgii-intake/${token}/upload`, {
+      const mimeType = file.type || "application/octet-stream";
+      const signRes = await fetch(`/api/dgii-intake/${token}/upload/sign`, {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot,
+          fileName: file.name,
+          mimeType,
+          size: file.size,
+        }),
+      });
+      const signed = await signRes.json().catch(() => ({}));
+      if (!signRes.ok) {
+        setError(signed.error || "Error al subir archivo");
+        return;
+      }
+
+      // Direct to Cloudinary: Vercel functions reject bodies over 4.5 MB.
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(signed.fields || {})) {
+        fd.append(k, String(v));
+      }
+      fd.append("file", file);
+      const cldRes = await fetch(signed.uploadUrl, { method: "POST", body: fd });
+      const cld = await cldRes.json().catch(() => ({}));
+      if (!cldRes.ok) {
+        const msg = String(cld?.error?.message || "");
+        setError(
+          /format/i.test(msg)
+            ? "Formato de archivo no válido para esta casilla."
+            : /size|large/i.test(msg)
+              ? "El archivo es demasiado grande."
+              : "Error al subir archivo",
+        );
+        return;
+      }
+
+      const res = await fetch(`/api/dgii-intake/${token}/upload/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slot,
+          publicId: cld.public_id || signed.publicId,
+          resourceType: signed.resourceType,
+          originalName: file.name,
+          mimeType,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

@@ -105,6 +105,63 @@ export async function uploadDgiiIntakeFile(dataUri, opts = {}) {
 }
 
 /**
+ * Sign a direct browser → Cloudinary upload for a DGII intake file.
+ * The browser never sees the API secret; the signature locks public_id,
+ * delivery type and (for images) the accepted formats.
+ * @param {{ publicId: string, resourceType: "image"|"raw", allowedFormats?: string }} opts
+ */
+export async function signDgiiIntakeDirectUpload(opts) {
+  const cloudinary = await getCloudinary();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    public_id: opts.publicId,
+    timestamp,
+    type: "authenticated",
+  };
+  if (opts.allowedFormats) params.allowed_formats = opts.allowedFormats;
+
+  const signature = cloudinary.utils.api_sign_request(
+    params,
+    process.env.CLOUDINARY_API_SECRET
+  );
+
+  return {
+    uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/${opts.resourceType}/upload`,
+    fields: {
+      ...params,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      signature,
+    },
+  };
+}
+
+/**
+ * Look up an authenticated DGII intake asset (source of truth for size/URL
+ * after a direct upload). Returns null when the asset does not exist.
+ * @param {string} publicId
+ * @param {"image"|"raw"} resourceType
+ */
+export async function getDgiiIntakeFileResource(publicId, resourceType) {
+  const cloudinary = await getCloudinary();
+  try {
+    const r = await cloudinary.api.resource(publicId, {
+      resource_type: resourceType,
+      type: "authenticated",
+    });
+    return {
+      url: r.secure_url,
+      publicId: r.public_id,
+      bytes: r.bytes || 0,
+      format: r.format || "",
+    };
+  } catch (err) {
+    const code = err?.error?.http_code || err?.http_code;
+    if (code === 404) return null;
+    throw err;
+  }
+}
+
+/**
  * Delete a DGII intake Cloudinary asset (authenticated image or raw).
  * Best-effort: missing assets are treated as already gone.
  * @param {string} publicId

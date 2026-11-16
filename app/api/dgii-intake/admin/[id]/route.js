@@ -45,16 +45,38 @@ const FILE_SLOT_KEYS = [
   "certificadoP12",
 ];
 
+/** PDFs and P-12 are uploaded as Cloudinary `raw`; images as `image`. */
+function resourceTypeForFileMeta(slot, meta) {
+  const mime = String(meta?.mimeType || "").toLowerCase();
+  const name = String(meta?.originalName || "").toLowerCase();
+  const isRaw =
+    slot === "certificadoP12" ||
+    mime.includes("pdf") ||
+    mime.includes("pkcs12") ||
+    name.endsWith(".pdf") ||
+    name.endsWith(".p12") ||
+    name.endsWith(".pfx");
+  return isRaw ? "raw" : "image";
+}
+
+/** Best-effort: a missing or invalid asset never blocks deleting the intake. */
 async function deleteIntakeCloudinaryFiles(intake) {
-  const files = intake.files || {};
+  const files = intake?.files || {};
   await Promise.all(
     FILE_SLOT_KEYS.map(async (slot) => {
       const meta = files[slot];
-      if (!meta?.publicId) return;
+      const publicId = String(meta?.publicId || "").trim();
+      if (!publicId) return;
       try {
-        await deleteDgiiIntakeFile(meta.publicId, {
-          resourceType: slot === "certificadoP12" ? "raw" : "image",
+        const result = await deleteDgiiIntakeFile(publicId, {
+          resourceType: resourceTypeForFileMeta(slot, meta),
         });
+        if (result?.result !== "ok" && result?.result !== "not found") {
+          console.error(
+            `DGII intake delete file ${slot}: unexpected result`,
+            result?.result
+          );
+        }
       } catch (err) {
         console.error(
           `DGII intake delete file ${slot}:`,
@@ -65,17 +87,44 @@ async function deleteIntakeCloudinaryFiles(intake) {
   );
 }
 
-/** Admin payload + linked User.empresa.rnc for delete confirmation. */
+const ORPHAN_CONFIRM_WORD = "ELIMINAR";
+
+/**
+ * What the admin must type to confirm deletion.
+ * Linked user → User.empresa.rnc. Orphan (no userId or user gone) →
+ * intake.empresa.rnc, or ORPHAN_CONFIRM_WORD when the intake has no RNC.
+ */
+async function resolveDeleteConfirmation(intake) {
+  const linkedUser = intake.userId
+    ? await User.findById(intake.userId).select("role empresa.rnc")
+    : null;
+  if (linkedUser) {
+    return {
+      linkedUser,
+      orphan: false,
+      expected: normalizeRnc(linkedUser.empresa?.rnc),
+    };
+  }
+  const intakeRnc = normalizeRnc(intake.empresa?.rnc);
+  return {
+    linkedUser: null,
+    orphan: true,
+    expected: intakeRnc || ORPHAN_CONFIRM_WORD,
+  };
+}
+
+function confirmationMatches(typed, expected) {
+  const t = normalizeRnc(typed).toUpperCase();
+  return Boolean(expected) && t === String(expected).toUpperCase();
+}
+
+/** Admin payload + delete confirmation value for the modal. */
 async function adminIntakePayload(intake, root) {
   const payload = buildIntakeViewPayload(intake, root);
-  let userEmpresaRnc = "";
-  if (intake.userId) {
-    const linked = await User.findById(intake.userId)
-      .select("empresa.rnc")
-      .lean();
-    userEmpresaRnc = normalizeRnc(linked?.empresa?.rnc);
-  }
-  payload.userEmpresaRnc = userEmpresaRnc;
+  const confirm = await resolveDeleteConfirmation(intake);
+  payload.userEmpresaRnc = confirm.orphan ? "" : confirm.expected;
+  payload.orphan = confirm.orphan;
+  payload.deleteConfirmValue = confirm.expected;
   return payload;
 }
 
@@ -224,28 +273,10 @@ export async function DELETE(request, { params }) {
   }
 
   const userId = intake.userId;
-  if (!userId) {
-    return NextResponse.json(
-      {
-        error:
-          "Este formulario no tiene usuario asociado. No se puede confirmar con RNC de usuario.",
-      },
-      { status: 400 }
-    );
-  }
+  const { linkedUser, orphan, expected } =
+    await resolveDeleteConfirmation(intake);
 
-  const linkedUser = await User.findById(userId).select("role empresa.rnc");
-  if (!linkedUser) {
-    return NextResponse.json(
-      { error: "Usuario asociado no encontrado" },
-      { status: 404 }
-    );
-  }
-
-  const typed = normalizeRnc(body?.rnc);
-  const stored = normalizeRnc(linkedUser.empresa?.rnc);
-
-  if (!stored) {
+  if (!orphan && !expected) {
     return NextResponse.json(
       {
         error:
@@ -255,11 +286,12 @@ export async function DELETE(request, { params }) {
     );
   }
 
-  if (!typed || typed !== stored) {
+  if (!confirmationMatches(body?.rnc, expected)) {
     return NextResponse.json(
       {
-        error:
-          "El RNC no coincide. Escriba el RNC del usuario (empresa) para confirmar.",
+        error: orphan
+          ? `La confirmación no coincide. Escriba ${expected} para eliminar este formulario huérfano.`
+          : "El RNC no coincide. Escriba el RNC del usuario (empresa) para confirmar.",
       },
       { status: 400 }
     );
@@ -267,6 +299,14 @@ export async function DELETE(request, { params }) {
 
   await deleteIntakeCloudinaryFiles(intake);
   await DgiiIntake.findByIdAndDelete(id);
+
+  if (orphan) {
+    return NextResponse.json({
+      ok: true,
+      userDeleted: false,
+      message: "Formulario DGII huérfano eliminado",
+    });
+  }
 
   let userDeleted = false;
   try {

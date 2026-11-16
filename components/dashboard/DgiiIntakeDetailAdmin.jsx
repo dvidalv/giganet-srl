@@ -218,17 +218,23 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
     }
   }
 
-  /** Confirm against linked User.empresa.rnc, not intake.empresa.rnc */
-  const storedRnc = normalizeRnc(intake?.userEmpresaRnc) || "";
+  /** Linked user → User.empresa.rnc; orphan → intake RNC or "ELIMINAR" (from API). */
+  const isOrphan = Boolean(intake?.orphan);
+  const storedRnc = isOrphan
+    ? String(intake?.deleteConfirmValue || "")
+    : normalizeRnc(intake?.userEmpresaRnc) || "";
+  const orphanNeedsWord = isOrphan && !/^\d+$/.test(storedRnc);
   const rncMatches =
-    Boolean(normalizeRnc(storedRnc)) &&
-    normalizeRnc(deleteRnc) === normalizeRnc(storedRnc);
+    Boolean(storedRnc) &&
+    normalizeRnc(deleteRnc).toUpperCase() === storedRnc.toUpperCase();
 
   async function submitDelete(e) {
     e.preventDefault();
     if (!rncMatches) {
       setDeleteError(
-        "El RNC no coincide. Escriba el RNC del usuario (con o sin guiones)."
+        isOrphan
+          ? `La confirmación no coincide. Escriba ${storedRnc}.`
+          : "El RNC no coincide. Escriba el RNC del usuario (con o sin guiones)."
       );
       return;
     }
@@ -610,19 +616,34 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
                 ×
               </button>
             </div>
-            <p className={styles.modalBodyText}>
-              Esta acción no se puede deshacer. Escriba el RNC del usuario
-              {storedRnc ? (
-                <>
-                  {" "}
-                  (<strong>{storedRnc}</strong>)
-                </>
-              ) : null}{" "}
-              para confirmar. Se aceptan guiones o solo dígitos.
-            </p>
+            {isOrphan ? (
+              <p className={styles.modalBodyText}>
+                Este formulario no tiene usuario asociado. Esta acción no se
+                puede deshacer. Escriba{" "}
+                {orphanNeedsWord ? "la palabra" : "el RNC del formulario"} (
+                <strong>{storedRnc}</strong>) para confirmar.
+              </p>
+            ) : (
+              <p className={styles.modalBodyText}>
+                Esta acción no se puede deshacer. Escriba el RNC del usuario
+                {storedRnc ? (
+                  <>
+                    {" "}
+                    (<strong>{storedRnc}</strong>)
+                  </>
+                ) : null}{" "}
+                para confirmar. Se aceptan guiones o solo dígitos.
+              </p>
+            )}
             <form onSubmit={submitDelete}>
               <label className={styles.confirmField}>
-                <span>RNC del usuario</span>
+                <span>
+                  {isOrphan
+                    ? orphanNeedsWord
+                      ? "Confirmación"
+                      : "RNC del formulario"
+                    : "RNC del usuario"}
+                </span>
                 <input
                   className={styles.confirmInput}
                   value={deleteRnc}
@@ -633,10 +654,12 @@ export default function DgiiIntakeDetailAdmin({ intakeId }) {
                   autoComplete="off"
                   autoFocus
                   disabled={busy}
-                  placeholder="123-45678-9 o 123456789"
+                  placeholder={
+                    orphanNeedsWord ? storedRnc : "123-45678-9 o 123456789"
+                  }
                 />
               </label>
-              {!storedRnc ? (
+              {!isOrphan && !storedRnc ? (
                 <p className={styles.confirmError}>
                   El usuario asociado no tiene RNC; no se puede confirmar la
                   eliminación hasta que exista un RNC en su empresa.

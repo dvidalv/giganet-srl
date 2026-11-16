@@ -1022,11 +1022,7 @@ export default function DgiiIntakeForm({ token }) {
             </div>
             <div className={styles.sectionBody}>
               <div className={styles.grid}>
-                <fieldset className={`${styles.field} ${styles.fieldFull}`}>
-                  <legend className={styles.label}>
-                    Tipo de persona
-                    <span className={styles.requiredMark}> *</span>
-                  </legend>
+                <div className={`${styles.field} ${styles.fieldFull}`}>
                   <div
                     className={styles.tipoPersonaToggle}
                     role="radiogroup"
@@ -1093,7 +1089,7 @@ export default function DgiiIntakeForm({ token }) {
                       </span>
                     </label>
                   </div>
-                </fieldset>
+                </div>
 
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="emp-rnc">

@@ -743,6 +743,7 @@ export default function DgiiIntakeForm({ token }) {
 
       <div className={styles.layout}>
         <aside className={styles.sidebar}>
+          <div className={styles.sidebarPin}>
           <div className={styles.progressCard}>
             <div className={styles.progressTop}>
               <div className={styles.ringWrap} aria-hidden="true">
@@ -920,6 +921,7 @@ export default function DgiiIntakeForm({ token }) {
                 DGII.
               </p>
             </div>
+          </div>
           </div>
         </aside>
 

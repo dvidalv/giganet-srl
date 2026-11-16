@@ -195,10 +195,34 @@
   gap: 1rem;
 }
 
+/* Pin stays in document flow on small screens; fixed on desktop.
+   (html/body overflow-x:hidden breaks position:sticky.) */
+.sidebarPin {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 @media (min-width: 1024px) {
   .sidebar {
-    position: sticky;
+    /* Placeholder so the grid keeps the 290px column while the pin is fixed */
+    width: 290px;
+    min-height: 1px;
+  }
+
+  .sidebarPin {
+    position: fixed;
     top: calc(var(--fixedTopOffset, 0px) + 5.25rem);
+    /* Align with centered max-width 80rem wrap inside page padding */
+    left: max(1rem, calc((100vw - 80rem) / 2));
+    width: 290px;
+    max-height: calc(
+      100dvh - var(--fixedTopOffset, 0px) - 5.25rem - 5.5rem
+    );
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 20;
   }
 }
 

@@ -74,6 +74,12 @@ const dgiiIntakeSchema = new Schema(
     },
     clientEmail: { type: String, default: "", maxlength: 254 },
     clientName: { type: String, default: "", maxlength: 120 },
+    /** "fisica" | "juridica" — drives Registro Mercantil visibility/requirement */
+    tipoPersona: {
+      type: String,
+      enum: ["", "fisica", "juridica"],
+      default: "",
+    },
     empresa: {
       rnc: { type: String, default: "", maxlength: 11 },
       nombre: { type: String, default: "", maxlength: 200 },
@@ -97,6 +103,10 @@ const dgiiIntakeSchema = new Schema(
       factura3: { type: fileMetaSchema, default: () => ({}) },
       factura4: { type: fileMetaSchema, default: () => ({}) },
       factura5: { type: fileMetaSchema, default: () => ({}) },
+      /** Required only when tipoPersona === "juridica" */
+      registroMercantil: { type: fileMetaSchema, default: () => ({}) },
+      /** Company logo image — must be under 5 MB */
+      logo: { type: fileMetaSchema, default: () => ({}) },
       certificadoP12: { type: fileMetaSchema, default: () => ({}) },
     },
     /** Encrypted at rest — never returned decrypted to the client */
@@ -114,9 +124,15 @@ const dgiiIntakeSchema = new Schema(
   }
 );
 
-// HMR can leave a cached model compiled before agentToken existed; recreate
+// HMR can leave a cached model compiled before newer paths existed; recreate
 // so strict updates no longer strip those paths.
-if (models.DgiiIntake && !models.DgiiIntake.schema.path("agentToken")) {
+if (
+  models.DgiiIntake &&
+  (!models.DgiiIntake.schema.path("agentToken") ||
+    !models.DgiiIntake.schema.path("tipoPersona") ||
+    !models.DgiiIntake.schema.path("files.registroMercantil") ||
+    !models.DgiiIntake.schema.path("files.logo"))
+) {
   delete models.DgiiIntake;
 }
 

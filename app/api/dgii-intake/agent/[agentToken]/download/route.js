@@ -11,6 +11,8 @@ const SLOTS = new Set([
   "factura3",
   "factura4",
   "factura5",
+  "registroMercantil",
+  "logo",
   "certificadoP12",
 ]);
 

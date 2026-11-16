@@ -39,6 +39,8 @@ const FILE_SLOT_KEYS = [
   "factura3",
   "factura4",
   "factura5",
+  "registroMercantil",
+  "logo",
   "certificadoP12",
 ];
 

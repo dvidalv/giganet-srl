@@ -4,9 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { FiUpload } from "react-icons/fi";
 import styles from "./DgiiIntakeForm.module.css";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/labels";
+import { LOGO_MAX_BYTES } from "@/lib/dgiiIntake/fileSlots";
+import {
+  requiresRegistroMercantil,
+  TIPO_PERSONA_FISICA,
+  TIPO_PERSONA_JURIDICA,
+} from "@/lib/dgiiIntake/tipoPersona";
 
 const DOC_ACCEPT =
   "image/jpeg,image/png,image/webp,application/pdf,.pdf";
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
 const CEDULA_SLOTS = [
   {
@@ -30,6 +37,22 @@ const FACTURA_SLOTS = [
   { key: "factura4", label: "Factura 4", accept: DOC_ACCEPT },
   { key: "factura5", label: "Factura 5", accept: DOC_ACCEPT },
 ];
+
+const REGISTRO_MERCANTIL_SLOT = {
+  key: "registroMercantil",
+  label: "Registro Mercantil",
+  hint: "Obligatorio para persona jurídica (imagen o PDF)",
+  accept: DOC_ACCEPT,
+};
+
+const LOGO_SLOT = {
+  key: "logo",
+  label: "Logo",
+  hint: "Imagen JPG, PNG, WebP o GIF — menos de 5 MB",
+  accept: IMAGE_ACCEPT,
+  imageOnly: true,
+  maxBytes: LOGO_MAX_BYTES,
+};
 
 const P12_SLOT = {
   key: "certificadoP12",
@@ -74,6 +97,7 @@ export default function DgiiIntakeForm({ token }) {
   const [successOpen, setSuccessOpen] = useState(false);
   const [preview, setPreview] = useState(null);
 
+  const [tipoPersona, setTipoPersona] = useState("");
   const [empresa, setEmpresa] = useState({
     rnc: "",
     nombre: "",
@@ -95,6 +119,7 @@ export default function DgiiIntakeForm({ token }) {
 
   const applyIntake = useCallback((data) => {
     setIntake(data);
+    setTipoPersona(data.tipoPersona || "");
     setEmpresa({
       rnc: data.empresa?.rnc || "",
       nombre: data.empresa?.nombre || "",
@@ -142,6 +167,7 @@ export default function DgiiIntakeForm({ token }) {
     setError(null);
     try {
       const payload = {
+        tipoPersona,
         empresa,
         representante,
         secrets: {
@@ -194,6 +220,21 @@ export default function DgiiIntakeForm({ token }) {
         "Elimine el archivo actual antes de subir uno nuevo en esta casilla.",
       );
       return;
+    }
+    if (slot === "logo") {
+      const name = String(file.name || "").toLowerCase();
+      const mime = String(file.type || "").toLowerCase();
+      const isImage =
+        mime.startsWith("image/") ||
+        /\.(jpe?g|png|gif|webp)$/i.test(name);
+      if (!isImage) {
+        setError("El logo debe ser una imagen (JPG, PNG, WebP o GIF)");
+        return;
+      }
+      if (file.size >= LOGO_MAX_BYTES) {
+        setError("El logo debe ser una imagen de menos de 5 MB.");
+        return;
+      }
     }
     setUploading(slot);
     setError(null);
@@ -272,6 +313,7 @@ export default function DgiiIntakeForm({ token }) {
   };
   const isMarkedComplete = intake?.status === "complete";
   const canMarkComplete = completion.isComplete && !isMarkedComplete;
+  const showRegistroMercantil = requiresRegistroMercantil(tipoPersona);
 
   function renderFileSlot({ key, label, hint, accept }) {
     const file = intake?.files?.[key];
@@ -441,6 +483,65 @@ export default function DgiiIntakeForm({ token }) {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Datos de la empresa</h2>
         <div className={styles.grid}>
+          <fieldset className={`${styles.field} ${styles.fieldFull}`}>
+            <legend className={styles.label}>
+              Tipo de persona
+              <span className={styles.requiredMark} aria-hidden="true">
+                {" "}
+                *
+              </span>
+            </legend>
+            <div
+              className={styles.tipoPersonaToggle}
+              role="radiogroup"
+              aria-label="Tipo de persona"
+            >
+              <label
+                className={`${styles.tipoPersonaChip} ${
+                  tipoPersona === TIPO_PERSONA_FISICA
+                    ? styles.tipoPersonaChipActive
+                    : ""
+                }`}
+              >
+                <input
+                  className={styles.tipoPersonaInput}
+                  type="radio"
+                  name="tipoPersona"
+                  value={TIPO_PERSONA_FISICA}
+                  checked={tipoPersona === TIPO_PERSONA_FISICA}
+                  onChange={() => setTipoPersona(TIPO_PERSONA_FISICA)}
+                />
+                <span className={styles.tipoPersonaChipTitle}>
+                  Persona física
+                </span>
+                <span className={styles.tipoPersonaChipHint}>
+                  Contribuyente individual
+                </span>
+              </label>
+              <label
+                className={`${styles.tipoPersonaChip} ${
+                  tipoPersona === TIPO_PERSONA_JURIDICA
+                    ? styles.tipoPersonaChipActive
+                    : ""
+                }`}
+              >
+                <input
+                  className={styles.tipoPersonaInput}
+                  type="radio"
+                  name="tipoPersona"
+                  value={TIPO_PERSONA_JURIDICA}
+                  checked={tipoPersona === TIPO_PERSONA_JURIDICA}
+                  onChange={() => setTipoPersona(TIPO_PERSONA_JURIDICA)}
+                />
+                <span className={styles.tipoPersonaChipTitle}>
+                  Persona jurídica
+                </span>
+                <span className={styles.tipoPersonaChipHint}>
+                  Empresa o sociedad
+                </span>
+              </label>
+            </div>
+          </fieldset>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="emp-rnc">
               RNC
@@ -612,9 +713,42 @@ export default function DgiiIntakeForm({ token }) {
           </ul>
         </div>
 
+        {showRegistroMercantil ? (
+          <div className={styles.docGroup}>
+            <div className={styles.docGroupHeader}>
+              <h3 className={styles.docGroupTitle}>3. Registro Mercantil</h3>
+              <p className={styles.docGroupDesc}>
+                Obligatorio para persona jurídica (imagen o PDF).
+              </p>
+            </div>
+            <ul
+              className={`${styles.docChecklist} ${styles.docChecklistSingle}`}
+            >
+              {renderFileSlot(REGISTRO_MERCANTIL_SLOT)}
+            </ul>
+          </div>
+        ) : null}
+
         <div className={styles.docGroup}>
           <div className={styles.docGroupHeader}>
-            <h3 className={styles.docGroupTitle}>3. Certificado P-12</h3>
+            <h3 className={styles.docGroupTitle}>
+              {showRegistroMercantil ? "4" : "3"}. Logo
+            </h3>
+            <p className={styles.docGroupDesc}>
+              Imagen del logo de la empresa (JPG, PNG, WebP o GIF), menor a 5
+              MB.
+            </p>
+          </div>
+          <ul className={`${styles.docChecklist} ${styles.docChecklistSingle}`}>
+            {renderFileSlot(LOGO_SLOT)}
+          </ul>
+        </div>
+
+        <div className={styles.docGroup}>
+          <div className={styles.docGroupHeader}>
+            <h3 className={styles.docGroupTitle}>
+              {showRegistroMercantil ? "5" : "4"}. Certificado P-12
+            </h3>
             <p className={styles.docGroupDesc}>
               Suba el certificado digital (.p12 / .pfx). No tiene vista previa.
             </p>
@@ -653,7 +787,7 @@ export default function DgiiIntakeForm({ token }) {
         <div className={styles.docGroup}>
           <div className={styles.docGroupHeader}>
             <h3 className={styles.docGroupTitle}>
-              4. Certificación de portal e-CF
+              {showRegistroMercantil ? "6" : "5"}. Certificación de portal e-CF
             </h3>
             <p className={styles.docGroupDesc}>
               Credenciales del portal de certificación DGII (usuario RNC y

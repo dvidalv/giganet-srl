@@ -1,7 +1,8 @@
 "use client";
 
-import { DGII_FILE_SLOTS } from "@/lib/dgiiIntake/fileSlots";
+import { visibleDgiiFileSlots } from "@/lib/dgiiIntake/fileSlots";
 import { FIELD_LABELS } from "@/lib/dgiiIntake/labels";
+import { TIPO_PERSONA_LABELS } from "@/lib/dgiiIntake/tipoPersona";
 import styles from "./DgiiIntakeReadView.module.css";
 
 export function formatDate(d) {
@@ -83,7 +84,8 @@ export default function DgiiIntakeReadView({
   const percent = completion.percent ?? 0;
   const missing = completion.missing || [];
   const uiStatus = displayStatus(intake);
-  const hasAnyDocument = DGII_FILE_SLOTS.some(
+  const fileSlots = visibleDgiiFileSlots(intake?.tipoPersona);
+  const hasAnyDocument = fileSlots.some(
     ({ key }) => intake.files?.[key]?.hasFile
   );
 
@@ -159,6 +161,14 @@ export default function DgiiIntakeReadView({
             Empresa
           </h2>
           <div className={styles.grid}>
+            <Field
+              label="Tipo de persona"
+              value={
+                TIPO_PERSONA_LABELS[intake.tipoPersona] ||
+                intake.tipoPersona ||
+                "—"
+              }
+            />
             <Field label="RNC" value={intake.empresa?.rnc} />
             <Field label="Nombre" value={intake.empresa?.nombre} />
             <Field label="Razón social" value={intake.empresa?.razonSocial} />
@@ -196,7 +206,7 @@ export default function DgiiIntakeReadView({
             ) : null}
           </div>
           <div className={styles.docGrid}>
-            {DGII_FILE_SLOTS.map(({ key, label }) => {
+            {fileSlots.map(({ key, label }) => {
               const file = intake.files?.[key];
               const has = Boolean(file?.hasFile);
               return (
@@ -211,7 +221,9 @@ export default function DgiiIntakeReadView({
                     <p className={styles.docName}>
                       {has
                         ? file.originalName || "Archivo subido"
-                        : "Pendiente"}
+                        : key === "logo"
+                          ? "Sin logo"
+                          : "Pendiente"}
                     </p>
                   </div>
                   <div className={styles.docActions}>

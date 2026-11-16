@@ -5,6 +5,8 @@ import {
   uploadDgiiIntakeFile,
 } from "@/utils/cloudinary";
 import { serializeIntakeForClient } from "@/lib/dgiiIntake/serialize";
+import { LOGO_MAX_BYTES } from "@/lib/dgiiIntake/fileSlots";
+import { requiresRegistroMercantil } from "@/lib/dgiiIntake/tipoPersona";
 
 const ALLOWED_SLOTS = new Set([
   "cedula",
@@ -15,6 +17,8 @@ const ALLOWED_SLOTS = new Set([
   "factura3",
   "factura4",
   "factura5",
+  "registroMercantil",
+  "logo",
   "certificadoP12",
 ]);
 
@@ -42,7 +46,25 @@ function acceptForSlot(slot, mime, name) {
       lower.endsWith(".pfx")
     );
   }
+  if (slot === "logo") {
+    return (
+      IMAGE_TYPES.has(mime) ||
+      /\.(jpe?g|png|gif|webp)$/i.test(lower)
+    );
+  }
   return DOC_TYPES.has(mime) || lower.endsWith(".pdf");
+}
+
+function maxBytesForSlot(slot) {
+  if (slot === "logo") return LOGO_MAX_BYTES;
+  return MAX_BYTES;
+}
+
+function sizeErrorForSlot(slot) {
+  if (slot === "logo") {
+    return "El logo debe ser una imagen de menos de 5 MB.";
+  }
+  return "El archivo supera el máximo de 8 MB";
 }
 
 async function loadOpenIntake(token) {
@@ -84,6 +106,18 @@ export async function POST(request, { params }) {
   if (!ALLOWED_SLOTS.has(slot)) {
     return NextResponse.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
   }
+  if (
+    slot === "registroMercantil" &&
+    !requiresRegistroMercantil(intake.tipoPersona)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "El Registro Mercantil solo aplica a persona jurídica. Seleccione ese tipo primero.",
+      },
+      { status: 400 },
+    );
+  }
   if (intake.files?.[slot]?.url || intake.files?.[slot]?.publicId) {
     return NextResponse.json(
       {
@@ -105,23 +139,28 @@ export async function POST(request, { params }) {
         error:
           slot === "certificadoP12"
             ? "Suba un certificado .p12 o .pfx"
-            : "Suba PDF o imagen (JPG/PNG/WebP)",
+            : slot === "logo"
+              ? "El logo debe ser una imagen (JPG, PNG, WebP o GIF)"
+              : "Suba PDF o imagen (JPG/PNG/WebP)",
       },
       { status: 400 }
     );
   }
 
-  if (typeof file.size === "number" && file.size > MAX_BYTES) {
+  const slotMax = maxBytesForSlot(slot);
+  const tooLarge = (n) =>
+    slot === "logo" ? n >= slotMax : n > slotMax;
+  if (typeof file.size === "number" && tooLarge(file.size)) {
     return NextResponse.json(
-      { error: "El archivo supera el máximo de 8 MB" },
+      { error: sizeErrorForSlot(slot) },
       { status: 400 }
     );
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (buffer.length > MAX_BYTES) {
+  if (tooLarge(buffer.length)) {
     return NextResponse.json(
-      { error: "El archivo supera el máximo de 8 MB" },
+      { error: sizeErrorForSlot(slot) },
       { status: 400 }
     );
   }

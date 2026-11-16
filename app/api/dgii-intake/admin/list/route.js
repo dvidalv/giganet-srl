@@ -100,6 +100,8 @@ export async function GET(request) {
           factura3: Boolean(plain.files?.factura3?.url),
           factura4: Boolean(plain.files?.factura4?.url),
           factura5: Boolean(plain.files?.factura5?.url),
+          registroMercantil: Boolean(plain.files?.registroMercantil?.url),
+          logo: Boolean(plain.files?.logo?.url),
           certificadoP12: Boolean(plain.files?.certificadoP12?.url),
         },
       };

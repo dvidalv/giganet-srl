@@ -9,6 +9,7 @@ import {
   buildIntakePublicUrl,
   resolveDgiiIntakePublicBaseUrl,
 } from "@/lib/dgiiIntake/createForUser";
+import { normalizeTipoPersona } from "@/lib/dgiiIntake/tipoPersona";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -78,6 +79,15 @@ export async function PATCH(request, { params }) {
 
   const markComplete = body.markComplete === true;
   const errors = {};
+
+  if (body.tipoPersona !== undefined) {
+    const tipo = normalizeTipoPersona(body.tipoPersona);
+    if (body.tipoPersona && !tipo) {
+      errors.tipoPersona = "Seleccione persona física o jurídica.";
+    } else {
+      intake.tipoPersona = tipo;
+    }
+  }
 
   if (body.empresa && typeof body.empresa === "object") {
     const e = body.empresa;

@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Types } from "mongoose";
 import Encuesta from "@/app/models/encuesta";
+import EncuestaPublishToggle from "@/components/dashboard/EncuestaPublishToggle";
 import styles from "./page.module.css";
 
 function formatDate(d) {
@@ -36,8 +37,13 @@ export default async function EncuestaDetallePage({ params }) {
   }
 
   const emp = e.empresa || {};
+  const recipient = e.recipient || {};
   const a = e.answers || null;
-  const empresaName = emp.razonSocial || emp.nombre || emp.rnc || "Empresa";
+  const standalone = e.standalone === true;
+  const title =
+    (standalone
+      ? recipient.name || recipient.organization || emp.nombre
+      : emp.razonSocial || emp.nombre || emp.rnc) || "Encuesta";
 
   return (
     <div className={styles.wrap}>
@@ -46,21 +52,56 @@ export default async function EncuestaDetallePage({ params }) {
       </Link>
 
       <div className={styles.card}>
-        <h1 className={styles.title}>{empresaName}</h1>
+        <h1 className={styles.title}>{title}</h1>
         <p className={styles.meta}>
           Estado: <strong>{e.status}</strong>
           {" · "}
-          RNC: {emp.rnc || "—"}
+          Origen: <strong>{standalone ? "Manual" : "Empresa"}</strong>
+          {!standalone ? ` · RNC: ${emp.rnc || "—"}` : ""}
           {" · "}
           Enviada: {formatDate(e.sentAt || e.createdAt)}
           {e.respondedAt ? ` · Respondida: ${formatDate(e.respondedAt)}` : ""}
         </p>
 
-        <div className={styles.sectionTitle}>Datos de contacto (snapshot)</div>
-        <div className={styles.row}>
-          <span>Email empresa</span>
-          <span>{emp.email || "—"}</span>
-        </div>
+        {e.status === "responded" ? (
+          <div className={styles.publishBox}>
+            <div className={styles.sectionTitle}>Testimonio en inicio</div>
+            <EncuestaPublishToggle
+              encuestaId={String(e._id)}
+              initialPublishOnHome={e.publishOnHome === true}
+            />
+          </div>
+        ) : null}
+
+        {standalone ? (
+          <>
+            <div className={styles.sectionTitle}>Destinatario</div>
+            <div className={styles.row}>
+              <span>Nombre</span>
+              <span>{recipient.name || "—"}</span>
+            </div>
+            <div className={styles.row}>
+              <span>Email</span>
+              <span>{recipient.email || emp.email || "—"}</span>
+            </div>
+            <div className={styles.row}>
+              <span>Teléfono</span>
+              <span>{recipient.phone || "—"}</span>
+            </div>
+            <div className={styles.row}>
+              <span>Organización</span>
+              <span>{recipient.organization || "—"}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.sectionTitle}>Datos de contacto (snapshot)</div>
+            <div className={styles.row}>
+              <span>Email empresa</span>
+              <span>{emp.email || "—"}</span>
+            </div>
+          </>
+        )}
 
         {(a?.nombreRespondiente || a?.emailRespondiente || a?.referenciaServicio) ? (
           <>

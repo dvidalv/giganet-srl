@@ -3,7 +3,9 @@ import Link from "next/link";
 import Image from "next/image";
 import AppsShowcase from "@/components/AppsShowcase";
 import ClientsCarousel from "@/components/ClientsCarousel";
+import TestimonialsSection from "@/components/TestimonialsSection";
 import DgiiPromoBanner from "@/components/DgiiPromoBanner";
+import { getPublicTestimonials } from "@/lib/encuestas/getPublicTestimonials";
 import {
   FaArrowRight,
   FaAws,
@@ -101,6 +103,8 @@ const mainServices = [
 ];
 
 export default async function Home() {
+  const testimonials = await getPublicTestimonials(9);
+
   return (
     <>
       <section id="hero" className={styles.heroContainer}>
@@ -433,6 +437,8 @@ export default async function Home() {
           <ClientsCarousel />
         </div>
       </section>
+
+      <TestimonialsSection initialTestimonials={testimonials} />
 
       <section className={styles.finalCtaSection}>
         <div className={styles.finalCtaCard}>

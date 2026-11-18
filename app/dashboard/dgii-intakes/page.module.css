@@ -23,12 +23,12 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 0.25rem 0;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .subtitle {
   font-size: 0.9375rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
   margin: 0;
   max-width: 40rem;
 }

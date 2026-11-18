@@ -20,12 +20,12 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 0.25rem 0;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .subtitle {
   font-size: 0.9375rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
   margin: 0;
 }
 
@@ -46,18 +46,18 @@
   flex-direction: column;
   gap: 0.35rem;
   padding: 1.15rem 1.25rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--dash-shadow);
   text-decoration: none;
   color: inherit;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 a.statCard:hover {
-  border-color: #99f6e4;
-  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.1);
+  border-color: var(--dash-primary-border);
+  box-shadow: 0 4px 14px rgba(255, 77, 0, 0.18);
   transform: translateY(-1px);
 }
 
@@ -67,14 +67,14 @@ a.statCard:hover {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--dash-text-muted);
 }
 
 .statNumber {
   margin: 0;
   font-size: 1.75rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--dash-text);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
@@ -82,23 +82,23 @@ a.statCard:hover {
 .statHint {
   margin: 0;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
   line-height: 1.35;
 }
 
 .statWarn .statNumber {
-  color: #b45309;
+  color: var(--dash-warn);
 }
 
 .statDanger .statNumber {
-  color: #b91c1c;
+  color: var(--dash-danger);
 }
 
 .foliosBlock {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--dash-shadow);
   padding: 1.25rem 1.35rem 1.4rem;
 }
 
@@ -115,13 +115,13 @@ a.statCard:hover {
   margin: 0 0 0.25rem;
   font-size: 1.125rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .foliosSubtitle {
   margin: 0;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
   max-width: 36rem;
   line-height: 1.45;
 }
@@ -134,9 +134,9 @@ a.statCard:hover {
 
 .metric {
   padding: 0.75rem 0.85rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--dash-border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--dash-bg-subtle);
 }
 
 .metricLabel {
@@ -145,21 +145,21 @@ a.statCard:hover {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--dash-text-muted);
 }
 
 .metricValue {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--dash-text);
   font-variant-numeric: tabular-nums;
 }
 
 .metricHint {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
   line-height: 1.35;
 }
 
@@ -170,17 +170,17 @@ a.statCard:hover {
 }
 
 .card {
-  background: #fff;
+  background: var(--dash-surface);
   padding: 1.35rem 1.4rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--dash-border);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--dash-shadow);
 }
 
 .cardTitle {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--dash-text);
   margin: 0 0 1rem 0;
 }
 
@@ -199,26 +199,26 @@ a.statCard:hover {
 .activityDot {
   width: 8px;
   height: 8px;
-  background: #0f766e;
+  background: var(--dash-primary);
   border-radius: 50%;
   margin-top: 0.45rem;
   flex-shrink: 0;
 }
 
 .activityDotAlert {
-  background: #d97706;
+  background: var(--dash-warn-strong);
 }
 
 .activityText {
   font-size: 0.9rem;
-  color: #334155;
+  color: var(--dash-text-secondary);
   margin: 0 0 0.2rem 0;
   font-weight: 500;
   line-height: 1.35;
 }
 
 .activityText a {
-  color: #0f766e;
+  color: var(--dash-primary);
   text-decoration: none;
   font-weight: 600;
 }
@@ -229,14 +229,14 @@ a.statCard:hover {
 
 .activityMeta {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--dash-text-muted);
   margin: 0;
 }
 
 .emptyActivity {
   margin: 0;
   font-size: 0.9rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
 }
 
 .quickLinks {
@@ -250,20 +250,20 @@ a.statCard:hover {
   align-items: center;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--dash-bg-subtle);
+  border: 1px solid var(--dash-border);
   border-radius: 10px;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--dash-text-secondary);
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .quickLink:hover {
-  background: #f0fdfa;
-  border-color: #99f6e4;
-  color: #0f766e;
+  background: var(--dash-primary-soft);
+  border-color: var(--dash-primary-border);
+  color: var(--dash-primary);
 }
 
 .quickLinkIcon {
@@ -273,8 +273,8 @@ a.statCard:hover {
   width: 2rem;
   height: 2rem;
   border-radius: 8px;
-  background: #ecfdf5;
-  color: #0f766e;
+  background: var(--dash-success-bg);
+  color: var(--dash-primary);
   font-size: 0.95rem;
   flex-shrink: 0;
 }

@@ -26,14 +26,20 @@ export async function GET() {
     const header = [
       "id",
       "userId",
+      "standalone",
       "status",
       "rnc",
       "razonSocial",
       "empresaNombre",
       "empresaEmail",
+      "recipientName",
+      "recipientEmail",
+      "recipientPhone",
+      "recipientOrganization",
       "sentAt",
       "respondedAt",
       "expiresAt",
+      "publishOnHome",
       "nombreRespondiente",
       "emailRespondiente",
       "referenciaServicio",
@@ -51,19 +57,26 @@ export async function GET() {
 
     for (const e of rows) {
       const emp = e.empresa || {};
+      const recipient = e.recipient || {};
       const a = e.answers || {};
       lines.push(
         [
           csvCell(e._id.toString()),
-          csvCell(e.userId?.toString?.()),
+          csvCell(e.userId?.toString?.() ?? ""),
+          csvCell(e.standalone === true ? "yes" : "no"),
           csvCell(e.status),
           csvCell(emp.rnc),
           csvCell(emp.razonSocial),
           csvCell(emp.nombre),
           csvCell(emp.email),
+          csvCell(recipient.name ?? ""),
+          csvCell(recipient.email ?? ""),
+          csvCell(recipient.phone ?? ""),
+          csvCell(recipient.organization ?? ""),
           csvCell(e.sentAt?.toISOString?.() ?? ""),
           csvCell(e.respondedAt?.toISOString?.() ?? ""),
           csvCell(e.expiresAt?.toISOString?.() ?? ""),
+          csvCell(e.publishOnHome === true ? "yes" : "no"),
           csvCell(a.nombreRespondiente ?? ""),
           csvCell(a.emailRespondiente ?? ""),
           csvCell(a.referenciaServicio ?? ""),
@@ -79,14 +92,15 @@ export async function GET() {
       );
     }
 
-    const csv = lines.join("\r\n");
+    // BOM helps Excel open UTF-8 CSV correctly; filename is always .csv
+    const csv = `\uFEFF${lines.join("\r\n")}`;
     const filename = `encuestas-${new Date().toISOString().slice(0, 10)}.csv`;
 
     return new NextResponse(csv, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${filename}`,
       },
     });
   } catch (err) {

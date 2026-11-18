@@ -41,15 +41,22 @@ export async function GET(request) {
 
     const encuestas = items.map((e) => ({
       id: e._id.toString(),
-      userId: e.userId?.toString?.() ?? String(e.userId),
+      userId: e.userId ? e.userId.toString() : null,
+      standalone: e.standalone === true,
       empresa: e.empresa || {},
+      recipient: e.recipient || {},
       token: e.token,
       status: e.status,
       expiresAt: e.expiresAt,
       sentAt: e.sentAt,
       respondedAt: e.respondedAt,
+      publishOnHome: e.publishOnHome === true,
       createdAt: e.createdAt,
       nps: e.answers?.nps ?? null,
+      hasQuote: Boolean(
+        String(e.answers?.comentarios || "").trim() ||
+          String(e.answers?.loQueMasGusta || "").trim()
+      ),
     }));
 
     return NextResponse.json({

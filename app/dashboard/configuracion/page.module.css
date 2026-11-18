@@ -5,7 +5,7 @@
  justify-content: center;
  align-items: center;
   gap: 1rem;
-  color: var(--text, #111);
+  color: var(--text, var(--dash-surface));
 }   
 
 .back {

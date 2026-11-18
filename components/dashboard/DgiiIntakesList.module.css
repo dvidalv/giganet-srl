@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .toolbar {
@@ -19,9 +19,9 @@
   font-size: 0.9375rem;
   font-family: inherit;
   border-radius: 10px;
-  border: 1.5px solid #e2e8f0;
-  background: #fff;
-  color: #0f172a;
+  border: 1.5px solid var(--dash-border);
+  background: var(--dash-surface);
+  color: var(--dash-text);
   min-height: 44px;
   box-sizing: border-box;
 }
@@ -33,7 +33,7 @@
 }
 
 .searchInput::placeholder {
-  color: #64748b;
+  color: var(--dash-text-muted);
 }
 
 .searchInput:focus,
@@ -48,41 +48,41 @@
 .empty {
   padding: 2rem;
   text-align: center;
-  color: #475569;
+  color: var(--dash-text-muted);
   font-size: 0.95rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
   border-radius: 12px;
 }
 
 .error {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
+  color: var(--dash-danger);
+  background: var(--dash-danger-bg);
+  border-color: var(--dash-danger-border);
 }
 
 .tableWrap {
   overflow-x: auto;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--dash-border);
+  background: var(--dash-surface);
+  box-shadow: var(--dash-shadow);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9375rem;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .table th,
 .table td {
   padding: 0.9rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--dash-border);
   vertical-align: middle;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .table th {
@@ -90,12 +90,12 @@
   font-size: 0.8125rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #334155;
-  background: #f1f5f9;
+  color: var(--dash-text-secondary);
+  background: var(--dash-surface-2);
 }
 
 .table tbody tr:hover td {
-  background: #f8fafc;
+  background: var(--dash-bg-subtle);
 }
 
 .table tr:last-child td {
@@ -104,12 +104,12 @@
 
 .clientName {
   font-weight: 650;
-  color: #0f172a;
+  color: var(--dash-text);
   font-size: 0.95rem;
 }
 
 .muted {
-  color: #475569;
+  color: var(--dash-text-muted);
   font-size: 0.875rem;
   line-height: 1.4;
 }
@@ -124,18 +124,18 @@
 }
 
 .chipProgress {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--dash-warn-bg);
+  color: var(--dash-warn-strong);
 }
 
 .chipComplete {
-  background: #dcfce7;
+  background: var(--dash-success-bg);
   color: #14532d;
 }
 
 .chipExpired {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--dash-border);
+  color: var(--dash-text-secondary);
 }
 
 .actions {
@@ -152,9 +152,9 @@
   padding: 0.45rem 0.75rem;
   min-height: 36px;
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #1e293b;
+  border: 1px solid var(--dash-border-strong);
+  background: var(--dash-surface);
+  color: var(--dash-surface-2);
   font-size: 0.8125rem;
   font-weight: 650;
   cursor: pointer;
@@ -165,31 +165,31 @@
 
 .btn:hover:not(:disabled) {
   border-color: #ff4d00;
-  color: #c2410c;
-  background: #fff7ed;
+  color: var(--dash-warn-strong);
+  background: var(--dash-warn-bg);
 }
 
 .btnPrimary {
   background: linear-gradient(135deg, #ff4d00, #ff6a25);
   border-color: transparent;
-  color: #fff;
+  color: var(--dash-text);
 }
 
 .btnPrimary:hover:not(:disabled) {
-  color: #fff;
+  color: var(--dash-text);
   background: linear-gradient(135deg, #ff4d00, #ff6a25);
   filter: brightness(1.05);
 }
 
 .btnDanger {
-  border-color: #fca5a5;
-  color: #b91c1c;
-  background: #fff;
+  border-color: var(--dash-danger-border);
+  color: var(--dash-danger);
+  background: var(--dash-surface);
 }
 
 .btnDanger:hover:not(:disabled) {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--dash-danger-bg);
+  color: var(--dash-danger-strong);
   border-color: #f87171;
 }
 
@@ -204,7 +204,7 @@
   justify-content: space-between;
   gap: 1rem;
   font-size: 0.9rem;
-  color: #334155;
+  color: var(--dash-text-secondary);
   font-weight: 500;
 }
 
@@ -212,24 +212,24 @@
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   /* Beat dark-mode body --foreground on white dialogs */
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .modal {
   width: min(720px, 100%);
   max-height: min(90vh, 900px);
   overflow: auto;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--dash-surface);
+  color: var(--dash-text);
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2);
+  border: 1px solid var(--dash-border);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   padding: 1.35rem 1.5rem 1.6rem;
 }
 
@@ -240,29 +240,29 @@
   gap: 1rem;
   margin-bottom: 1rem;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--dash-border);
 }
 
 .modalHeader h2 {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--dash-text);
   line-height: 1.3;
 }
 
 .modalBodyText {
   margin: 0 0 1rem;
-  color: #1e293b;
+  color: var(--dash-surface-2);
   font-size: 0.95rem;
   line-height: 1.5;
   font-weight: 500;
 }
 
 .modalClose {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #334155;
+  border: 1px solid var(--dash-border);
+  background: var(--dash-bg-subtle);
+  color: var(--dash-text-secondary);
   font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
@@ -277,33 +277,33 @@
 
 .modalClose:hover,
 .modalClose:focus-visible {
-  color: #0f172a;
-  background: #fff7ed;
-  border-color: #fed7aa;
+  color: var(--dash-text);
+  background: var(--dash-warn-bg);
+  border-color: var(--dash-warn-border);
   outline: none;
 }
 
 .modal .btn {
-  background: #ffffff;
-  color: #1e293b;
-  border: 1px solid #cbd5e1;
+  background: var(--dash-surface);
+  color: var(--dash-surface-2);
+  border: 1px solid var(--dash-border-strong);
 }
 
 .modal .btn:hover:not(:disabled) {
   border-color: #ff4d00;
-  color: #c2410c;
-  background: #fff7ed;
+  color: var(--dash-warn-strong);
+  background: var(--dash-warn-bg);
 }
 
 .modal .btnDanger {
-  border-color: #fca5a5;
-  color: #b91c1c;
-  background: #ffffff;
+  border-color: var(--dash-danger-border);
+  color: var(--dash-danger);
+  background: var(--dash-surface);
 }
 
 .modal .btnDanger:hover:not(:disabled) {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--dash-danger-bg);
+  color: var(--dash-danger-strong);
   border-color: #f87171;
 }
 
@@ -317,7 +317,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 700;
-  color: #c2410c;
+  color: var(--dash-warn-strong);
 }
 
 .grid {
@@ -328,7 +328,7 @@
 }
 
 .label {
-  color: #475569;
+  color: var(--dash-text-muted);
   display: block;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -336,7 +336,7 @@
 }
 
 .value {
-  color: #0f172a;
+  color: var(--dash-text);
   font-weight: 500;
   word-break: break-word;
   line-height: 1.4;
@@ -347,9 +347,9 @@
   word-break: break-all;
   padding: 0.75rem 0.85rem;
   border-radius: 8px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
+  background: var(--dash-warn-bg);
+  border: 1px solid var(--dash-warn-border);
+  color: var(--dash-warn-strong);
   line-height: 1.45;
 }
 
@@ -359,9 +359,9 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.55rem 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--dash-border);
   font-size: 0.9rem;
-  color: #0f172a;
+  color: var(--dash-text);
 }
 
 .toast {
@@ -373,15 +373,15 @@
 }
 
 .toastOk {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+  background: var(--dash-success-bg);
+  color: var(--dash-success);
+  border: 1px solid var(--dash-success-border);
 }
 
 .toastErr {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: var(--dash-danger-bg);
+  color: var(--dash-danger-strong);
+  border: 1px solid var(--dash-danger-border);
 }
 
 @media (max-width: 720px) {

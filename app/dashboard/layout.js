@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import Sidebar from "@/components/dashboard/Sidebar";
 // import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import styles from "./layout.module.css";
+import "./dashboard-theme.css";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({ children }) {
@@ -12,7 +13,7 @@ export default async function DashboardLayout({ children }) {
   }
 
   return (
-    <div className={styles.dashboardLayout}>
+    <div className={`${styles.dashboardLayout} dashboardTheme`}>
       <div className={styles.sidebarWrapper}>
         <Sidebar user={user} />
       </div>

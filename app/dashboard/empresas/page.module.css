@@ -16,11 +16,11 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0 0 0.25rem 0;
-  color: var(--text, #111);
+  color: var(--text, var(--dash-surface));
 }
 
 .subtitle {
   font-size: 0.9375rem;
-  color: var(--textSecondary, #6b7280);
+  color: var(--textSecondary, var(--dash-text-dim));
   margin: 0;
 }   

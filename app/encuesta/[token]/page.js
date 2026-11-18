@@ -16,10 +16,18 @@ export default async function EncuestaPublicPage({ params }) {
 
   const now = new Date();
   const empresa = enc.empresa || {};
+  const recipient = enc.recipient || {};
   const empresaLabel =
+    (enc.standalone &&
+      ([recipient.organization, recipient.name].find(
+        (s) => typeof s === "string" && s.trim().length > 0
+      ) ||
+        null)) ||
     [empresa.razonSocial, empresa.nombre].find(
       (s) => typeof s === "string" && s.trim().length > 0
-    ) || empresa.rnc || "Su empresa";
+    ) ||
+    empresa.rnc ||
+    "cliente";
 
   if (enc.status === "responded") {
     return (

@@ -17,12 +17,10 @@ export default async function EncuestasPage() {
         <div>
           <h1 className={styles.title}>Encuestas de satisfacción</h1>
           <p className={styles.subtitle}>
-            Respuestas enviadas por las empresas mediante el enlace único por correo.
+            Envía enlaces desde aquí (sin empresa) o desde Empresas, y revisa las
+            respuestas.
           </p>
         </div>
-        <a className={styles.exportBtn} href="/api/encuestas/export" download>
-          Exportar CSV
-        </a>
       </header>
       <EncuestasList />
     </div>

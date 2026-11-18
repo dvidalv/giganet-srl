@@ -5,7 +5,7 @@
     grid-template-areas: "sidebar main";
     flex: 1 1 auto;
     min-height: 0;
-    background: #f9fafb;
+    background: var(--dash-bg, #050505);
 }
 
 .sidebarWrapper {

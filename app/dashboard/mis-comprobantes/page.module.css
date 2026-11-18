@@ -27,7 +27,7 @@
 .title {
   font-size: clamp(1.5rem, 4vw, 1.875rem);
   font-weight: 700;
-  color: #0f172a;
+  color: var(--dash-text);
   letter-spacing: -0.02em;
   line-height: 1.2;
   margin: 0 0 0.35rem 0;
@@ -35,7 +35,7 @@
 
 .subtitle {
   font-size: 0.9375rem;
-  color: #64748b;
+  color: var(--dash-text-muted);
   margin: 0;
   max-width: 42ch;
 }
@@ -45,20 +45,20 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--dash-text-secondary) 0%, var(--dash-text) 100%);
+  color: var(--dash-text);
   font-size: 0.9375rem;
   font-weight: 600;
   border-radius: 10px;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 2px 8px rgba(255, 77, 0, 0.25);
   transition: transform 0.2s, box-shadow 0.2s;
   white-space: nowrap;
 }
 
 .cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 4px 14px rgba(255, 77, 0, 0.35);
 }
 
 .cta:active {

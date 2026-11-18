@@ -24,7 +24,7 @@
   left: 0.85rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #64748b;
+  color: var(--dash-text-muted);
   pointer-events: none;
   display: flex;
 }
@@ -34,24 +34,24 @@
   padding: 0.7rem 0.9rem 0.7rem 2.55rem;
   font-size: 0.9rem;
   font-family: inherit;
-  color: #0f172a;
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
+  color: var(--dash-text);
+  background: var(--dash-surface);
+  border: 1.5px solid var(--dash-border);
   border-radius: 10px;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .searchInput::placeholder {
-  color: #94a3b8;
+  color: var(--dash-text-muted);
 }
 
 .searchInput:hover {
-  border-color: #cbd5e1;
+  border-color: var(--dash-border-strong);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #14b8a6;
+  border-color: var(--dash-primary-mid);
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
 }
 
@@ -81,8 +81,8 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: var(--cardBg, #fff);
-  border: 1px solid var(--border, #e5e7eb);
+  background: var(--cardBg, var(--dash-surface));
+  border: 1px solid var(--border, var(--dash-border));
   border-radius: 10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.2s ease;
@@ -99,14 +99,24 @@
   flex-shrink: 0;
   width: 56px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Muted plate: enough contrast for logos without a loud light block */
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+  padding: 6px;
 }
 
 .logo {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .logoPlaceholder {
@@ -115,12 +125,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bgMuted, #e5e7eb);
+  background: transparent;
 }
 
 .logoPlaceholderText {
   font-size: 0.7rem;
-  color: var(--textMuted, #9ca3af);
+  color: var(--textMuted, var(--dash-text-muted));
   text-align: center;
   padding: 0 4px;
 }
@@ -141,7 +151,7 @@
 .razonSocial {
   font-weight: 600;
   font-size: 1rem;
-  color: var(--text, #111);
+  color: var(--text, var(--dash-surface));
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -162,15 +172,15 @@
 }
 
 .badgeDemo {
-  background: #fffbeb;
-  color: #b45309;
-  border: 1px solid #fde68a;
+  background: var(--dash-warn-bg);
+  color: var(--dash-warn);
+  border: 1px solid var(--dash-warn-border);
 }
 
 .badgeProd {
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
+  background: var(--dash-success-bg);
+  color: var(--dash-primary);
+  border: 1px solid var(--dash-success-border);
 }
 
 .badges {
@@ -190,14 +200,14 @@
   font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.2;
-  background: #fff7ed;
-  color: #9a3412;
-  border: 1px solid #fdba74;
+  background: var(--dash-warn-bg);
+  color: var(--dash-warn-strong);
+  border: 1px solid var(--dash-primary-light);
 }
 
 .row {
   font-size: 0.875rem;
-  color: var(--textSecondary, #4b5563);
+  color: var(--textSecondary, var(--dash-text-muted));
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -206,7 +216,7 @@
 
 .label {
   flex-shrink: 0;
-  color: var(--textMuted, #6b7280);
+  color: var(--textMuted, var(--dash-text-dim));
 }
 
 .value {

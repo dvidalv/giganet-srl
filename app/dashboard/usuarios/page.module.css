@@ -4,7 +4,7 @@
   flex-direction: column;
   gap: 1rem;
   padding: 3rem;
-  color: #111827;
+  color: var(--dash-text);
   color-scheme: light;
 }
     

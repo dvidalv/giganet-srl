@@ -34,10 +34,29 @@ const answersSchema = new Schema(
 
 const encuestaSchema = new Schema(
   {
+    /**
+     * Linked client user when sent from Empresas.
+     * Optional for standalone sends from the Encuestas module.
+     */
     userId: {
       type: Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+      default: null,
+      index: true,
+    },
+    /** Admin who created/sent the survey (always set when available). */
+    createdBy: {
+      type: Types.ObjectId,
+      ref: "User",
+      required: false,
+      default: null,
+      index: true,
+    },
+    /** true = sent manually from Encuestas (no empresa account required). */
+    standalone: {
+      type: Boolean,
+      default: false,
       index: true,
     },
     empresa: {
@@ -45,6 +64,13 @@ const encuestaSchema = new Schema(
       razonSocial: { type: String, default: "" },
       nombre: { type: String, default: "" },
       email: { type: String, default: "" },
+    },
+    /** Recipient for standalone (or override) sends. */
+    recipient: {
+      name: { type: String, default: "", maxlength: 120 },
+      email: { type: String, default: "", maxlength: 254 },
+      phone: { type: String, default: "", maxlength: 30 },
+      organization: { type: String, default: "", maxlength: 200 },
     },
     token: {
       type: String,
@@ -66,6 +92,15 @@ const encuestaSchema = new Schema(
     sentAt: { type: Date, default: null },
     respondedAt: { type: Date, default: null },
     responderIpHash: { type: String, default: "" },
+    /**
+     * When true, eligible responses can appear on the public homepage.
+     * Defaults to false — admin must explicitly publish from the encuestas module.
+     */
+    publishOnHome: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     answers: { type: answersSchema, default: undefined },
   },
   {

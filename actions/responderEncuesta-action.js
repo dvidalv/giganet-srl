@@ -8,6 +8,7 @@ import {
   ENCUESTA_SUBMISSIONS_PER_HOUR,
   hashResponderIp,
 } from "@/lib/encuestaFormRateLimit";
+import { revalidateHomepageTestimonials } from "@/lib/encuestas/revalidateHomepageTestimonials";
 import { sendEmail } from "@/api-mail_brevo";
 
 const HONEYPOT_FIELD = "website";
@@ -233,6 +234,8 @@ export async function responderEncuesta(prevState, formData) {
         status: "responded",
         respondedAt: now,
         responderIpHash: hashResponderIp(clientIp),
+        // Unpublished by default; admin must toggle publishOnHome in the dashboard.
+        publishOnHome: false,
         answers,
       },
     },
@@ -335,6 +338,8 @@ ${comentarios || "—"}`,
       console.error("Notificación encuesta al admin:", e);
     }
   }
+
+  revalidateHomepageTestimonials();
 
   return {
     errors: null,

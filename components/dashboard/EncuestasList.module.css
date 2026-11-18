@@ -2,23 +2,48 @@
   width: 100%;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.exportBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--dash-primary, #ff4d00);
+  background: transparent;
+  color: var(--dash-primary-mid, #ff7a3d);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.exportBtn:hover {
+  background: rgba(255, 77, 0, 0.1);
+}
+
 .loading,
 .error,
 .empty {
   padding: 2rem;
   text-align: center;
-  color: var(--textSecondary, #6b7280);
+  color: var(--textSecondary, var(--dash-text-dim));
 }
 
 .error {
-  color: #b91c1c;
+  color: var(--dash-danger);
 }
 
 .tableWrap {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  background: var(--cardBg, #fff);
+  background: var(--cardBg, var(--dash-surface));
 }
 
 .table {
@@ -36,7 +61,7 @@
 
 .table th {
   font-weight: 600;
-  color: var(--textSecondary, #6b7280);
+  color: var(--textSecondary, var(--dash-text-dim));
   background: rgba(0, 0, 0, 0.02);
 }
 
@@ -45,7 +70,7 @@
 }
 
 .table a {
-  color: #0d9488;
+  color: var(--dash-primary-mid);
   font-weight: 500;
   text-decoration: none;
 }
@@ -63,24 +88,61 @@
 }
 
 .chipPending {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--dash-warn-bg);
+  color: var(--dash-warn);
 }
 
 .chipResponded {
-  background: #d1fae5;
-  color: #047857;
+  background: var(--dash-success-bg);
+  color: var(--dash-primary);
 }
 
 .chipExpired {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--dash-surface-2);
+  color: var(--dash-text-muted);
+}
+
+.muted {
+  color: var(--dash-text-dim, #6b7280);
+  font-size: 0.8125rem;
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mutedSmall {
+  font-size: 0.75rem;
+  color: var(--dash-text-dim, #6b7280);
+}
+
+.originManual,
+.originEmpresa {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.originManual {
+  background: rgba(255, 77, 0, 0.12);
+  color: #ff7a3d;
+  border: 1px solid rgba(255, 77, 0, 0.28);
+}
+
+.originEmpresa {
+  background: rgba(255, 255, 255, 0.04);
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   .tableWrap {
     border-color: rgba(255, 255, 255, 0.1);
-    background: #1a1a1a;
+    background: var(--dash-surface-2);
   }
 
   .table th,

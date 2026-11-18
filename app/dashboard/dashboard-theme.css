@@ -1,0 +1,59 @@
+/**
+ * Dark theme tokens for the admin dashboard.
+ * Aligned with the public front page (hero / footer): #050505 + orange #ff4d00.
+ * Scoped under .dashboardTheme so public pages stay unchanged.
+ */
+.dashboardTheme {
+  --dash-bg: #050505;
+  --dash-bg-subtle: #080808;
+  --dash-surface: #0c0c0c;
+  --dash-surface-2: #111111;
+  --dash-surface-hover: #161616;
+  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-border-strong: rgba(255, 255, 255, 0.12);
+  --dash-text: #ffffff;
+  --dash-text-secondary: #e5e7eb;
+  --dash-text-muted: #9ca3af;
+  --dash-text-dim: #6b7280;
+  --dash-primary: #ff4d00;
+  --dash-primary-mid: #ff7a3d;
+  --dash-primary-light: #ffaa70;
+  --dash-primary-soft: rgba(255, 77, 0, 0.12);
+  --dash-primary-soft-mid: rgba(255, 77, 0, 0.18);
+  --dash-primary-border: rgba(255, 77, 0, 0.3);
+  --dash-primary-border-strong: rgba(255, 77, 0, 0.5);
+  --dash-danger: #f87171;
+  --dash-danger-strong: #ef4444;
+  --dash-danger-bg: rgba(185, 28, 28, 0.18);
+  --dash-danger-border: rgba(248, 113, 113, 0.35);
+  --dash-warn: #fbbf24;
+  --dash-warn-strong: #f59e0b;
+  --dash-warn-bg: rgba(180, 83, 9, 0.18);
+  --dash-warn-border: rgba(251, 191, 36, 0.35);
+  --dash-success: #4ade80;
+  --dash-success-strong: #22c55e;
+  --dash-success-bg: rgba(74, 222, 128, 0.12);
+  --dash-success-border: rgba(74, 222, 128, 0.3);
+  --dash-info: #93c5fd;
+  --dash-info-bg: rgba(59, 130, 246, 0.14);
+  --dash-info-border: rgba(147, 197, 253, 0.35);
+  --dash-input-bg: rgba(255, 255, 255, 0.04);
+  --dash-input-bg-hover: rgba(255, 255, 255, 0.06);
+  --dash-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --dash-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --dash-grid-line: rgba(255, 255, 255, 0.025);
+
+  color: var(--dash-text-secondary);
+  background-color: var(--dash-bg);
+  background-image:
+    linear-gradient(var(--dash-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--dash-grid-line) 1px, transparent 1px),
+    radial-gradient(ellipse at 15% 0%, rgba(255, 77, 0, 0.06) 0%, transparent 55%);
+  background-size: 60px 60px, 60px 60px, auto;
+  background-attachment: fixed;
+  color-scheme: dark;
+}
+
+.dashboardTheme :where(input, select, textarea) {
+  color-scheme: dark;
+}

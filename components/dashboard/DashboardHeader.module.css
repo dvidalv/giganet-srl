@@ -1,11 +1,11 @@
 .header {
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--dash-surface, #0c0c0c);
+    border-bottom: 1px solid var(--dash-border);
     padding: 0;
     position: sticky;
     top: 0;
     z-index: 50;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--dash-shadow);
 }
 
 .headerContent {
@@ -23,7 +23,7 @@
 .greeting {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--dash-text-secondary);
     margin: 0;
 }
 
@@ -35,7 +35,7 @@
 
 .notificationBtn {
     position: relative;
-    background: #f3f4f6;
+    background: var(--dash-surface-2);
     border: none;
     border-radius: 50%;
     width: 42px;
@@ -49,7 +49,7 @@
 }
 
 .notificationBtn:hover {
-    background: #e5e7eb;
+    background: var(--dash-border);
     transform: scale(1.05);
 }
 
@@ -57,7 +57,7 @@
     position: absolute;
     top: 4px;
     right: 4px;
-    background: #ef4444;
+    background: var(--dash-danger-strong);
     color: white;
     font-size: 0.7rem;
     font-weight: 600;
@@ -71,7 +71,7 @@
 }
 
 .signOutBtn {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, var(--dash-primary) 0%, var(--dash-primary-mid) 100%);
     color: white;
     border: none;
     padding: 0.625rem 1.5rem;
@@ -80,12 +80,12 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 2px 4px rgba(255, 77, 0, 0.25);
 }
 
 .signOutBtn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, var(--dash-primary-mid) 0%, var(--dash-primary) 100%);
+    box-shadow: 0 4px 8px rgba(255, 77, 0, 0.35);
     transform: translateY(-1px);
 }
 

@@ -153,3 +153,145 @@ ${surveyUrl}`,
     };
   }
 }
+
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+
+/**
+ * Admin: envía encuesta sin vincular una empresa del dashboard.
+ * Destinatario libre (nombre + email; teléfono/organización opcionales).
+ */
+export async function crearEncuestaStandalone({
+  name,
+  email,
+  phone = "",
+  organization = "",
+} = {}) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "admin") {
+    return { ok: false, error: "No autorizado." };
+  }
+
+  const recipientName = String(name ?? "").trim();
+  const recipientEmail = String(email ?? "").trim().toLowerCase();
+  const recipientPhone = String(phone ?? "").trim();
+  const recipientOrg = String(organization ?? "").trim();
+
+  if (!recipientName || recipientName.length < 2) {
+    return { ok: false, error: "Indica el nombre del destinatario." };
+  }
+  if (recipientName.length > 120) {
+    return { ok: false, error: "El nombre es demasiado largo." };
+  }
+  if (!recipientEmail || !EMAIL_REGEX.test(recipientEmail)) {
+    return { ok: false, error: "Indica un correo electrónico válido." };
+  }
+  if (recipientPhone.length > 30) {
+    return { ok: false, error: "El teléfono es demasiado largo." };
+  }
+  if (recipientOrg.length > 200) {
+    return { ok: false, error: "La organización es demasiado larga." };
+  }
+
+  const appBase = baseUrl();
+  if (!appBase) {
+    return {
+      ok: false,
+      error:
+        "Falta NEXT_PUBLIC_APP_URL en el entorno para generar el enlace de la encuesta.",
+    };
+  }
+
+  if (!process.env.BREVO_API_KEY) {
+    return {
+      ok: false,
+      error: "BREVO_API_KEY no está configurada; no se puede enviar el correo.",
+    };
+  }
+
+  try {
+    const adminId = session.user.id || session.user._id || null;
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(
+      Date.now() + EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    );
+    const greetName = recipientName.split(/\s+/)[0] || recipientName;
+    const orgLabel = recipientOrg || null;
+
+    const doc = await Encuesta.create({
+      userId: null,
+      createdBy: adminId,
+      standalone: true,
+      publishOnHome: false,
+      empresa: {
+        rnc: "",
+        razonSocial: recipientOrg || "",
+        nombre: recipientOrg || recipientName,
+        email: recipientEmail,
+      },
+      recipient: {
+        name: recipientName,
+        email: recipientEmail,
+        phone: recipientPhone,
+        organization: recipientOrg,
+      },
+      token,
+      status: "pending",
+      expiresAt,
+      sentAt: new Date(),
+    });
+
+    const surveyUrl = `${appBase}/encuesta/${token}`;
+
+    try {
+      await sendEmail({
+        to: recipientEmail,
+        subject: "Tu opinión sobre Giganet — encuesta rápida",
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+            <h2 style="margin-bottom: 16px;">Encuesta de satisfacción</h2>
+            <p>Hola ${escapeHtml(greetName)},</p>
+            <p>En <strong>Giganet</strong> nos gustaría conocer tu experiencia${
+              orgLabel
+                ? ` con <strong>${escapeHtml(orgLabel)}</strong>`
+                : ""
+            }. La encuesta solo toma unos minutos:</p>
+            <p style="margin: 24px 0;">
+              <a href="${escapeHtml(surveyUrl)}" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #ff4d00 0%, #ff7a3d 100%); color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Responder encuesta
+              </a>
+            </p>
+            <p style="font-size: 14px; color: #666;">O copie este enlace en su navegador:<br />
+            <span style="word-break: break-all;">${escapeHtml(surveyUrl)}</span></p>
+            <p style="font-size: 13px; color: #888;">El enlace vence en ${EXPIRY_DAYS} días.</p>
+          </div>
+        `,
+        textContent: `Encuesta de satisfacción — Giganet
+
+Hola ${greetName},
+
+Nos gustaría conocer tu experiencia${orgLabel ? ` con ${orgLabel}` : ""}.
+
+Responda la encuesta en este enlace (válido ${EXPIRY_DAYS} días):
+${surveyUrl}`,
+      });
+    } catch (mailErr) {
+      await Encuesta.deleteOne({ _id: doc._id }).catch(() => {});
+      throw mailErr;
+    }
+
+    return {
+      ok: true,
+      surveyUrl,
+      encuestaId: doc._id.toString(),
+      message: `Encuesta enviada a ${recipientEmail}.`,
+    };
+  } catch (e) {
+    console.error("crearEncuestaStandalone:", e);
+    return {
+      ok: false,
+      error:
+        e?.message ||
+        "No se pudo crear o enviar la encuesta. Inténtelo de nuevo.",
+    };
+  }
+}

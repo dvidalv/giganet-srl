@@ -17,11 +17,15 @@
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  /* Crema suave en lugar de blanco puro (#fff / --dash-text del tema) */
+  --dash-text: #fdf6f0;
+  --dash-text-secondary: #f0e8e0;
+  --dash-text-muted: #d8cdc3;
 }
 
-/* Header with gradient */
+/* Header verde mate (alineado con panel The Factory) */
 .header {
-  background: linear-gradient(135deg, var(--dash-primary) 0%, var(--dash-primary-mid) 100%);
+  background-color: #6b7c6a;
   padding: 1.75rem 1.5rem;
   display: flex;
   align-items: flex-start;
@@ -35,12 +39,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(30, 42, 28, 0.22);
   border-radius: 12px;
-}
-
-.headerIcon {
-  color: var(--dash-text);
+  color: #dce6da;
 }
 
 .headerIcon svg {
@@ -52,14 +53,14 @@
   margin: 0 0 0.25rem 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--dash-text);
+  color: #f2f7f1;
   letter-spacing: -0.02em;
 }
 
 .headerText p {
   margin: 0;
   font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: #dce6da;
   line-height: 1.4;
 }
 
@@ -237,6 +238,46 @@
   border-color: var(--dash-primary-mid);
   background: var(--dash-surface);
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+}
+
+/* Ícono izquierdo legible sobre el fondo crema del select de ambiente */
+.inputWrap:has(select.input) {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.inputWrap:has(select.input) .inputIcon {
+  color: #4a4238;
+}
+
+/* Select ambiente The Factory (y otros <select class="input">) */
+select.input {
+  width: fit-content;
+  min-width: 11rem;
+  max-width: 100%;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.5rem;
+  background-color: #e8ddd4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 7.5L10 12l4.5-4.5' stroke='%234a4238' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.125rem 1.125rem;
+  color: #3a342e;
+  border: 2px solid rgba(58, 52, 46, 0.38);
+  color-scheme: light;
+}
+
+select.input:hover {
+  background-color: #f0e8e0;
+  border-color: rgba(58, 52, 46, 0.52);
+}
+
+select.input:focus {
+  background-color: #f0e8e0;
+  border-color: var(--dash-primary-mid);
+  box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.28);
 }
 
 .input::placeholder {

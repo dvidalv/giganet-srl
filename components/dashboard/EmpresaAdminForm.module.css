@@ -13,9 +13,10 @@
 
 .configPanel {
   margin-top: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   background: var(--dash-surface);
+  overflow: hidden;
 }
 
 .configPanelSummary {
@@ -28,8 +29,45 @@
   padding: 0.8rem 0.95rem;
   cursor: pointer;
   font-weight: 600;
-  color: var(--dash-text);
   user-select: none;
+  background-color: #6b7c6a;
+  border: 2px solid rgba(45, 58, 44, 0.58);
+  border-radius: 12px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.configPanel[open] .configPanelSummary {
+  border-radius: 11px 11px 0 0;
+  border-bottom: 2px solid rgba(45, 58, 44, 0.5);
+}
+
+.configPanelSummary:hover {
+  background-color: #5f6f5e;
+  border-color: rgba(45, 58, 44, 0.72);
+}
+
+.configPanelSummary:focus-visible {
+  outline: none;
+  background-color: #586958;
+  border-color: var(--dash-primary-mid);
+  box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.28);
+}
+
+.configPanelSummary .configPanelChevron {
+  color: #dce6da;
+}
+
+.configPanelCount {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #f0f5ee;
+  background: rgba(30, 42, 28, 0.22);
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
 }
 
 .configPanelSummary::-webkit-details-marker {
@@ -46,6 +84,7 @@
   gap: 0.55rem;
   flex: 1 1 10rem;
   min-width: 0;
+  color: #f2f7f1;
 }
 
 .configPanelTitle > span:last-child {
@@ -154,6 +193,28 @@
     justify-content: flex-start;
     padding-left: 1.7rem;
   }
+}
+
+.backToList {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: #6b7c6a;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.backToList:hover {
+  color: #586958;
+}
+
+.backToList:focus-visible {
+  outline: 2px solid #6b7c6a;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .pageWrap {
@@ -372,15 +433,28 @@
 }
 
 .compBadgeDemo {
-  background: var(--dash-warn-bg);
-  color: var(--dash-warn);
-  border: 1px solid var(--dash-warn-border);
+  background: #3d2e14;
+  color: #fcd34d;
+  border: 1.5px solid #8a6318;
+  font-weight: 400;
+}
+
+.configPanel[data-ambiente="demo"] .compBadgeDemo {
+  background: #eab308;
+  color: #000000;
+  border: 1.5px solid #b45309;
 }
 
 .compBadgeProd {
-  background: var(--dash-success-bg);
-  color: var(--dash-primary);
-  border: 1px solid var(--dash-success-border);
+  background: #163d28;
+  color: #9ae6b4;
+  border: 1.5px solid #2f6f4a;
+}
+
+.configPanel[data-ambiente="production"] .compBadgeProd {
+  background: #15803d;
+  color: #ffffff;
+  border: 1.5px solid #22c55e;
 }
 
 .compRefresh,

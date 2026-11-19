@@ -132,8 +132,9 @@
 
 .tableWrap {
   background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--dash-shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   color-scheme: light;
@@ -166,7 +167,7 @@
   padding: 1rem 1.25rem;
   font-size: 0.95rem;
   color: var(--dash-text);
-  border-bottom: 1px solid var(--dash-surface-2);
+  border-bottom: 1px solid var(--dash-row-border, var(--dash-border-strong));
 }
 
 .table tbody tr:hover {
@@ -308,13 +309,13 @@
   z-index: 1200;
   min-width: 196px;
   padding: 0.35rem;
-  background: #111111;
-  border: 1px solid rgba(255, 77, 0, 0.28);
+  background: #333943;
+  border: 1px solid rgba(255, 122, 61, 0.35);
   border-radius: 10px;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.04);
-  color: #e5e7eb;
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
   color-scheme: dark;
 }
 
@@ -336,7 +337,7 @@
 }
 
 .menuItem {
-  color: #e5e7eb;
+  color: #f1f5f9;
 }
 
 .menuItem svg,
@@ -355,7 +356,7 @@
 .menuItemDanger {
   margin-top: 0.2rem;
   color: #f87171;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0 0 8px 8px;
 }
 
@@ -858,7 +859,7 @@
 
   .table td:last-of-type {
     padding-bottom: 0;
-    border-top: 1px solid var(--dash-surface-2);
+    border-top: 1px solid var(--dash-row-border, var(--dash-border-strong));
     margin-top: 0.5rem;
     padding-top: 0.75rem;
   }

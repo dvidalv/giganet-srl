@@ -6,5 +6,6 @@
   padding: 3rem;
   color: var(--dash-text);
   color-scheme: light;
+  /* Separadores de fila más visibles (solo borde; fondos/texto sin cambio). */
+  --dash-row-border: rgba(255, 255, 255, 0.15);
 }
-    

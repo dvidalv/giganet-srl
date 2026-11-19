@@ -448,9 +448,9 @@
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1px solid #c7d2fe;
+  background: #16a34a;
+  color: #ffffff;
+  border: 1.5px solid #15803d;
 }
 
 .modalidadBadgeIlimitado {
@@ -459,10 +459,10 @@
   padding: 0.3rem 0.65rem;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 700;
-  background: var(--dash-primary-soft);
-  color: var(--dash-primary);
-  border: 1px solid var(--dash-primary-border);
+  font-weight: 400;
+  background: #dc2626;
+  color: #ffffff;
+  border: 1.5px solid #b91c1c;
 }
 
 .tableWrap {

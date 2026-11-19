@@ -527,19 +527,10 @@ export default function EmpresaAdminForm({ userId }) {
       <div className={adminStyles.pageWrap}>
       <Link
         href="/dashboard/empresas"
+        className={adminStyles.backToList}
         onClick={(e) => {
           e.preventDefault();
           router.push(empresasListHref());
-        }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          marginBottom: "1rem",
-          color: "#14b8a6",
-          textDecoration: "none",
-          fontSize: "0.9375rem",
-          fontWeight: 500,
         }}
       >
         <IconArrowLeft />
@@ -737,7 +728,12 @@ export default function EmpresaAdminForm({ userId }) {
               </div>
             </div>
 
-            <details className={adminStyles.configPanel}>
+            <details
+              className={adminStyles.configPanel}
+              data-ambiente={
+                empresa.theFactoryAmbiente === "demo" ? "demo" : "production"
+              }
+            >
               <summary className={adminStyles.configPanelSummary}>
                 <span className={adminStyles.configPanelTitle}>
                   <span className={adminStyles.configPanelIcon} aria-hidden="true">

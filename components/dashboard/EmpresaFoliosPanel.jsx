@@ -866,7 +866,9 @@ export default function EmpresaFoliosPanel({ userId, onModalidadChange }) {
         <details className={compStyles.configPanel}>
           <summary className={compStyles.configPanelSummary}>
             <span className={compStyles.configPanelTitle}>Historial de cambios</span>
-            <span className={styles.subtle}>{resumen.auditoria.length} recientes</span>
+            <span className={compStyles.configPanelCount}>
+              {resumen.auditoria.length} recientes
+            </span>
           </summary>
           <div className={compStyles.configPanelBody}>
             <ul className={styles.historyList}>

@@ -196,6 +196,15 @@ function EmpresasListInner() {
                         <span className={isDemo ? styles.badgeDemo : styles.badgeProd}>
                           {isDemo ? "Pruebas (demo)" : "Producción"}
                         </span>
+                        {e.modalidadFolios === "CONTROLADO" ? (
+                          <span className={styles.badgeFoliosControlados}>
+                            Folios controlados
+                          </span>
+                        ) : (
+                          <span className={styles.badgeFoliosIlimitados}>
+                            Folios ilimitados
+                          </span>
+                        )}
                       </span>
                     </div>
                     <div className={styles.row}>

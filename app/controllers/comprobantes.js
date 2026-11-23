@@ -27,6 +27,7 @@ import axios from "axios";
 import QRCode from "qrcode";
 import { correoParaTheFactory } from "@/lib/ecf/correoConsumo";
 import { aplicarSaldoAnteriorEnTotales } from "@/lib/ecf/saldoAnterior";
+import { aplicarRetencionItbisEnDocumento, itbisRetenidoSolicitado } from "@/lib/ecf/retencionItbis";
 import {
   generateDGIIQRUrl,
   generateDGIIQRUrlFromEnvioResponse,
@@ -3024,6 +3025,11 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
     }
   }
 
+  const itbisRetenidoDoc = itbisRetenidoSolicitado(facturaAdaptada);
+  if (itbisRetenidoDoc > 0) {
+    aplicarRetencionItbisEnDocumento(documentoCompleto, itbisRetenidoDoc);
+  }
+
   return documentoCompleto;
 };
 
@@ -5334,6 +5340,7 @@ const verificarServidorTheFactory = async (req, res) => {
 };
 
 export {
+  transformarFacturaParaTheFactory,
   createComprobante,
   getAllComprobantes,
   getComprobanteById,

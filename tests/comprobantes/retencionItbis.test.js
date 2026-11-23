@@ -6,6 +6,8 @@ import {
 } from "@/lib/ecf/retencionItbis";
 import { facturaE31Daymond } from "./fixtures/facturaE31";
 import ecfAntes from "./fixtures/facturaE31.ecf-antes.json";
+import { notaCreditoE34Daymond } from "./fixtures/notaCreditoE34";
+import ecfE34Antes from "./fixtures/notaCreditoE34.ecf-antes.json";
 
 describe("e-CF E31 completo", () => {
   beforeEach(() => {
@@ -45,6 +47,31 @@ describe("e-CF E31 completo", () => {
     sinRetencion.DocumentoElectronico.Encabezado.Totales = totalesAntes;
     expect(sinRetencion).toEqual(ecfAntes);
   });
+
+  it("E34 sin itbisRetenido es idéntico al e-CF generado antes de la retención opcional", () => {
+    const out = transformarFacturaParaTheFactory(structuredClone(notaCreditoE34Daymond), "TOKEN");
+    expect(out).toEqual(ecfE34Antes);
+  });
+
+  it("E34 (NC total de factura FBJ) revierte 137.29 retenido con MontoTotal 900.00", () => {
+    const body = structuredClone(notaCreditoE34Daymond);
+    body.factura.itbisRetenido = "137.29";
+    const out = transformarFacturaParaTheFactory(body, "TOKEN");
+    const totales = out.DocumentoElectronico.Encabezado.Totales;
+    const totalesAntes = ecfE34Antes.DocumentoElectronico.Encabezado.Totales;
+
+    expect(totales).toEqual({
+      ...totalesAntes,
+      totalITBISRetenido: "137.29",
+      totalISRRetencion: "0.00",
+    });
+    expect(totales.montoTotal).toBe("900.00");
+    expect(out.DocumentoElectronico.DetallesItems[0].retencion.montoITBIS).toBe("137.29");
+    const sinRetencion = structuredClone(out);
+    delete sinRetencion.DocumentoElectronico.DetallesItems[0].retencion;
+    sinRetencion.DocumentoElectronico.Encabezado.Totales = totalesAntes;
+    expect(sinRetencion).toEqual(ecfE34Antes);
+  });
 });
 
 function documentoE31() {
@@ -73,10 +100,15 @@ describe("retención de ITBIS opcional en E31", () => {
     expect(itbisRetenidoSolicitado({ tipo: "31", itbisRetenido: 0 })).toBe(0);
   });
 
-  it("solo aplica a E31", () => {
+  it("solo aplica a E31 y E34", () => {
     expect(itbisRetenidoSolicitado({ tipo: "32", itbisRetenido: "137.29" })).toBe(0);
+    expect(itbisRetenidoSolicitado({ tipo: "33", itbisRetenido: "137.29" })).toBe(0);
     expect(itbisRetenidoSolicitado({ tipo: "41", itbisRetenido: "137.29" })).toBe(0);
+    expect(itbisRetenidoSolicitado({ tipo: "46", itbisRetenido: "137.29" })).toBe(0);
+    expect(itbisRetenidoSolicitado({ tipo: "47", itbisRetenido: "137.29" })).toBe(0);
     expect(itbisRetenidoSolicitado({ tipo: "31", itbisRetenido: "137.29" })).toBe(137.29);
+    expect(itbisRetenidoSolicitado({ tipo: "34", itbisRetenido: "137.29" })).toBe(137.29);
+    expect(itbisRetenidoSolicitado({ tipo: "34" })).toBe(0);
   });
 
   it("reparte la retención en líneas gravadas y la suma cuadra con Totales", () => {

@@ -1,0 +1,77 @@
+{
+  "Token": "TOKEN",
+  "DocumentoElectronico": {
+    "Encabezado": {
+      "IdentificacionDocumento": {
+        "TipoDocumento": "34",
+        "NCF": "E340000000001",
+        "IndicadorMontoGravado": "0",
+        "IndicadorNotaCredito": "0",
+        "TipoIngresos": "01",
+        "TipoPago": "1"
+      },
+      "Emisor": {
+        "RNC": "131234567",
+        "RazonSocial": "DAYMOND PLAZA SRL",
+        "Direccion": "Calle Principal 1",
+        "Municipio": "010100",
+        "Provincia": "010000",
+        "TablaTelefono": [],
+        "FechaEmision": "23-11-2026",
+        "nombreComercial": "DAYMOND PLAZA SRL",
+        "correo": null,
+        "webSite": null,
+        "codigoVendedor": "1",
+        "numeroFacturaInterna": "1",
+        "numeroPedidoInterno": "1",
+        "zonaVenta": "PRINCIPAL"
+      },
+      "comprador": {
+        "rnc": "130769044",
+        "razonSocial": "DAIMOND DIELISSA SRL",
+        "correo": null,
+        "direccion": null,
+        "municipio": null,
+        "provincia": null,
+        "contacto": "DAIMOND DIELISSA SRL",
+        "envioMail": "NO",
+        "fechaEntrega": null,
+        "fechaOrden": null,
+        "numeroOrden": null,
+        "codigoInterno": "130769044"
+      },
+      "informacionesAdicionales": {
+        "numeroContenedor": null,
+        "numeroReferencia": "1"
+      },
+      "Totales": {
+        "montoGravadoTotal": "762.71",
+        "montoGravadoI1": "762.71",
+        "itbiS1": "18",
+        "totalITBIS": "137.29",
+        "totalITBIS1": "137.29",
+        "montoTotal": "900.00",
+        "montoExento": null
+      }
+    },
+    "DetallesItems": [
+      {
+        "NumeroLinea": "1",
+        "IndicadorFacturacion": "1",
+        "Nombre": "TUBO LED 36W PLANA ANCHA",
+        "IndicadorBienoServicio": "1",
+        "Descripcion": null,
+        "Cantidad": "3.00",
+        "UnidadMedida": "43",
+        "PrecioUnitario": "254.237",
+        "Monto": "762.71"
+      }
+    ],
+    "InformacionReferencia": {
+      "NCFModificado": "E310000000099",
+      "FechaNCFModificado": "23-11-2026",
+      "CodigoModificacion": "1",
+      "RazonModificacion": "Anulación"
+    }
+  }
+}

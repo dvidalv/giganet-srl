@@ -174,6 +174,32 @@ function comprobantesOwnerId(req) {
 // Cache del token de TheFactoryHKA por usuario + RNC (cada emisor/usuario tiene su token)
 const tokenCacheByRnc = {};
 
+function buildTokenCacheKey(userId, rncNorm, ambienteKey) {
+  return `${userId || "env"}:${rncNorm}:${ambienteKey}`;
+}
+
+function invalidateTokenCacheFor(userId, rncNorm, ambienteKey) {
+  const key = buildTokenCacheKey(userId, rncNorm, ambienteKey);
+  if (tokenCacheByRnc[key]) {
+    delete tokenCacheByRnc[key];
+  }
+}
+
+function isTheFactoryTokenAuthFailure({ mensaje, httpStatus } = {}) {
+  const status = Number(httpStatus);
+  if (status === 401 || status === 403) return true;
+  const s = String(mensaje ?? "").toLowerCase();
+  if (!s.includes("token")) return false;
+  return (
+    s.includes("no es válido") ||
+    s.includes("no es valido") ||
+    s.includes("inválido") ||
+    s.includes("invalido") ||
+    s.includes("expirado") ||
+    s.includes("expired")
+  );
+}
+
 // Función para limpiar cache del token (útil para debugging)
 const limpiarCacheToken = () => {
   console.log("🧹 Limpiando cache del token TheFactoryHKA...");
@@ -228,7 +254,11 @@ async function getTheFactoryCredentialsByUser(userId, ambienteKey = "production"
 // Función para obtener token de autenticación de TheFactoryHKA
 // @param {string} rnc - RNC del emisor (viene en la data de cada petición)
 const obtenerTokenTheFactory = async (rnc, options = {}) => {
-  const { userId, theFactoryUrls: urlsPrebuilt } = options;
+  const {
+    userId,
+    theFactoryUrls: urlsPrebuilt,
+    forceRefresh = false,
+  } = options;
   if (!rnc) {
     throw new Error("RNC es requerido para obtener el token de TheFactoryHKA");
   }
@@ -264,15 +294,18 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
       );
     }
 
-    const cacheKey = `${userId || "env"}:${rncNorm}:${urls.ambienteKey}`;
+    const cacheKey = buildTokenCacheKey(userId, rncNorm, urls.ambienteKey);
     let tokenCache = tokenCacheByRnc[cacheKey];
     if (!tokenCache) {
       tokenCache = { token: null, fechaExpiracion: null };
       tokenCacheByRnc[cacheKey] = tokenCache;
     }
 
-    // Verificar si tenemos un token válido en cache para este RNC
-    if (tokenCache.token && tokenCache.fechaExpiracion) {
+    if (forceRefresh) {
+      invalidateTokenCacheFor(userId, rncNorm, urls.ambienteKey);
+      tokenCache = { token: null, fechaExpiracion: null };
+      tokenCacheByRnc[cacheKey] = tokenCache;
+    } else if (tokenCache.token && tokenCache.fechaExpiracion) {
       const ahora = new Date();
       const expiracion = new Date(tokenCache.fechaExpiracion);
 
@@ -286,8 +319,6 @@ const obtenerTokenTheFactory = async (rnc, options = {}) => {
         return tokenCache.token;
       }
     }
-
-    // console.log('Obteniendo nuevo token de TheFactoryHKA...');
 
     // Realizar petición de autenticación
     // Nota: La API de TheFactoryHKA requiere los campos con mayúsculas iniciales
@@ -3413,11 +3444,6 @@ async function enviarFacturaElectronicaLogicInterno(body, options = {}) {
       return respuestaBloqueoFolios(reservaFolio);
     }
 
-    const token = await obtenerTokenTheFactory(rnc, {
-      ...options,
-      theFactoryUrls: urls,
-    });
-
     let bodyParaEnviar = body;
     const tipoFac = String(body.factura?.tipo ?? "").trim();
     if (
@@ -3442,41 +3468,83 @@ async function enviarFacturaElectronicaLogicInterno(body, options = {}) {
       }
     }
 
-    // Transformar el JSON simplificado al formato completo.
-    // Lo que falle aquí es el body del cliente, no The Factory: el catch general lo
-    // clasificaría como error de red (503 + correo a soporte) y ocultaría el motivo.
-    let facturaCompleta;
-    try {
-      facturaCompleta = transformarFacturaParaTheFactory(bodyParaEnviar, token);
-    } catch (errorDatos) {
-      const mensaje = errorDatos?.message || "Datos de la factura inválidos";
-      console.error("❌ Documento no armado por datos inválidos:", mensaje);
-      await liberarFolio(reservaFolio, "DATOS_INVALIDOS");
-      return {
-        status: httpStatus.BAD_REQUEST,
-        data: {
-          status: "error",
-          message: mensaje,
-          errorType: "DATOS_INVALIDOS",
-          ncf: body.factura?.ncf || null,
-          sugerencia: "Corrija los datos enviados y reintente",
-        },
-      };
-    }
-
-    console.log(
-      "Factura transformada:",
-      JSON.stringify(facturaCompleta, null, 2)
-    );
-
-    // Enviar a TheFactoryHKA (Token y DocumentoElectronico en la raíz del body)
+    const rncNorm = String(rnc).replace(/\D/g, "").trim();
     envioIntentado = true;
-    const response = await axios.post(urls.enviarUrl, facturaCompleta, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      timeout: 60000,
-    });
+    let response;
+    let facturaCompleta;
+
+  // Cada envío pide token nuevo a The Factory (Autenticacion); si el Enviar
+  // rechaza el token, invalidamos cache y reintentamos una vez.
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const token = await obtenerTokenTheFactory(rnc, {
+        ...options,
+        theFactoryUrls: urls,
+        forceRefresh: true,
+      });
+
+      try {
+        facturaCompleta = transformarFacturaParaTheFactory(bodyParaEnviar, token);
+      } catch (errorDatos) {
+        const mensaje = errorDatos?.message || "Datos de la factura inválidos";
+        console.error("❌ Documento no armado por datos inválidos:", mensaje);
+        await liberarFolio(reservaFolio, "DATOS_INVALIDOS");
+        return {
+          status: httpStatus.BAD_REQUEST,
+          data: {
+            status: "error",
+            message: mensaje,
+            errorType: "DATOS_INVALIDOS",
+            ncf: body.factura?.ncf || null,
+            sugerencia: "Corrija los datos enviados y reintente",
+          },
+        };
+      }
+
+      console.log(
+        "Factura transformada:",
+        JSON.stringify(facturaCompleta, null, 2)
+      );
+
+      try {
+        response = await axios.post(urls.enviarUrl, facturaCompleta, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 60000,
+        });
+      } catch (error) {
+        const normalizedError = normalizeTheFactoryError(error);
+        if (
+          isTheFactoryTokenAuthFailure({
+            mensaje: normalizedError.message,
+            httpStatus: normalizedError.httpStatus,
+          }) &&
+          attempt < 2
+        ) {
+          console.warn(
+            `[TheFactory] Token rechazado al enviar (intento ${attempt}/2); reautenticando…`,
+          );
+          invalidateTokenCacheFor(options.userId, rncNorm, urls.ambienteKey);
+          continue;
+        }
+        throw error;
+      }
+
+      const tokenRejected =
+        !(response.data?.procesado && response.data?.codigo === 0) &&
+        isTheFactoryTokenAuthFailure({
+          mensaje: response.data?.mensaje,
+          httpStatus: response.status,
+        });
+      if (tokenRejected && attempt < 2) {
+        console.warn(
+          `[TheFactory] The Factory reportó token inválido (intento ${attempt}/2); reautenticando…`,
+        );
+        invalidateTokenCacheFor(options.userId, rncNorm, urls.ambienteKey);
+        continue;
+      }
+      break;
+    }
     await registrarResultadoEnvio(reservaFolio, {
       aceptado: Boolean(response.data?.procesado) && response.data?.codigo === 0,
       codigo: response.data?.codigo ?? null,
@@ -3674,8 +3742,16 @@ async function enviarFacturaElectronicaLogicInterno(body, options = {}) {
       normalizedError.httpStatus === 401 ||
       normalizedError.httpStatus === 403
     ) {
-      console.log("🔄 Error de autenticación detectado, limpiando cache...");
-      limpiarCacheToken();
+      console.log("🔄 Error de autenticación detectado, limpiando cache del token…");
+      if (rnc && urls?.ambienteKey) {
+        invalidateTokenCacheFor(
+          options.userId,
+          String(rnc).replace(/\D/g, "").trim(),
+          urls.ambienteKey,
+        );
+      } else {
+        limpiarCacheToken();
+      }
       await enviarFacturaASoporte(body, {
         tipo: "Error de autenticación",
         mensaje: "Token expirado o inválido",

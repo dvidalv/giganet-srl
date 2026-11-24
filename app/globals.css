@@ -42,6 +42,7 @@
 
 @media (max-width: 900px) {
   :root {
+    --headerHeightMobile: 148px;
     --fixedTopOffset: calc(var(--headerHeightMobile) + var(--announcementHeight));
     --hero-header-offset: var(--fixedTopOffset);
     --hero-top-margin: var(--fixedTopOffset);

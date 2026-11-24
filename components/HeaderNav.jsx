@@ -27,6 +27,7 @@ export default function HeaderNav({ user }) {
     { label: "Servicios", href: "/#servicios" },
     { label: "Especialidades", href: "/#especialidades" },
     { label: "Planes", href: "/planes" },
+    { label: "Punto de venta", href: "/promocion" },
     { label: "Aplicaciones", href: "/#aplicaciones" },
     { label: "Clientes", href: "/#clientes" },
   ];
@@ -106,10 +107,10 @@ export default function HeaderNav({ user }) {
 
         {isLoggedIn ? (
           <>
-            <li className={styles.navItem}>
+            <li className={`${styles.navItem} ${styles.dashboardNavItem}`}>
               <Link
                 href="/dashboard"
-                className={`${styles.navLink} ${
+                className={`${styles.navLink} ${styles.dashboardLink} ${
                   isActive("/dashboard") && !pathname.startsWith("/dashboard/perfil")
                     ? styles.active
                     : ""
@@ -167,6 +168,17 @@ export default function HeaderNav({ user }) {
           </>
         ) : (
           <>
+            <li className={`${styles.navItem} ${styles.dashboardNavItem} ${styles.guestDashboard}`}>
+              <Link
+                href="/dashboard"
+                className={`${styles.navLink} ${styles.dashboardLink} ${
+                  isActive("/dashboard") ? styles.active : ""
+                }`}
+                onClick={closeMenu}
+              >
+                Dashboard
+              </Link>
+            </li>
             <li className={styles.navItem}>
               <Link
                 href="/login"

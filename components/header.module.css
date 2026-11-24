@@ -136,6 +136,19 @@
   }
 }
 
+.dashboardNavItem {
+  margin-left: 0.35rem;
+}
+
+.dashboardLink {
+  color: #fff;
+  font-weight: 600;
+}
+
+.dashboardLink:hover {
+  color: #ff4d00;
+}
+
 .ctaNav {
   display: inline-flex;
   align-items: center;
@@ -300,72 +313,62 @@
 
 @media (max-width: 900px) {
   .header {
-    padding: 0.85rem 1.25rem;
-    height: var(--headerHeightMobile);
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.45rem;
+    padding: 0.65rem 1rem 0.7rem;
+    height: auto;
     min-height: 0;
   }
 
   .logo {
-    max-width: 100px;
+    max-width: 92px;
   }
 
-  .menuToggle {
-    display: inline-flex;
+  .menuToggle,
+  .menuBackdrop,
+  .guestDashboard {
+    display: none;
   }
 
-  .menuBackdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    background: rgba(0, 0, 0, 0.55);
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .navList {
-    position: fixed;
-    top: 0;
-    right: 0;
-    z-index: 1001;
-    width: min(20rem, 86vw);
-    height: 100dvh;
-    height: 100vh;
-    margin: 0;
-    padding: calc(var(--headerHeightMobile) + 1rem) 1.25rem 1.5rem;
-    gap: 0.15rem;
-    flex-direction: column;
-    align-items: stretch;
+  .nav {
+    flex: 1 1 100%;
     justify-content: flex-start;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    background: #0d0d0d;
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: -16px 0 48px rgba(0, 0, 0, 0.45);
-    transform: translateX(105%);
-    visibility: hidden;
-    transition: transform 0.28s ease, visibility 0.28s ease;
   }
 
+  .navList,
   .navListOpen {
-    transform: translateX(0);
+    position: static;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    gap: 0.35rem 0.85rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: visible;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    transform: none;
     visibility: visible;
   }
 
   .navItem {
-    width: 100%;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    width: auto;
+    border-bottom: none;
   }
 
   .navLink {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    width: 100%;
-    padding: 1rem 0.35rem;
-    font-size: 1rem;
+    width: auto;
+    padding: 0.1rem 0;
+    font-size: 0.75rem;
     color: #e5e7eb;
+    white-space: nowrap;
   }
 
   .navLink.active {
@@ -378,11 +381,12 @@
 
   .ctaNav {
     display: inline-flex;
-    width: 100%;
-    margin: 0.85rem 0 0.35rem;
-    padding: 0.9rem 1rem;
-    font-size: 0.8rem;
-    box-sizing: border-box;
+    width: auto;
+    margin: 0;
+    padding: 0.32rem 0.65rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.03em;
+    box-shadow: none;
   }
 
   .userNavItem {
@@ -452,7 +456,8 @@
     max-width: 90px;
   }
 
-  .navList {
-    width: min(100vw, 20rem);
+  .navList,
+  .navListOpen {
+    width: 100%;
   }
 }

@@ -27,7 +27,12 @@ import axios from "axios";
 import QRCode from "qrcode";
 import { correoParaTheFactory } from "@/lib/ecf/correoConsumo";
 import { aplicarSaldoAnteriorEnTotales } from "@/lib/ecf/saldoAnterior";
-import { aplicarRetencionItbisEnDocumento, itbisRetenidoSolicitado } from "@/lib/ecf/retencionItbis";
+import {
+  aplicarRetencionIsrEnDocumento45,
+  aplicarRetencionItbisEnDocumento,
+  isrRetenidoSolicitado,
+  itbisRetenidoSolicitado,
+} from "@/lib/ecf/retencionItbis";
 import {
   generateDGIIQRUrl,
   generateDGIIQRUrlFromEnvioResponse,
@@ -3059,6 +3064,11 @@ const transformarFacturaParaTheFactory = (facturaSimple, token) => {
   const itbisRetenidoDoc = itbisRetenidoSolicitado(facturaAdaptada);
   if (itbisRetenidoDoc > 0) {
     aplicarRetencionItbisEnDocumento(documentoCompleto, itbisRetenidoDoc);
+  }
+
+  const isrRetenidoDoc = isrRetenidoSolicitado(facturaAdaptada);
+  if (isrRetenidoDoc > 0) {
+    aplicarRetencionIsrEnDocumento45(documentoCompleto, isrRetenidoDoc);
   }
 
   return documentoCompleto;

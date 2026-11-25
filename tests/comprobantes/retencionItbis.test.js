@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { transformarFacturaParaTheFactory } from "@/app/controllers/comprobantes";
 import {
   aplicarRetencionItbisEnDocumento,
+  aplicarRetencionIsrEnDocumento45,
+  isrRetenidoSolicitado,
   itbisRetenidoSolicitado,
 } from "@/lib/ecf/retencionItbis";
 import { facturaE31Daymond } from "./fixtures/facturaE31";
@@ -128,5 +130,28 @@ describe("retención de ITBIS opcional en E31", () => {
 
   it("rechaza retener más ITBIS del facturado", () => {
     expect(() => aplicarRetencionItbisEnDocumento(documentoE31(), 200)).toThrow(/no puede superar/);
+  });
+});
+
+describe("retención de ISR opcional en E45", () => {
+  it("sin isrRetenido no se activa, y otros tipos lo ignoran", () => {
+    expect(isrRetenidoSolicitado({ tipo: "45" })).toBe(0);
+    expect(isrRetenidoSolicitado({ tipo: "45", isrRetenido: 0 })).toBe(0);
+    expect(isrRetenidoSolicitado({ tipo: "31", isrRetenido: "33.94" })).toBe(0);
+    expect(isrRetenidoSolicitado({ tipo: "32", isrRetenido: "33.94" })).toBe(0);
+  });
+
+  it("anota totalISRRetencion y baja ValorPagar sin tocar MontoTotal", () => {
+    const doc = {
+      DocumentoElectronico: {
+        Encabezado: { Totales: { MontoTotal: "801.00", ValorPagar: "801.00" } },
+        DetallesItems: [{ NumeroLinea: "1" }],
+      },
+    };
+    aplicarRetencionIsrEnDocumento45(doc, 33.94);
+    expect(doc.DocumentoElectronico.Encabezado.Totales.MontoTotal).toBe("801.00");
+    expect(doc.DocumentoElectronico.Encabezado.Totales.ValorPagar).toBe("767.06");
+    expect(doc.DocumentoElectronico.Encabezado.Totales.totalISRRetencion).toBe("33.94");
+    expect(doc.DocumentoElectronico.DetallesItems[0].retencion).toBeUndefined();
   });
 });

@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node ./scripts/dev-free-port.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "node ./scripts/dev-free-port.mjs start",
     "lint": "eslint",
     "test": "vitest run",
     "folios:migrar": "node scripts/folios-migrar-modalidad.mjs"
@@ -41,6 +41,7 @@
     "eslint-config-next": "16.1.4",
     "mongodb-memory-server": "^11.3.0",
     "nx": "^24.0.2",
+    "portfinder": "^1.0.38",
     "vitest": "^5.0.5"
   }
 }

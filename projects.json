@@ -3,8 +3,9 @@
     {
       "name": "giganet-SRL",
       "path": "/Users/dvidalv/Projects/giganet-SRL",
-      "devCommand": "npm run dev -- -p 3009",
-      "url": "http://localhost:3009"
+      "devCommand": "npm run dev",
+      "url": "http://localhost:3009",
+      "port": 3009
     }
   ]
 }

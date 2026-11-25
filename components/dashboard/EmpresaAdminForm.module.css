@@ -30,8 +30,8 @@
   cursor: pointer;
   font-weight: 600;
   user-select: none;
-  background-color: #6b7c6a;
-  border: 2px solid rgba(45, 58, 44, 0.58);
+  background-color: rgba(255, 77, 0, 0.18);
+  border: 2px solid rgba(255, 77, 0, 0.4);
   border-radius: 12px;
   transition:
     background-color 0.15s ease,
@@ -41,31 +41,31 @@
 
 .configPanel[open] .configPanelSummary {
   border-radius: 11px 11px 0 0;
-  border-bottom: 2px solid rgba(45, 58, 44, 0.5);
+  border-bottom-color: rgba(255, 77, 0, 0.28);
 }
 
 .configPanelSummary:hover {
-  background-color: #5f6f5e;
-  border-color: rgba(45, 58, 44, 0.72);
+  background-color: rgba(255, 77, 0, 0.28);
+  border-color: rgba(255, 77, 0, 0.6);
 }
 
 .configPanelSummary:focus-visible {
   outline: none;
-  background-color: #586958;
-  border-color: var(--dash-primary-mid);
-  box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.28);
+  background-color: rgba(255, 77, 0, 0.28);
+  border-color: #ff4d00;
+  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.28);
 }
 
 .configPanelSummary .configPanelChevron {
-  color: #dce6da;
+  color: #ffaa70;
 }
 
 .configPanelCount {
   flex-shrink: 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #f0f5ee;
-  background: rgba(30, 42, 28, 0.22);
+  color: #ffaa70;
+  background: rgba(255, 77, 0, 0.28);
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
 }
@@ -84,7 +84,7 @@
   gap: 0.55rem;
   flex: 1 1 10rem;
   min-width: 0;
-  color: #f2f7f1;
+  color: #ffffff;
 }
 
 .configPanelTitle > span:last-child {
@@ -200,21 +200,30 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  color: #6b7c6a;
+  padding: 0.45rem 0.85rem;
+  background-color: #111111;
+  border: 2px solid #ff4d00;
+  border-radius: 12px;
+  color: #ffffff;
   text-decoration: none;
   font-size: 0.9375rem;
   font-weight: 500;
-  transition: color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .backToList:hover {
-  color: #586958;
+  background-color: #161616;
+  border-color: #ff7a3d;
+  color: #ffffff;
 }
 
 .backToList:focus-visible {
-  outline: 2px solid #6b7c6a;
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: none;
+  background-color: #161616;
+  border-color: #ff4d00;
+  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.28);
 }
 
 .pageWrap {

@@ -326,8 +326,7 @@
   }
 
   .menuToggle,
-  .menuBackdrop,
-  .guestDashboard {
+  .menuBackdrop {
     display: none;
   }
 

@@ -1,0 +1,10 @@
+{
+  "projects": [
+    {
+      "name": "giganet-SRL",
+      "path": "/Users/dvidalv/Projects/giganet-SRL",
+      "devCommand": "npm run dev -- -p 3009",
+      "url": "http://localhost:3009"
+    }
+  ]
+}

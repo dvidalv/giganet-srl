@@ -344,7 +344,9 @@ function UserModal({ user, onClose, onSave, mode = "view" }) {
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={isCreate ? `${styles.modal} ${styles.modalCreate}` : styles.modal}
+        onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2>
             {isCreate

@@ -27,7 +27,7 @@ export default function HeaderNav({ user }) {
     { label: "Servicios", href: "/#servicios" },
     { label: "Especialidades", href: "/#especialidades" },
     { label: "Planes", href: "/planes" },
-    { label: "Punto de venta", href: "/promocion" },
+    { label: "Punto de venta", href: process.env.NEXT_PUBLIC_POS_URL || "http://localhost:3000/" },
     { label: "Aplicaciones", href: "/#aplicaciones" },
     { label: "Clientes", href: "/#clientes" },
   ];
@@ -168,17 +168,6 @@ export default function HeaderNav({ user }) {
           </>
         ) : (
           <>
-            <li className={`${styles.navItem} ${styles.dashboardNavItem} ${styles.guestDashboard}`}>
-              <Link
-                href="/dashboard"
-                className={`${styles.navLink} ${styles.dashboardLink} ${
-                  isActive("/dashboard") ? styles.active : ""
-                }`}
-                onClick={closeMenu}
-              >
-                Dashboard
-              </Link>
-            </li>
             <li className={styles.navItem}>
               <Link
                 href="/login"
